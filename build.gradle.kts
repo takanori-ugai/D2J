@@ -32,10 +32,10 @@ repositories {
 dependencies {
     implementation("ai.djl:basicdataset:$v")
     implementation("ai.djl:api:$v")
-//    runtimeOnly("ai.djl.mxnet:mxnet-engine:$v")
+    runtimeOnly("ai.djl.mxnet:mxnet-engine:$v")
 //    runtimeOnly("ai.djl.mxnet:mxnet-native:1.9.1:win-x86_64")
-    implementation("ai.djl.pytorch:pytorch-engine:$v")
-    runtimeOnly("ai.djl.pytorch:pytorch-jni:1.12.1-$v")
+//    implementation("ai.djl.pytorch:pytorch-engine:$v")
+//    runtimeOnly("ai.djl.pytorch:pytorch-jni:1.12.1-$v")
 //    runtimeOnly("ai.djl.pytorch:pytorch-native-cpu:1.12.1")
     //    implementation("ai.djl.pytorch:pytorch-native-cpu:1.12.1:linux-x86_64")
 //    runtimeOnly("ai.djl.pytorch:pytorch-native-cu116:1.12.1:linux-x86_64")
@@ -141,5 +141,5 @@ jacoco {
 }
 
 application {
-    mainClass.set("jp.live.ugai.tugraph.Test6Kt")
+    mainClass.set("jp.live.ugai.d2j.BatchNorm2Kt")
 }

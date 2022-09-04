@@ -1,11 +1,126 @@
+package jp.live.ugai.d2j
+
+import ai.djl.Model
+import ai.djl.basicdataset.cv.classification.FashionMnist
+import ai.djl.engine.Engine
 import ai.djl.ndarray.NDArray
 import ai.djl.ndarray.NDList
 import ai.djl.ndarray.NDManager
 import ai.djl.ndarray.types.Shape
 import ai.djl.nn.AbstractBlock
+import ai.djl.nn.Activation
+import ai.djl.nn.Blocks
 import ai.djl.nn.Parameter
+import ai.djl.nn.SequentialBlock
+import ai.djl.nn.convolutional.Conv2d
+import ai.djl.nn.core.Linear
+import ai.djl.nn.pooling.Pool
+import ai.djl.training.DefaultTrainingConfig
 import ai.djl.training.ParameterStore
+import ai.djl.training.Trainer
+import ai.djl.training.dataset.Dataset
+import ai.djl.training.evaluator.Accuracy
+import ai.djl.training.listener.TrainingListener
+import ai.djl.training.loss.Loss
+import ai.djl.training.optimizer.Optimizer
+import ai.djl.training.tracker.Tracker
 import ai.djl.util.PairList
+import jp.live.ugai.d2j.Training.trainingChapter6
+
+fun main() {
+    System.setProperty("org.slf4j.simpleLogger.showThreadName", "false")
+    System.setProperty("org.slf4j.simpleLogger.showLogName", "true")
+    System.setProperty("org.slf4j.simpleLogger.log.ai.djl.pytorch", "WARN")
+    System.setProperty("org.slf4j.simpleLogger.log.ai.djl.mxnet", "ERROR")
+    System.setProperty("org.slf4j.simpleLogger.log.ai.djl.ndarray.index", "ERROR")
+    System.setProperty("org.slf4j.simpleLogger.log.ai.djl.tensorflow", "WARN")
+
+    val net = SequentialBlock()
+        .add(
+            Conv2d.builder()
+                .setKernelShape(Shape(5, 5))
+                .setFilters(6).build()
+        )
+        .add(BatchNormBlock(6, 4))
+        .add(Pool.maxPool2dBlock(Shape(2, 2), Shape(2, 2)))
+        .add(
+            Conv2d.builder()
+                .setKernelShape(Shape(5, 5))
+                .setFilters(16).build()
+        )
+        .add(BatchNormBlock(16, 4))
+        .add(Activation::sigmoid)
+        .add(Pool.maxPool2dBlock(Shape(2, 2), Shape(2, 2)))
+        .add(Blocks.batchFlattenBlock())
+        .add(Linear.builder().setUnits(120).build())
+        .add(BatchNormBlock(120, 2))
+        .add(Activation::sigmoid)
+        .add(Blocks.batchFlattenBlock())
+        .add(Linear.builder().setUnits(84).build())
+        .add(BatchNormBlock(84, 2))
+        .add(Activation::sigmoid)
+        .add(Linear.builder().setUnits(10).build())
+
+    val batchSize = 256
+    val numEpochs = Integer.getInteger("MAX_EPOCH", 10)
+
+//    var trainLoss: DoubleArray
+//    var testAccuracy: DoubleArray
+//    val epochCount: DoubleArray
+//    var trainAccuracy: DoubleArray
+
+    val epochCount = IntArray(numEpochs) { it + 1 }
+
+    val trainIter = FashionMnist.builder()
+        .optUsage(Dataset.Usage.TRAIN)
+        .setSampling(batchSize, true)
+        .optLimit(getLong("DATASET_LIMIT", Long.MAX_VALUE))
+        .build()
+
+    val testIter = FashionMnist.builder()
+        .optUsage(Dataset.Usage.TEST)
+        .setSampling(batchSize, true)
+        .optLimit(getLong("DATASET_LIMIT", Long.MAX_VALUE))
+        .build()
+
+    trainIter.prepare()
+    testIter.prepare()
+
+    val lr = 1.0f
+
+    val loss: Loss = Loss.softmaxCrossEntropyLoss()
+
+    val lrt: Tracker = Tracker.fixed(lr)
+    val sgd: Optimizer = Optimizer.sgd().setLearningRateTracker(lrt).build()
+
+    val config = DefaultTrainingConfig(loss)
+        .optOptimizer(sgd) // Optimizer (loss function)
+        .optDevices(Engine.getInstance().getDevices(1)) // single GPU
+        .addEvaluator(Accuracy()) // Model Accuracy
+        .addTrainingListeners(*TrainingListener.Defaults.logging()) // Logging
+
+    val model: Model = Model.newInstance("batch-norm")
+    model.block = net
+    val trainer: Trainer = model.newTrainer(config)
+    trainer.initialize(Shape(1, 1, 28, 28))
+
+    val evaluatorMetrics: MutableMap<String, DoubleArray> = mutableMapOf()
+    val avgTrainTimePerEpoch = trainingChapter6(trainIter, testIter, numEpochs, trainer, evaluatorMetrics)
+
+    val trainLoss = evaluatorMetrics.get("train_epoch_SoftmaxCrossEntropyLoss")
+    val trainAccuracy = evaluatorMetrics.get("train_epoch_Accuracy")
+    val testAccuracy = evaluatorMetrics.get("validate_epoch_Accuracy")
+
+    print("loss %.3f,".format(trainLoss!![numEpochs - 1]))
+    print(" train acc %.3f,".format(trainAccuracy!![numEpochs - 1]))
+    print(" test acc %.3f\n".format(testAccuracy!![numEpochs - 1]))
+    print("%.1f examples/sec".format(trainIter.size() / (avgTrainTimePerEpoch / Math.pow(10.0, 9.0))))
+    println()
+
+    val batchNormFirstParams = net.children.values()[1].parameters.values()
+    println("gamma ${batchNormFirstParams[0].array.reshape(-1)}")
+    println("beta ${batchNormFirstParams[1].array.reshape(-1)}")
+}
 
 class BatchNormBlock(numFeatures: Int, numDimensions: Int) : AbstractBlock() {
 
@@ -103,14 +218,14 @@ class BatchNormBlock(numFeatures: Int, numDimensions: Int) : AbstractBlock() {
     }
 
     override fun toString(): String {
-        return "BatchNormBlock()"
+        return "jp.live.ugai.d2j.BatchNormBlock()"
     }
 
     override fun forwardInternal(
-        parameterStore: ParameterStore?,
+        parameterStore: ParameterStore,
         inputs: NDList,
         training: Boolean,
-        params: PairList<String, Any>
+        params: PairList<String, Any>?
     ): NDList {
         val result = batchNormUpdate(
             inputs.singletonOrThrow(),
