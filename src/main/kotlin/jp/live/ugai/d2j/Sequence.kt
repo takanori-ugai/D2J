@@ -21,7 +21,6 @@ import ai.djl.training.optimizer.Optimizer
 import ai.djl.training.tracker.Tracker
 import ai.djl.translate.NoopTranslator
 
-
 fun main() {
     System.setProperty("org.slf4j.simpleLogger.showThreadName", "false")
     System.setProperty("org.slf4j.simpleLogger.showLogName", "true")
