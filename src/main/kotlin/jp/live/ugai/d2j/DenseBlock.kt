@@ -42,12 +42,12 @@ fun main() {
 
     val X = manager.randomUniform(0.0f, 1.0f, Shape(4, 3, 8, 8))
 
-    block.initialize(manager, DataType.FLOAT32, X.getShape())
+    block.initialize(manager, DataType.FLOAT32, X.shape)
 
     val parameterStore = ParameterStore(manager, true)
 
-    var currentShape = arrayOf<Shape>(X.getShape())
-    for (child in block.getChildren().values()) {
+    var currentShape = arrayOf<Shape>(X.shape)
+    for (child in block.children.values()) {
         currentShape = child.getOutputShapes(currentShape)
     }
 
@@ -57,8 +57,8 @@ fun main() {
 
     block.initialize(manager, DataType.FLOAT32, currentShape[0])
 
-    for (pair in block.getChildren()) {
-        currentShape = pair.getValue().getOutputShapes(currentShape)
+    for (pair in block.children) {
+        currentShape = pair.value.getOutputShapes(currentShape)
     }
 
     println(currentShape[0])
@@ -128,7 +128,7 @@ fun main() {
     testIter.prepare()
 
     val model = Model.newInstance("cnn")
-    model.setBlock(net)
+    model.block = net
 
     val loss: Loss = Loss.softmaxCrossEntropyLoss()
 

@@ -118,7 +118,7 @@ fun main() {
     testIter.prepare()
 
     val model: Model = Model.newInstance("cnn")
-    model.setBlock(net)
+    model.block = net
 
     val loss: Loss = Loss.softmaxCrossEntropyLoss()
 
@@ -144,7 +144,7 @@ fun main() {
     println("%.1f examples/sec".format(trainIter.size() / (avgTrainTimePerEpoch / Math.pow(10.0, 9.0))))
 }
 
-fun resnetBlock(numChannels: Int, numResiduals: Int, firstBlock: Boolean): SequentialBlock? {
+fun resnetBlock(numChannels: Int, numResiduals: Int, firstBlock: Boolean): SequentialBlock {
     val blk = SequentialBlock()
     for (i in 0 until numResiduals) {
         if (i == 0 && !firstBlock) {
@@ -155,6 +155,7 @@ fun resnetBlock(numChannels: Int, numResiduals: Int, firstBlock: Boolean): Seque
     }
     return blk
 }
+
 class Residual(numChannels: Int, use1x1Conv: Boolean, strideShape: Shape) :
     AbstractBlock(VERSION) {
     var block: ParallelBlock

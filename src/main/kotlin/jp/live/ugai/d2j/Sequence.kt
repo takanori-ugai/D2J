@@ -84,7 +84,7 @@ fun train(net: SequentialBlock, dataset: ArrayDataset, batchSize: Int, numEpochs
         .optInitializer(XavierInitializer(), "")
         .addTrainingListeners(*TrainingListener.Defaults.logging()) // Logging
     val model: Model = Model.newInstance("sequence")
-    model.setBlock(net)
+    model.block = net
     trainer = model.newTrainer(config)
     for (epoch in 1..numEpochs) {
         // Iterate over dataset
