@@ -21,6 +21,7 @@ class Vocab(tokens: List<List<String>>, minFreq: Int, reservedTokens: List<Strin
                 uniqTokens.add(key)
             }
         }
+        println("UniqTokens: ${uniqTokens.size}")
         for (token in uniqTokens) {
             idxToToken.add(token)
             tokenToIdx[token] = idxToToken.size - 1

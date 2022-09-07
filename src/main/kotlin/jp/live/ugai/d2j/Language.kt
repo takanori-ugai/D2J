@@ -91,19 +91,6 @@ fun main() {
 }
 
 /**
- * Return the iterator and the vocabulary of the time machine dataset.
- */
-fun loadDataTimeMachine(
-    batchSize: Int,
-    numSteps: Int,
-    useRandomIter: Boolean,
-    maxTokens: Int
-): Pair<List<NDList>, Vocab> {
-    val seqData = SeqDataLoader(batchSize, numSteps, useRandomIter, maxTokens)
-    return Pair(seqData.dataIter, seqData.vocab) // ArrayList<NDList>, Vocab
-}
-
-/**
  * Generate a minibatch of subsequences using random sampling.
  */
 fun seqDataIterRandom(corpus: List<Int>, batchSize: Int, numSteps: Int, manager: NDManager): List<NDList> {

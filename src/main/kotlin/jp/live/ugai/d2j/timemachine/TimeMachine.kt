@@ -19,11 +19,8 @@ import ai.djl.training.loss.Loss
 import ai.djl.training.loss.SoftmaxCrossEntropyLoss
 import ai.djl.training.optimizer.Optimizer
 import ai.djl.training.tracker.Tracker
-import ai.djl.util.Pair
 import jp.live.ugai.d2j.Accumulator
 import jp.live.ugai.d2j.Functions
-import jp.live.ugai.d2j.Functions.SimpleFunction
-import jp.live.ugai.d2j.Functions.voidTwoFunction
 import jp.live.ugai.d2j.StopWatch
 import jp.live.ugai.d2j.Training.sgd
 import java.io.BufferedReader
@@ -96,7 +93,7 @@ object TimeMachine {
     ): String {
         val outputs: MutableList<Int> = mutableListOf()
         outputs.add(vocab.getIdx("" + prefix[0]))
-        val getInput = SimpleFunction {
+        val getInput = {
             manager.create(outputs[outputs.size - 1])
                 .toDevice(device, false)
                 .reshape(Shape(1, 1))
@@ -105,13 +102,13 @@ object TimeMachine {
             val castedNet = net
             var state: NDList = castedNet.beginState(1, device)
             for (c in prefix.substring(1).toCharArray()) { // Warm-up period
-                state = castedNet.forward(getInput.apply(), state).value
+                state = castedNet.forward(getInput(), state).second
                 outputs.add(vocab.getIdx("" + c))
             }
             for (i in 0 until numPreds) {
-                val pair = castedNet.forward(getInput.apply(), state)
-                val y = pair.key
-                state = pair.value
+                val pair = castedNet.forward(getInput(), state)
+                val y = pair.first
+                state = pair.second
                 outputs.add(y.argMax(1).reshape(Shape(1)).getLong(0L).toInt())
             }
         } else {
@@ -119,7 +116,7 @@ object TimeMachine {
             var state: NDList? = null
             for (c in prefix.substring(1).toCharArray()) { // Warm-up period
                 val ps = ParameterStore(manager, false)
-                val input = NDList(getInput.apply())
+                val input = NDList(getInput())
                 state = if (state == null) {
                     // Begin state
                     castedNet.forward(ps, input, false).subNDList(1)
@@ -130,7 +127,7 @@ object TimeMachine {
             }
             for (i in 0 until numPreds) {
                 val ps = ParameterStore(manager, false)
-                val input = NDList(getInput.apply())
+                val input = NDList(getInput())
                 val pair = castedNet.forward(ps, input.addAll(state), false)
                 val y = pair[0]
                 state = pair.subNDList(1)
@@ -157,14 +154,14 @@ object TimeMachine {
     ) {
         val loss = SoftmaxCrossEntropyLoss()
 //        val animator = Animator()
-        val updater: voidTwoFunction<Int, NDManager>
+        val updater: (Int, NDManager) -> Unit
         if (net is RNNModelScratch) {
-            updater = voidTwoFunction { batchSize: Int?, subManager: NDManager? ->
+            updater = { batchSize: Int, subManager: NDManager ->
                 sgd(
                     net.params,
                     lr.toFloat(),
-                    batchSize!!,
-                    subManager!!
+                    batchSize,
+                    subManager
                 )
             }
         } else {
@@ -187,7 +184,7 @@ object TimeMachine {
                 .addEvaluator(Accuracy()) // Model Accuracy
                 .addTrainingListeners(*TrainingListener.Defaults.logging()) // Logging
             val trainer = model.newTrainer(config)
-            updater = voidTwoFunction { batchSize: Int?, subManager: NDManager? -> trainer.step() }
+            updater = { batchSize: Int, subManager: NDManager -> trainer.step() }
         }
         val predict = Function { prefix: String -> predictCh8(prefix, 50, net, vocab, device, manager) }
         // Train and predict
@@ -195,12 +192,13 @@ object TimeMachine {
         var speed = 0.0
         for (epoch in 0 until numEpochs) {
             val pair = trainEpochCh8(net, dataset, loss, updater, device, useRandomIter, manager)
-            ppl = pair.key
-            speed = pair.value
-//            if ((epoch + 1) % 10 == 0) {
-//                animator.add(epoch + 1, ppl.toFloat(), "ppl")
-//                animator.show()
-//            }
+            ppl = pair.first
+            speed = pair.second
+            if ((epoch + 1) % 10 == 0) {
+//            animator.add(epoch + 1, ppl.toFloat(), "")
+//            animator.show()
+                println("${epoch + 1} : $ppl")
+            }
         }
         println(
             "perplexity: %.1f, %.1f tokens/sec on %s%n".format(ppl, speed, device.toString())
@@ -214,8 +212,8 @@ object TimeMachine {
         net: Any,
         dataset: RandomAccessDataset,
         loss: Loss,
-        updater: voidTwoFunction<Int, NDManager>,
-        device: Device?,
+        updater: (Int, NDManager) -> Unit,
+        device: Device,
         useRandomIter: Boolean,
         manager: NDManager
     ): Pair<Double, Double> {
@@ -234,7 +232,7 @@ object TimeMachine {
                     // using random sampling
                     if (net is RNNModelScratch) {
                         state = net
-                            .beginState(X.shape.shape[0].toInt(), device!!)
+                            .beginState(X.shape.shape[0].toInt(), device)
                     }
                 } else {
                     for (s in state) {
@@ -249,8 +247,8 @@ object TimeMachine {
                     val yHat: NDArray
                     if (net is RNNModelScratch) {
                         val pairResult = net.forward(X, state!!)
-                        yHat = pairResult.key
-                        state = pairResult.value
+                        yHat = pairResult.first
+                        state = pairResult.second
                     } else {
                         val pairResult: NDList
                         pairResult = if (state == null) {
@@ -277,7 +275,7 @@ object TimeMachine {
                     metric.add(floatArrayOf(l.getFloat() * y.size(), y.size().toFloat()))
                 }
                 gradClipping(net, 1, childManager)
-                updater.apply(1, childManager) // Since the `mean` function has been invoked
+                updater(1, childManager) // Since the `mean` function has been invoked
             }
         }
         return Pair(Math.exp(metric.get(0).toDouble() / metric.get(1)), metric.get(1) / watch.stop())

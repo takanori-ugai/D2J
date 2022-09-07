@@ -1,2 +1,5 @@
 build:
-  maxIssues: 300
+  maxIssues: 400
+style:
+  MagicNumber:
+    active: false

@@ -23,8 +23,8 @@ class SeqDataLoader(batchSize: Int, numSteps: Int, useRandomIter: Boolean, maxTo
     init {
         val manager = NDManager.newBaseManager()
         val corpusVocabPair = loadCorpusTimeMachine(maxTokens)
-        corpus = corpusVocabPair.key
-        vocab = corpusVocabPair.value
+        corpus = corpusVocabPair.first
+        vocab = corpusVocabPair.second
         this.batchSize = batchSize
         this.numSteps = numSteps
         if (useRandomIter) {
@@ -120,5 +120,20 @@ class SeqDataLoader(batchSize: Int, numSteps: Int, useRandomIter: Boolean, maxTo
             i += numSteps
         }
         return pairs
+    }
+
+    companion object {
+        /**
+         * Return the iterator and the vocabulary of the time machine dataset.
+         */
+        fun loadDataTimeMachine(
+            batchSize: Int,
+            numSteps: Int,
+            useRandomIter: Boolean,
+            maxTokens: Int
+        ): Pair<List<NDList>, Vocab> {
+            val seqData = SeqDataLoader(batchSize, numSteps, useRandomIter, maxTokens)
+            return Pair(seqData.dataIter, seqData.vocab) // ArrayList<NDList>, Vocab
+        }
     }
 }

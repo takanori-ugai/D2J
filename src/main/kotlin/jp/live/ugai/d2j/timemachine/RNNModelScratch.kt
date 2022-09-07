@@ -3,7 +3,6 @@ package jp.live.ugai.d2j.timemachine
 import ai.djl.Device
 import ai.djl.ndarray.NDArray
 import ai.djl.ndarray.NDList
-import ai.djl.util.Pair
 
 /** An RNN Model implemented from scratch.  */
 class RNNModelScratch(
