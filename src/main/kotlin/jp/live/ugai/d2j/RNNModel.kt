@@ -29,6 +29,7 @@ class RNNModel(private val rnnLayer: RecurrentBlock, vocabSize: Int) : AbstractB
     ): NDList {
         val X = inputs[0].transpose().oneHot(vocabSize)
         inputs[0] = X
+//        println(inputs)
         val result = rnnLayer.forward(parameterStore, inputs, training)
         val Y = result[0]
         val state = result[1]

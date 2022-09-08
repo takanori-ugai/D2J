@@ -18,7 +18,8 @@ plugins {
 
 group = "jp.live.ugai"
 version = "1.0-SNAPSHOT"
-val v = "0.19.0-SNAPSHOT"
+// val v = "0.19.0-SNAPSHOT"
+val v = "0.17.0"
 
 val ktlint by configurations.creating
 

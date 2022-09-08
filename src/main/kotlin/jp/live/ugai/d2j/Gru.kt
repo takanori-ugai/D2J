@@ -9,7 +9,6 @@ import ai.djl.ndarray.types.DataType
 import ai.djl.ndarray.types.Shape
 import ai.djl.nn.Activation
 import ai.djl.nn.recurrent.GRU
-import jp.live.ugai.d2j.timemachine.RNNModelScratch
 import jp.live.ugai.d2j.timemachine.TimeMachine.trainCh8
 import jp.live.ugai.d2j.timemachine.TimeMachineDataset
 
@@ -117,8 +116,8 @@ fun main() {
     val initGruStateFn = ::initGruState
     val gruFn = ::gru
 
-    val model = RNNModelScratch(vocabSize, numHiddens, device, getParamsFn, initGruStateFn, gruFn)
-    trainCh8(model, dataset, vocab, lr, numEpochs, device, false, manager)
+//    val model = RNNModelScratch(vocabSize, numHiddens, device, getParamsFn, initGruStateFn, gruFn)
+//    trainCh8(model, dataset, vocab, lr, numEpochs, device, false, manager)
 
     val gruLayer = GRU.builder()
         .setNumLayers(1)

@@ -26,8 +26,6 @@ import jp.live.ugai.d2j.Training.sgd
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.net.URL
-import java.util.*
-import java.util.function.Function
 
 object TimeMachine {
     /** Split text lines into word or character tokens.  */
@@ -56,7 +54,7 @@ object TimeMachine {
         }
         val retLines = mutableListOf<String>()
         for (line in lines) {
-            retLines.add(line.replace("[^A-Za-z]+".toRegex(), " ").trim().lowercase(Locale.getDefault()))
+            retLines.add(line.replace("[^A-Za-z]+".toRegex(), " ").trim().lowercase(java.util.Locale.getDefault()))
         }
         return retLines
     }
@@ -186,7 +184,7 @@ object TimeMachine {
             val trainer = model.newTrainer(config)
             updater = { batchSize: Int, subManager: NDManager -> trainer.step() }
         }
-        val predict = Function { prefix: String -> predictCh8(prefix, 50, net, vocab, device, manager) }
+        val predict = { prefix: String -> predictCh8(prefix, 50, net, vocab, device, manager) }
         // Train and predict
         var ppl = 0.0
         var speed = 0.0
@@ -203,11 +201,10 @@ object TimeMachine {
         println(
             "perplexity: %.1f, %.1f tokens/sec on %s%n".format(ppl, speed, device.toString())
         )
-        println(predict.apply("time traveller"))
-        println(predict.apply("traveller"))
+        println(predict("time traveller"))
+        println(predict("traveller"))
     }
 
-    /** Train a model within one epoch.  */
     fun trainEpochCh8(
         net: Any,
         dataset: RandomAccessDataset,
@@ -231,8 +228,7 @@ object TimeMachine {
                     // Initialize `state` when either it is the first iteration or
                     // using random sampling
                     if (net is RNNModelScratch) {
-                        state = net
-                            .beginState(X.shape.shape[0].toInt(), device)
+                        state = net.beginState(X.shape.shape[0].toInt(), device)
                     }
                 } else {
                     for (s in state) {
@@ -245,6 +241,7 @@ object TimeMachine {
                 y = y.toDevice(device, false)
                 Engine.getInstance().newGradientCollector().use { gc ->
                     val yHat: NDArray
+//                    println(state)
                     if (net is RNNModelScratch) {
                         val pairResult = net.forward(X, state!!)
                         yHat = pairResult.first
@@ -278,7 +275,7 @@ object TimeMachine {
                 updater(1, childManager) // Since the `mean` function has been invoked
             }
         }
-        return Pair(Math.exp(metric.get(0).toDouble() / metric.get(1)), metric.get(1) / watch.stop())
+        return Pair(Math.exp((metric.get(0) / metric.get(1)).toDouble()), metric.get(1) / watch.stop())
     }
 
     /** Clip the gradient.  */
