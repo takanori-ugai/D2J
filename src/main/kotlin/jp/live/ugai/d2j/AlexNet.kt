@@ -20,6 +20,7 @@ import ai.djl.training.listener.TrainingListener
 import ai.djl.training.loss.Loss
 import ai.djl.training.optimizer.Optimizer
 import ai.djl.training.tracker.Tracker
+import jp.live.ugai.d2j.util.Training
 
 fun getLong(nm: String, n: Long): Long {
     val name = System.getProperty(nm)

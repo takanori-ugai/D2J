@@ -1,4 +1,4 @@
-package jp.live.ugai.d2j
+package jp.live.ugai.d2j.util
 
 // Saved in the d2l-java package for later use
 class StopWatch {

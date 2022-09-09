@@ -1,4 +1,4 @@
-package jp.live.ugai.d2j
+package jp.live.ugai.d2j.util
 
 class Accumulator(n: Int) {
     val data = FloatArray(n) { 0f }

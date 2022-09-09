@@ -9,9 +9,11 @@ import ai.djl.ndarray.types.DataType
 import ai.djl.ndarray.types.Shape
 import ai.djl.training.loss.Loss
 import ai.djl.training.loss.SoftmaxCrossEntropyLoss
-import jp.live.ugai.d2j.Training.sgd
 import jp.live.ugai.d2j.timemachine.RNNModelScratch
 import jp.live.ugai.d2j.timemachine.Vocab
+import jp.live.ugai.d2j.util.Accumulator
+import jp.live.ugai.d2j.util.StopWatch
+import jp.live.ugai.d2j.util.Training.sgd
 
 val manager = NDManager.newBaseManager()
 

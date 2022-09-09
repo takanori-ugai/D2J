@@ -1,4 +1,4 @@
-package jp.live.ugai.d2j
+package jp.live.ugai.d2j.util
 
 import ai.djl.metric.Metrics
 import ai.djl.ndarray.NDArray

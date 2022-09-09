@@ -22,10 +22,12 @@ import ai.djl.training.loss.Loss
 import ai.djl.training.loss.SoftmaxCrossEntropyLoss
 import ai.djl.training.optimizer.Optimizer
 import ai.djl.training.tracker.Tracker
-import jp.live.ugai.d2j.Training.sgd
 import jp.live.ugai.d2j.timemachine.RNNModelScratch
 import jp.live.ugai.d2j.timemachine.TimeMachineDataset
 import jp.live.ugai.d2j.timemachine.Vocab
+import jp.live.ugai.d2j.util.Accumulator
+import jp.live.ugai.d2j.util.StopWatch
+import jp.live.ugai.d2j.util.Training.sgd
 
 const val batchSize = 32
 const val numSteps = 35

@@ -19,10 +19,10 @@ import ai.djl.training.loss.Loss
 import ai.djl.training.loss.SoftmaxCrossEntropyLoss
 import ai.djl.training.optimizer.Optimizer
 import ai.djl.training.tracker.Tracker
-import jp.live.ugai.d2j.Accumulator
-import jp.live.ugai.d2j.Functions
-import jp.live.ugai.d2j.StopWatch
-import jp.live.ugai.d2j.Training.sgd
+import jp.live.ugai.d2j.util.Accumulator
+import jp.live.ugai.d2j.util.Functions
+import jp.live.ugai.d2j.util.StopWatch
+import jp.live.ugai.d2j.util.Training.sgd
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.net.URL

@@ -28,7 +28,7 @@ import ai.djl.training.loss.Loss
 import ai.djl.training.optimizer.Optimizer
 import ai.djl.training.tracker.Tracker
 import ai.djl.util.PairList
-import jp.live.ugai.d2j.Training.trainingChapter6
+import jp.live.ugai.d2j.util.Training.trainingChapter6
 
 fun main() {
     System.setProperty("org.slf4j.simpleLogger.showThreadName", "false")
