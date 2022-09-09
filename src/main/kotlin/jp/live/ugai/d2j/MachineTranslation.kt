@@ -1,6 +1,11 @@
 package jp.live.ugai.d2j
 
+import ai.djl.ndarray.NDArray
 import ai.djl.ndarray.NDManager
+import ai.djl.ndarray.index.NDIndex
+import ai.djl.ndarray.types.DataType
+import ai.djl.ndarray.types.Shape
+import ai.djl.training.dataset.ArrayDataset
 import ai.djl.training.util.DownloadUtils
 import jp.live.ugai.d2j.timemachine.Vocab
 import java.io.File
@@ -93,22 +98,86 @@ fun main() {
     println(y1.size)
     println(y2.size)
 
-    val srcVocab = Vocab(
+    var srcVocab = Vocab(
         source,
         2, listOf("<pad>", "<bos>", "<eos>")
     )
     println(srcVocab.length())
 
+    fun truncatePad(integerLine: List<Int>, numSteps: Int, paddingToken: Int): List<Int> {
+        /* Truncate or pad sequences */
+        val line = integerLine.toMutableList()
+        if (integerLine.size > numSteps) {
+            return line.subList(0, numSteps)
+        }
+        line.addAll(Array<Int>(numSteps-integerLine.size) {paddingToken})
+        return line
+    }
+
+    val result: List<Int> = truncatePad(srcVocab.getIdxs(source[0]), 10, srcVocab.getIdx("<pad>"))
+    println(result)
+
+    fun buildArrayNMT(lines: List<List<String>>, vocab: Vocab, numSteps: Int): Pair<NDArray, NDArray> {
+        /* Transform text sequences of machine translation into minibatches. */
+        val linesIntArr: MutableList<List<Int>> = mutableListOf()
+        for (strings in lines) {
+            linesIntArr.add(vocab.getIdxs(strings))
+        }
+        for (i in linesIntArr.indices) {
+            val temp: MutableList<Int> = linesIntArr[i].toMutableList()
+            temp.add(vocab.getIdx("<eos>"))
+            linesIntArr[i] = temp
+        }
+        val manager = NDManager.newBaseManager()
+        val arr: NDArray = manager.create(Shape(linesIntArr.size.toLong(), numSteps.toLong()), DataType.INT32)
+        var row = 0
+        for (line in linesIntArr) {
+            val rowArr: NDArray = manager.create(truncatePad(line, numSteps, vocab.getIdx("<pad>")).toIntArray())
+            arr[NDIndex("{}:", row)] = rowArr
+            row += 1
+        }
+        val validLen = arr.neq(vocab.getIdx("<pad>")).sum(intArrayOf(1))
+        return Pair(arr, validLen)
+    }
+
+    fun loadDataNMT(batchSize: Int, numSteps: Int, numExamples: Int): Pair<ArrayDataset, Pair<Vocab, Vocab>> {
+        /* Return the iterator and the vocabularies of the translation dataset. */
+        val text: String = preprocessNMT(readDataNMT()!!)
+        val pair: Pair<List<List<String>>, List<List<String>>> = tokenizeNMT(text, numExamples)
+        val source: List<List<String>> = pair.first
+        val target: List<List<String>> = pair.second
+        val srcVocab = Vocab(source,2, listOf("<pad>", "<bos>", "<eos>"))
+        val tgtVocab = Vocab(target,2, listOf("<pad>", "<bos>", "<eos>")
+        )
+        var pairArr: Pair<NDArray, NDArray> = buildArrayNMT(source, srcVocab, numSteps)
+        val srcArr: NDArray = pairArr.first
+        val srcValidLen: NDArray = pairArr.second
+        pairArr = buildArrayNMT(target, tgtVocab, numSteps)
+        val tgtArr: NDArray = pairArr.first
+        val tgtValidLen: NDArray = pairArr.second
+        val dataset = ArrayDataset.Builder()
+            .setData(srcArr, srcValidLen)
+            .optLabels(tgtArr, tgtValidLen)
+            .setSampling(batchSize, true)
+            .build()
+        return Pair(dataset, Pair(srcVocab, tgtVocab))
+    }
+
+    val output = loadDataNMT(2, 8, 600)
+    val dataset: ArrayDataset = output.first
+    srcVocab = output.second.first
+    val tgtVocab: Vocab = output.second.second
+
+    val batch = dataset.getData(manager).iterator().next()
+    val X = batch.data[0]
+    val xValidLen = batch.data[1]
+    val Y = batch.labels[0]
+    val yValidLen = batch.labels[1]
+    println(X)
+    println(xValidLen)
+    println(Y)
+    println(yValidLen)
 }
 
-fun truncatePad(integerLine: List<Int>, numSteps: Int, paddingToken: Int): List<Int> {
-    /* Truncate or pad sequences */
-    val line = integerLine.toMutableList()
-    if (integerLine.size > numSteps) {
-        return line.subList(0, numSteps)
-    }
-    line.addAll(Array<Int>(numSteps-integerLine.size) {paddingToken})
-    return line
-}
 
 class MachineTranslation
