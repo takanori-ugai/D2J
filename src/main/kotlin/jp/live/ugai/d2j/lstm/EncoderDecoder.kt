@@ -9,8 +9,8 @@ import ai.djl.training.ParameterStore
 import ai.djl.util.PairList
 
 /** The base class for the encoder-decoder architecture.  */
-class EncoderDecoder(protected var encoder: Encoder, decoder: Decoder) : AbstractBlock() {
-    protected var decoder: Decoder
+class EncoderDecoder(var encoder: Encoder, decoder: Decoder) : AbstractBlock() {
+    var decoder: Decoder
 
     init {
         addChildBlock("encoder", encoder)
@@ -18,13 +18,13 @@ class EncoderDecoder(protected var encoder: Encoder, decoder: Decoder) : Abstrac
         addChildBlock("decoder", this.decoder)
     }
 
-    override fun initializeChildBlocks(manager: NDManager?, dataType: DataType, vararg inputShapes: Shape) {}
+    override fun initializeChildBlocks(manager: NDManager, dataType: DataType, vararg inputShapes: Shape) {}
 
     override fun forwardInternal(
         parameterStore: ParameterStore,
         inputs: NDList,
         training: Boolean,
-        params: PairList<String, Any>
+        params: PairList<String, Any>?
     ): NDList {
         val encX = inputs[0]
         val decX = inputs[1]

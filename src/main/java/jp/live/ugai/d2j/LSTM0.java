@@ -25,7 +25,9 @@ public class LSTM0 extends RecurrentBlock {
         gates = 4;
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     protected NDList forwardInternal(
             ParameterStore parameterStore,
@@ -91,10 +93,14 @@ public class LSTM0 extends RecurrentBlock {
         return new LSTM0.Builder();
     }
 
-    /** The Builder to construct a {@link ai.djl.nn.recurrent.LSTM} type of {@link Block}. */
+    /**
+     * The Builder to construct a {@link ai.djl.nn.recurrent.LSTM} type of {@link Block}.
+     */
     public static final class Builder extends BaseBuilder<LSTM0.Builder> {
 
-        /** {@inheritDoc} */
+        /**
+         * {@inheritDoc}
+         */
         @Override
         protected LSTM0.Builder self() {
             return this;

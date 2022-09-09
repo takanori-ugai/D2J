@@ -21,7 +21,7 @@ object NMT {
         val entries = zipFile.entries()
         while (entries.hasMoreElements()) {
             val entry: ZipEntry = entries.nextElement()
-            if (entry.getName().contains("fra.txt")) {
+            if (entry.name.contains("fra.txt")) {
                 val stream = zipFile.getInputStream(entry)
                 return String(stream.readAllBytes(), StandardCharsets.UTF_8)
             }
@@ -81,7 +81,12 @@ object NMT {
         return line
     }
 
-    fun buildArrayNMT(lines: List<List<String>>, vocab: Vocab, numSteps: Int, manager: NDManager): Pair<NDArray, NDArray> {
+    fun buildArrayNMT(
+        lines: List<List<String>>,
+        vocab: Vocab,
+        numSteps: Int,
+        manager: NDManager
+    ): Pair<NDArray, NDArray> {
         /* Transform text sequences of machine translation into minibatches. */
         val linesIntArr = mutableListOf<List<Int>>()
         for (strings in lines) {
@@ -103,7 +108,12 @@ object NMT {
         return Pair(arr, validLen)
     }
 
-    fun loadDataNMT(batchSize: Int, numSteps: Int, numExamples: Int, manager: NDManager): Pair<ArrayDataset, Pair<Vocab, Vocab>> {
+    fun loadDataNMT(
+        batchSize: Int,
+        numSteps: Int,
+        numExamples: Int,
+        manager: NDManager
+    ): Pair<ArrayDataset, Pair<Vocab, Vocab>> {
         /* Return the iterator and the vocabularies of the translation dataset. */
         val text = preprocessNMT(readDataNMT()!!)
         val pair = tokenizeNMT(text, numExamples)

@@ -105,7 +105,7 @@ fun predictCh8(
     }
     if (net is RNNModelScratch) {
         val castedNet = net
-        var state: NDList = castedNet.beginState(1, device!!)
+        var state: NDList = castedNet.beginState(1, device)
         for (c in prefix.substring(1).toCharArray()) { // Warm-up period
             state = castedNet.forward(getInput(), state).second
             outputs.add(vocab.getIdx("" + c))

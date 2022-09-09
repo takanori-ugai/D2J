@@ -24,13 +24,14 @@ fun main() {
         val entries: Enumeration<out ZipEntry> = zipFile.entries()
         while (entries.hasMoreElements()) {
             val entry: ZipEntry = entries.nextElement()
-            if (entry.getName().contains("fra.txt")) {
+            if (entry.name.contains("fra.txt")) {
                 val stream: InputStream = zipFile.getInputStream(entry)
                 return String(stream.readAllBytes(), StandardCharsets.UTF_8)
             }
         }
         return null
     }
+
     val rawText = readDataNMT()
     println(rawText?.substring(0, 75))
 
@@ -66,7 +67,7 @@ fun main() {
         val target = mutableListOf<List<String>>()
         var i = 0
         for (line in text.split("\n".toRegex()).dropLastWhile { it.isEmpty() }) {
-            if (numExamples != null && i > numExamples!!) {
+            if (numExamples != null && i > numExamples) {
                 break
             }
             val parts = line.split("\t".toRegex()).dropLastWhile { it.isEmpty() }
@@ -78,6 +79,7 @@ fun main() {
         }
         return Pair(source, target)
     }
+
     val pair: Pair<List<List<String>>, List<List<String>>> = tokenizeNMT(text, null)
     val source: List<List<String>> = pair.first
     val target: List<List<String>> = pair.second
