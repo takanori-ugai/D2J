@@ -170,17 +170,17 @@ fun main() {
         srcVocab: Vocab,
         tgtVocab: Vocab,
         numSteps: Int,
-        device: Device?,
+        device: Device,
         saveAttentionWeights: Boolean
     ): Pair<String, List<NDArray?>> {
         val srcTokens: List<Int> =
             srcVocab.getIdxs(
                 srcSentence.lowercase(Locale.getDefault()).split(" ".toRegex()).dropLastWhile { it.isEmpty() }
             ) + listOf(srcVocab.getIdx("<eos>"))
-        val encValidLen = jp.live.ugai.d2j.manager.create(srcTokens.size)
+        val encValidLen = manager.create(srcTokens.size)
         val truncateSrcTokens = NMT.truncatePad(srcTokens, numSteps, srcVocab.getIdx("<pad>"))
         // Add the batch axis
-        val encX = jp.live.ugai.d2j.manager.create(truncateSrcTokens.toIntArray()).expandDims(0)
+        val encX = manager.create(truncateSrcTokens.toIntArray()).expandDims(0)
         val encOutputs = net.encoder.forward(ParameterStore(manager, false), NDList(encX, encValidLen), false)
         var decState = net.decoder.initState(encOutputs.addAll(NDList(encValidLen)))
         // Add the batch axis
@@ -189,7 +189,7 @@ fun main() {
         val attentionWeightSeq: MutableList<NDArray?> = mutableListOf()
         for (i in 0 until numSteps) {
             val output = net.decoder.forward(
-                ParameterStore(jp.live.ugai.d2j.manager, false),
+                ParameterStore(manager, false),
                 NDList(decX).addAll(decState),
                 false
             )
@@ -222,7 +222,7 @@ fun main() {
         val lenLabel = labelTokens.size
         var score = Math.exp(Math.min(0, 1 - lenLabel / lenPred).toDouble())
         for (n in 1 until k + 1) {
-            var numMatches = 0f
+            var numMatches = 0.0
             val labelSubs: MutableMap<String, Int> = mutableMapOf()
             for (i in 0 until lenLabel - n + 1) {
                 val key: String = " " + labelTokens.subList(i, i + n)
@@ -231,7 +231,7 @@ fun main() {
             for (i in 0 until lenPred - n + 1) {
                 val key: String = " " + predTokens.subList(i, i + n)
                 if (labelSubs.getOrDefault(key, 0) > 0) {
-                    numMatches += 1f
+                    numMatches += 1.0
                     labelSubs[key] = labelSubs.getOrDefault(key, 0) - 1
                 }
             }
@@ -246,7 +246,7 @@ fun main() {
         val pair = predictSeq2Seq(net, engs[i], srcVocab, tgtVocab, numSteps, device, false)
         val translation: String = pair.first
         val attentionWeightSeq = pair.second
-        System.out.format("%s => %s, bleu %.3f\n", engs[i], translation, bleu(translation, fras[i], 2))
+        println("%s => %s, bleu %.3f".format(engs[i], translation, bleu(translation, fras[i], 2)))
     }
 }
 
