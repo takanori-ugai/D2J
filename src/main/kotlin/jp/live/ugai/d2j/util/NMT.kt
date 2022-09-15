@@ -10,7 +10,7 @@ import ai.djl.training.util.DownloadUtils
 import jp.live.ugai.d2j.timemachine.Vocab
 import java.io.File
 import java.nio.charset.StandardCharsets
-import java.util.*
+import java.util.Locale
 import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
 
