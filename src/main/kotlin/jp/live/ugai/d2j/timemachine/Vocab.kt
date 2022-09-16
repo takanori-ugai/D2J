@@ -1,7 +1,5 @@
 package jp.live.ugai.d2j.timemachine
 
-import java.util.*
-
 class Vocab(tokens: List<List<String>>, minFreq: Int, reservedTokens: List<String>) {
     // The index for the unknown token is 0
     var unk: Int = 0

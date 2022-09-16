@@ -32,7 +32,7 @@ import jp.live.ugai.d2j.util.NMT
 import jp.live.ugai.d2j.util.NMT.loadDataNMT
 import jp.live.ugai.d2j.util.StopWatch
 import jp.live.ugai.d2j.util.TrainingChapter9.gradClipping
-import java.util.*
+import java.util.Locale
 
 fun main() {
     val manager = NDManager.newBaseManager()

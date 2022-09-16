@@ -11,7 +11,8 @@ import jp.live.ugai.d2j.timemachine.Vocab
 import java.io.File
 import java.io.InputStream
 import java.nio.charset.StandardCharsets
-import java.util.*
+import java.util.Enumeration
+import java.util.Locale
 import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
 
@@ -37,7 +38,7 @@ fun main() {
 
     fun noSpace(currChar: Char, prevChar: Char): Boolean {
         /* Preprocess the English-French dataset. */
-        return (HashSet(Arrays.asList(',', '.', '!', '?')).contains(currChar) && prevChar != ' ')
+        return (listOf(',', '.', '!', '?').contains(currChar) && prevChar != ' ')
     }
 
     fun preprocessNMT(text: String): String {
