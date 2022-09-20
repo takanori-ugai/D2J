@@ -102,9 +102,9 @@ fun main() {
     val lr = 0.1f
     val numEpochs = Integer.getInteger("MAX_EPOCH", 10)
 
-    var trainLoss: DoubleArray
-    var testAccuracy: DoubleArray
-    var trainAccuracy: DoubleArray
+//    var trainLoss: DoubleArray
+//    var testAccuracy: DoubleArray
+//    var trainAccuracy: DoubleArray
 
     val epochCount = IntArray(numEpochs) { it + 1 }
 
@@ -146,7 +146,7 @@ fun main() {
     val avgTrainTimePerEpoch = trainingChapter6(trainIter, testIter, numEpochs, trainer, evaluatorMetrics)
 }
 
-fun transitionBlock(numChannels: Int): SequentialBlock? {
+fun transitionBlock(numChannels: Int): SequentialBlock {
     return SequentialBlock()
         .add(BatchNorm.builder().build())
         .add { arrays: NDList? -> Activation.relu(arrays) }

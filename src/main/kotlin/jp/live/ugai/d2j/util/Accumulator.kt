@@ -5,7 +5,7 @@ class Accumulator(n: Int) {
 
     /* Adds a set of numbers to the array */
     fun add(args: FloatArray) {
-        for (i in 0 until args.size) {
+        for (i in args.indices) {
             data[i] += args[i]
         }
     }
