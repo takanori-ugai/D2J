@@ -221,8 +221,8 @@ fun trainCh8(
         }
     }
     println("perplexity: %.1f, %.1f tokens/sec on %s%n".format(ppl, speed, device.toString()))
-    System.out.println(predict("time traveller"))
-    System.out.println(predict("traveller"))
+    println(predict("time traveller"))
+    println(predict("traveller"))
 }
 
 class RnnNet

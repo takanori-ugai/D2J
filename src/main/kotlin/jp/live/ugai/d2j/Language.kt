@@ -9,7 +9,7 @@ import ai.djl.ndarray.types.Shape
 import jp.live.ugai.d2j.timemachine.TimeMachine.readTimeMachine
 import jp.live.ugai.d2j.timemachine.TimeMachine.tokenize
 import jp.live.ugai.d2j.timemachine.Vocab
-import java.util.Random
+import kotlin.random.Random
 
 fun main() {
     val manager = NDManager.newBaseManager()
@@ -97,7 +97,7 @@ fun seqDataIterRandom(corpus: List<Int>, batchSize: Int, numSteps: Int, manager:
     // Start with a random offset (inclusive of `numSteps - 1`) to partition a
     // sequence
     var corpus = corpus
-    corpus = corpus.subList(Random().nextInt(numSteps - 1), corpus.size)
+    corpus = corpus.subList(Random.nextInt(numSteps - 1), corpus.size)
     // Subtract 1 since we need to account for labels
     val numSubseqs = (corpus.size - 1) / numSteps
     // The starting indices for subsequences of length `numSteps`
@@ -152,7 +152,7 @@ fun seqDataIterSequential(
     manager: NDManager
 ): List<NDList> {
     // Start with a random offset to partition a sequence
-    val offset = Random().nextInt(numSteps)
+    val offset = Random.nextInt(numSteps)
     val numTokens = (corpus.size - offset - 1) / batchSize * batchSize
     var Xs = manager.create(
         corpus.subList(offset, offset + numTokens).toIntArray()

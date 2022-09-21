@@ -10,7 +10,6 @@ import ai.djl.ndarray.types.DataType
 import ai.djl.ndarray.types.Shape
 import ai.djl.training.dataset.Batch
 import ai.djl.training.dataset.Dataset
-import jp.live.ugai.d2j.util.Training.sgd
 import org.jetbrains.letsPlot.geom.geomLine
 import org.jetbrains.letsPlot.ggsize
 import org.jetbrains.letsPlot.intern.Plot
@@ -34,24 +33,23 @@ fun main(args: Array<String>) {
             epochs.add(epoch)
             values.add(value)
             metrics.add(metric)
-
         }
 
         // Add accuracy, train accuracy, and train loss metrics for a given epoch
         // Then plot it on the graph
-        fun add(epoch : Int, accuracy: Float, trainAcc: Float, trainLoss: Float) {
-            add(epoch, trainLoss, "train loss");
-            add(epoch, trainAcc, "train accuracy");
-            add(epoch, accuracy, "test accuracy");
+        fun add(epoch: Int, accuracy: Float, trainAcc: Float, trainLoss: Float) {
+            add(epoch, trainLoss, "train loss")
+            add(epoch, trainAcc, "train accuracy")
+            add(epoch, accuracy, "test accuracy")
         }
 
         // Display the graph
-        fun show() : Plot {
+        fun show(): Plot {
             val data = mapOf("epoch" to epochs, "value" to values, "metrics" to metrics)
             // updateDisplay(id, LinePlot.create("", data, "epoch", "value", "metric"));
 //        println(data)
             var plot = letsPlot(data)
-            plot += geomLine { x = "epoch" ; y = "value" ; color = "metric"}
+            plot += geomLine { x = "epoch" ; y = "value" ; color = "metric" }
             return plot + ggsize(500, 500)
         }
     }
@@ -74,7 +72,7 @@ fun main(args: Array<String>) {
             // val ind = params.indexOf(param)
             // params.rep
             // params.set(ind, param.sub(param.getGradient().mul(lr).div(batchSize)))
-            param.subi(param.getGradient().mul(lr).div(batchSize));
+            param.subi(param.getGradient().mul(lr).div(batchSize))
         }
     }
 
@@ -98,7 +96,7 @@ fun main(args: Array<String>) {
         // before we can use it with NDIndex to "pick" indices.
         // It also takes in a boolean for returning a copy of the existing NDArray
         // but we don't want that so we pass in `false`.
-   //     return yHat[NDIndex(":, {}", y.toType(DataType.INT32, false))].log().neg()
+        //     return yHat[NDIndex(":, {}", y.toType(DataType.INT32, false))].log().neg()
         val pickIndex = NDIndex()
             .addAllDim(Math.floorMod(-1, yHat.shape.dimension()))
             .addPickDim(y)
@@ -141,7 +139,6 @@ fun main(args: Array<String>) {
         .optLimit(java.lang.Long.getLong("DATASET_LIMIT", Long.MAX_VALUE))
         .build()
 
-
     var X = manager.create(arrayOf(intArrayOf(1, 2, 3), intArrayOf(4, 5, 6)))
     println(X.sum(intArrayOf(0), true))
     println(X.sum(intArrayOf(1), true))
@@ -161,7 +158,7 @@ fun main(args: Array<String>) {
     val numEpochs = 5
     val lr = 0.1f
     fun trainEpochCh3(
-        net: (NDArray)->NDArray,
+        net: (NDArray) -> NDArray,
         trainIter: Iterable<Batch>,
         loss: (NDArray, NDArray) -> NDArray,
         updater: (NDList, Float, Int) -> Unit
@@ -197,8 +194,12 @@ fun main(args: Array<String>) {
     }
 
     fun trainCh3(
-        net: (NDArray)->NDArray, trainDataset: Dataset, testDataset: Dataset,
-        loss: (NDArray, NDArray)->NDArray, numEpochs: Int, updater: (NDList, Float, Int)->Unit
+        net: (NDArray) -> NDArray,
+        trainDataset: Dataset,
+        testDataset: Dataset,
+        loss: (NDArray, NDArray) -> NDArray,
+        numEpochs: Int,
+        updater: (NDList, Float, Int) -> Unit
     ) {
         val animator = Animator()
         for (i in 1..numEpochs) {
@@ -212,7 +213,6 @@ fun main(args: Array<String>) {
             System.out.printf("Train Loss: %f\n", trainLoss)
         }
     }
-
 
     trainCh3(::net, trainingSet, validationSet, ::crossEntropy, numEpochs, ::updater)
 }
