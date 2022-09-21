@@ -14,8 +14,7 @@ import org.jetbrains.letsPlot.geom.geomLine
 import org.jetbrains.letsPlot.ggsize
 import org.jetbrains.letsPlot.intern.Plot
 import org.jetbrains.letsPlot.letsPlot
-import java.util.*
-
+import java.util.Arrays
 fun main(args: Array<String>) {
     System.setProperty("org.slf4j.simpleLogger.showThreadName", "false")
     System.setProperty("org.slf4j.simpleLogger.showLogName", "true")
