@@ -46,7 +46,7 @@ class Seq2SeqDecoder(vocabSize: Int, embedSize: Int, numHiddens: Int, numLayers:
     override fun initializeChildBlocks(manager: NDManager, dataType: DataType, vararg inputShapes: Shape) {
         embedding.initialize(manager, dataType, inputShapes[0])
         manager.newSubManager().use { sub ->
-            var shape: Shape? = embedding.getOutputShapes(arrayOf(inputShapes[0]))[0]
+            var shape: Shape = embedding.getOutputShapes(arrayOf(inputShapes[0]))[0]
             val nd = sub.zeros(shape, dataType).swapAxes(0, 1)
             val state = sub.zeros(inputShapes[1], dataType)
             var context = state[NDIndex(-1)]

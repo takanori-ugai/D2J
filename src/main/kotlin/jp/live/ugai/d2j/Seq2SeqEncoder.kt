@@ -35,6 +35,13 @@ import jp.live.ugai.d2j.util.TrainingChapter9.gradClipping
 import java.util.Locale
 
 fun main() {
+    System.setProperty("org.slf4j.simpleLogger.showThreadName", "false")
+    System.setProperty("org.slf4j.simpleLogger.showLogName", "true")
+    System.setProperty("org.slf4j.simpleLogger.log.ai.djl.pytorch", "WARN")
+    System.setProperty("org.slf4j.simpleLogger.log.ai.djl.mxnet", "ERROR")
+    System.setProperty("org.slf4j.simpleLogger.log.ai.djl.ndarray.index", "ERROR")
+    System.setProperty("org.slf4j.simpleLogger.log.ai.djl.tensorflow", "WARN")
+
     val manager = NDManager.newBaseManager()
     val ps = ParameterStore(manager, false)
     var encoder = Seq2SeqEncoder(10, 8, 16, 2, 0.0f)

@@ -149,7 +149,8 @@ fun main(args: Array<String>) {
     println(Xprob.sum(intArrayOf(1)))
 
     val yHat = manager.create(arrayOf(floatArrayOf(0.1f, 0.3f, 0.6f), floatArrayOf(0.3f, 0.2f, 0.5f)))
-    println(yHat[NDIndex(":, {}", manager.create(intArrayOf(0, 2)))])
+    val index = NDIndex().addAllDim().addPickDim(manager.create(intArrayOf(0,2)))
+    println(yHat[index])
     val y = manager.create(intArrayOf(0, 2))
     accuracy(yHat, y) / y.size()
     evaluateAccuracy(::net, validationSet.getData(manager))
