@@ -69,10 +69,7 @@ fun main() {
         val b_q: NDArray = manager.zeros(Shape(vocabSize.toLong()), DataType.FLOAT32, device)
 
         // Attach gradients
-        val params = NDList(
-            W_xi, W_hi, b_i, W_xf, W_hf, b_f, W_xo, W_ho, b_o, W_xc, W_hc, b_c, W_hq,
-            b_q
-        )
+        val params = NDList(W_xi, W_hi, b_i, W_xf, W_hf, b_f, W_xo, W_ho, b_o, W_xc, W_hc, b_c, W_hq, b_q)
         for (param in params) {
             param.setRequiresGradient(true)
         }

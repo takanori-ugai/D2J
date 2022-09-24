@@ -149,7 +149,7 @@ fun main() {
 fun transitionBlock(numChannels: Int): SequentialBlock {
     return SequentialBlock()
         .add(BatchNorm.builder().build())
-        .add { arrays: NDList? -> Activation.relu(arrays) }
+        .add { arrays: NDList -> Activation.relu(arrays) }
         .add(
             Conv2d.builder()
                 .setFilters(numChannels)
@@ -216,7 +216,7 @@ class DenseBlock(numConvs: Int, numChannels: Int) : AbstractBlock(VERSION) {
         return shapesX
     }
 
-    override fun initializeChildBlocks(manager: NDManager?, dataType: DataType?, vararg inputShapes: Shape) {
+    override fun initializeChildBlocks(manager: NDManager, dataType: DataType, vararg inputShapes: Shape) {
         var shapesX: Shape = inputShapes[0]
         for (block in net.children.values()) {
             block.initialize(manager, DataType.FLOAT32, shapesX)

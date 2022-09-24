@@ -88,7 +88,7 @@ object TrainingChapter11 {
         var lastLoss = -1.0f
         val loss = mutableListOf<Float>()
         val epoch = ArrayList<Double>()
-        for (i in 0 until numEpochs) {
+        repeat(numEpochs) {
             for (batch in dataset.getData(manager)) {
                 val len = dataset.size().toInt() / batch.size // number of batches
                 val X = batch.data.head()
@@ -141,7 +141,7 @@ object TrainingChapter11 {
         var lastLoss = -1f
         val lossArray = mutableListOf<Double>()
         val epochArray = mutableListOf<Double>()
-        for (i in 0 until numEpochs) {
+        repeat(numEpochs) {
             for (batch in trainer.iterateDataset(dataset)) {
                 val len = dataset.size().toInt() / batch.size // number of batches
                 val X = batch.data.head()

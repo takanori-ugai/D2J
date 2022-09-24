@@ -14,7 +14,6 @@ import org.jetbrains.letsPlot.geom.geomLine
 import org.jetbrains.letsPlot.ggsize
 import org.jetbrains.letsPlot.intern.Plot
 import org.jetbrains.letsPlot.letsPlot
-import java.util.Arrays
 fun main(args: Array<String>) {
     System.setProperty("org.slf4j.simpleLogger.showThreadName", "false")
     System.setProperty("org.slf4j.simpleLogger.showLogName", "true")
@@ -149,7 +148,7 @@ fun main(args: Array<String>) {
     println(Xprob.sum(intArrayOf(1)))
 
     val yHat = manager.create(arrayOf(floatArrayOf(0.1f, 0.3f, 0.6f), floatArrayOf(0.3f, 0.2f, 0.5f)))
-    val index = NDIndex().addAllDim().addPickDim(manager.create(intArrayOf(0,2)))
+    val index = NDIndex().addAllDim().addPickDim(manager.create(intArrayOf(0, 2)))
     println(yHat[index])
     val y = manager.create(intArrayOf(0, 2))
     accuracy(yHat, y) / y.size()
@@ -208,9 +207,9 @@ fun main(args: Array<String>) {
             val trainAccuracy = trainMetrics[1]
             val trainLoss = trainMetrics[0]
             animator.add(i, accuracy, trainAccuracy, trainLoss)
-            System.out.printf("Epoch %d: Test Accuracy: %f\n", i, accuracy)
-            System.out.printf("Train Accuracy: %f\n", trainAccuracy)
-            System.out.printf("Train Loss: %f\n", trainLoss)
+            print("Epoch %d: Test Accuracy: %f\n".format(i, accuracy))
+            print("Train Accuracy: %f\n".format(trainAccuracy))
+            print("Train Loss: %f\n".format(trainLoss))
         }
     }
 
@@ -218,11 +217,7 @@ fun main(args: Array<String>) {
 }
 
 class Accumulator(n: Int) {
-    var data: FloatArray
-
-    init {
-        data = FloatArray(n)
-    }
+    var data: FloatArray = FloatArray(n)
 
     /* Adds a set of numbers to the array */
     fun add(args: FloatArray) {
@@ -233,7 +228,7 @@ class Accumulator(n: Int) {
 
     /* Resets the array */
     fun reset() {
-        Arrays.fill(data, 0f)
+        data.fill(0f)
     }
 
     /* Returns the data point at the given index */

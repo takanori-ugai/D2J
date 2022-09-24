@@ -125,7 +125,7 @@ fun main() {
         .optReturnState(true)
         .optBatchFirst(false)
         .build()
-    val modelConcise = RNNModel(gruLayer!!, vocab.length())
+    val modelConcise = RNNModel(gruLayer, vocab.length())
     trainCh8(modelConcise, dataset, vocab, lr, numEpochs, device, false, manager)
 }
 

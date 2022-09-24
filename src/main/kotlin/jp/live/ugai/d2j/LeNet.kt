@@ -108,12 +108,6 @@ fun main() {
 
     val batchSize = 256
     val numEpochs = Integer.getInteger("MAX_EPOCH", 10)
-// double[] trainLoss;
-// double[] testAccuracy;
-// double[] epochCount;
-// double[] trainAccuracy;
-
-// val epochCount = new double[numEpochs];
     val epochCount = DoubleArray(numEpochs) { it.toDouble() + 1f }
 
     val trainIter = FashionMnist.builder()
@@ -155,13 +149,11 @@ fun main() {
             .forEach { evaluator ->
                 evaluatorMetrics.put(
                     "train_epoch_" + evaluator.name,
-                    metrics.getMetric("train_epoch_" + evaluator.name).stream()
-                        .mapToDouble { x -> x.value }.toArray()
+                    metrics.getMetric("train_epoch_" + evaluator.name).map { it.value }.toDoubleArray()
                 )
                 evaluatorMetrics.put(
                     "validate_epoch_" + evaluator.name,
-                    metrics.getMetric("validate_epoch_" + evaluator.name).stream()
-                        .mapToDouble { x -> x.value }.toArray()
+                    metrics.getMetric("validate_epoch_" + evaluator.name).map { it.value }.toDoubleArray()
                 )
             }
 

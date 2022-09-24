@@ -67,7 +67,7 @@ class SeqDataLoader(batchSize: Int, numSteps: Int, useRandomIter: Boolean, maxTo
         while (i < batchSize * numBatches) {
             // Here, `initialIndices` contains randomized starting indices for
             // subsequences
-            val initialIndicesPerBatch: List<Int> = initialIndices.subList(i, i + batchSize)
+//            val initialIndicesPerBatch: List<Int> = initialIndices.subList(i, i + batchSize)
             val xNDArray: NDArray =
                 manager.create(Shape(initialIndices.size.toLong(), numSteps.toLong()), DataType.INT32)
             val yNDArray: NDArray =

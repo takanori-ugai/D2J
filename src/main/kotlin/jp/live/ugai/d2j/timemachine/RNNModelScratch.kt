@@ -13,15 +13,9 @@ class RNNModelScratch(
     initRNNState: (Int, Int, Device) -> NDList,
     forwardFn: (NDArray, NDList, NDList) -> Pair<NDArray, NDList>
 ) {
-    var params: NDList
-    var initState: (Int, Int, Device) -> NDList
-    var forwardFn: (NDArray, NDList, NDList) -> Pair<NDArray, NDList>
-
-    init {
-        params = getParams(vocabSize, numHiddens, device)
-        initState = initRNNState
-        this.forwardFn = forwardFn
-    }
+    var params: NDList = getParams(vocabSize, numHiddens, device)
+    var initState: (Int, Int, Device) -> NDList = initRNNState
+    var forwardFn: (NDArray, NDList, NDList) -> Pair<NDArray, NDList> = forwardFn
 
     fun forward(X: NDArray, state: NDList): Pair<NDArray, NDList> {
         var X = X

@@ -5,6 +5,7 @@ import ai.djl.ndarray.NDList
 import ai.djl.ndarray.NDManager
 import ai.djl.training.dataset.ArrayDataset
 import ai.djl.translate.Batchifier
+import ai.djl.util.ZipUtils
 import jp.live.ugai.d2j.timemachine.Vocab
 import org.apache.commons.math3.distribution.EnumeratedDistribution
 import org.jetbrains.letsPlot.geom.geomHistogram
@@ -12,6 +13,7 @@ import org.jetbrains.letsPlot.ggsize
 import org.jetbrains.letsPlot.letsPlot
 import java.io.File
 import java.net.URL
+import java.nio.file.Paths
 
 fun main() {
     val manager = NDManager.newBaseManager()
@@ -19,7 +21,7 @@ fun main() {
     fun readPTB(): List<List<String>> {
         val ptbURL = "http://d2l-data.s3-accelerate.amazonaws.com/ptb.zip"
         val input = URL(ptbURL).openStream()
-//        ZipUtils.unzip(input, Paths.get("./"))
+        ZipUtils.unzip(input, Paths.get("./"))
         input.close()
         val lines = mutableListOf<String>()
         val file = File("./ptb/ptb.train.txt")
@@ -28,8 +30,8 @@ fun main() {
             lines.add(myReader.nextLine())
         }
         val tokens = mutableListOf<List<String>>()
-        for (i in 0 until lines.size) {
-            tokens.add(lines.get(i).trim().split(" "))
+        for (i in lines) {
+            tokens.add(i.trim().split(" "))
         }
         myReader.close()
         return tokens

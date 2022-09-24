@@ -80,7 +80,7 @@ fun main() {
 
     val numEpochs: Int = Integer.getInteger("MAX_EPOCH", 500)
     val lr = 1.0f
-    trainCh8(net as Any, dataset, vocab, lr, numEpochs, device, false, manager)
+    trainCh8(net, dataset, vocab, lr, numEpochs, device, false, manager)
     predictCh8("time traveller", 10, net, vocab, device, manager)
 }
 
@@ -169,7 +169,7 @@ fun trainCh8(
     numEpochs: Int,
     device: Device,
     useRandomIter: Boolean,
-    manager: NDManager?
+    manager: NDManager
 ) {
     val loss = SoftmaxCrossEntropyLoss()
 //    val animator = Animator()
@@ -187,10 +187,7 @@ fun trainCh8(
             val sgd: Optimizer = Optimizer.sgd().setLearningRateTracker(lrt).build()
             val config: DefaultTrainingConfig = DefaultTrainingConfig(loss)
                 .optOptimizer(sgd) // Optimizer (loss function)
-                .optInitializer(
-                    NormalInitializer(0.01f),
-                    Parameter.Type.WEIGHT
-                ) // setting the initializer
+                .optInitializer(NormalInitializer(0.01f), Parameter.Type.WEIGHT) // setting the initializer
                 .optDevices(Engine.getInstance().getDevices(1)) // setting the number of GPUs needed
                 .addEvaluator(Accuracy()) // Model Accuracy
                 .addTrainingListeners(*TrainingListener.Defaults.logging()) // Logging

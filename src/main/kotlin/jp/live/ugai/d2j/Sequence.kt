@@ -12,7 +12,6 @@ import ai.djl.nn.SequentialBlock
 import ai.djl.nn.core.Linear
 import ai.djl.training.DefaultTrainingConfig
 import ai.djl.training.EasyTrain
-import ai.djl.training.Trainer
 import ai.djl.training.dataset.ArrayDataset
 import ai.djl.training.initializer.XavierInitializer
 import ai.djl.training.listener.TrainingListener
@@ -72,7 +71,7 @@ fun main() {
     }
 }
 
-var trainer: Trainer? = null
+// var trainer: Trainer? = null
 
 fun train(net: SequentialBlock, dataset: ArrayDataset, batchSize: Int, numEpochs: Int, learningRate: Float): Model {
     // Square Loss
@@ -85,24 +84,24 @@ fun train(net: SequentialBlock, dataset: ArrayDataset, batchSize: Int, numEpochs
         .addTrainingListeners(*TrainingListener.Defaults.logging()) // Logging
     val model: Model = Model.newInstance("sequence")
     model.block = net
-    trainer = model.newTrainer(config)
+    val trainer = model.newTrainer(config)
     for (epoch in 1..numEpochs) {
         // Iterate over dataset
-        for (batch in trainer!!.iterateDataset(dataset)) {
+        for (batch in trainer.iterateDataset(dataset)) {
             // Update loss and evaulator
             EasyTrain.trainBatch(trainer, batch)
 
             // Update parameters
-            trainer!!.step()
+            trainer.step()
             batch.close()
         }
 
         // reset training and validation evaluators at end of epoch
-        trainer!!.notifyListeners { listener: TrainingListener ->
+        trainer.notifyListeners { listener: TrainingListener ->
             listener.onEpoch(trainer)
         }
         println("Epoch %d".format(epoch))
-        println("Loss %f".format(trainer!!.trainingResult.trainLoss))
+        println("Loss %f".format(trainer.trainingResult.trainLoss))
     }
     return model
 }

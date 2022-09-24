@@ -41,11 +41,10 @@ fun main() {
         return (listOf(',', '.', '!', '?').contains(currChar) && prevChar != ' ')
     }
 
-    fun preprocessNMT(text: String): String {
+    fun preprocessNMT(_text: String): String {
         // Replace non-breaking space with space, and convert uppercase letters to
         // lowercase ones
-        var text = text
-        text = text.replace('\u202f', ' ').replace("\\xa0".toRegex(), " ").lowercase(Locale.getDefault())
+        var text = _text.replace('\u202f', ' ').replace("\\xa0".toRegex(), " ").lowercase(Locale.getDefault())
 
         // Insert space between words and punctuation marks
         val out = StringBuilder()

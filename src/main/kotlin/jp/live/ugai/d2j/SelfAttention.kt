@@ -86,7 +86,7 @@ class PositionalEncoding(numHiddens: Int, dropout: Float, maxLen: Int, manager: 
     ): NDList {
         var X = inputs[0]
         X = X.add(P[":, :{}, :", X.shape[1]])
-        return NDList(dropout.forward(parameterStore, NDList(X), training, params)[0]        )
+        return NDList(dropout.forward(parameterStore, NDList(X), training, params)[0])
     }
 
     override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> {
