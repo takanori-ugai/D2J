@@ -13,7 +13,6 @@ import ai.djl.ndarray.NDManager
 import ai.djl.ndarray.index.NDIndex
 import ai.djl.ndarray.types.DataType
 import ai.djl.ndarray.types.Shape
-import ai.djl.nn.AbstractBlock
 import ai.djl.nn.core.Linear
 import ai.djl.nn.recurrent.GRU
 import ai.djl.training.DefaultTrainingConfig
@@ -33,7 +32,7 @@ import jp.live.ugai.d2j.util.Accumulator
 import jp.live.ugai.d2j.util.NMT
 import jp.live.ugai.d2j.util.StopWatch
 import jp.live.ugai.d2j.util.TrainingChapter9
-import java.util.*
+import java.util.Locale
 
 fun main() {
     System.setProperty("org.slf4j.simpleLogger.showThreadName", "false")
@@ -87,7 +86,7 @@ fun train() {
     val lr = 0.01f
     val device = manager.device
 
-    val dataNMT = NMT.loadDataNMT(batchSize, numSteps, 600, manager)
+    val dataNMT = NMT.loadDataNMT(batchSize, numSteps, 600)
     val dataset: ArrayDataset = dataNMT.first
     val srcVocab: Vocab = dataNMT.second.first
     val tgtVocab: Vocab = dataNMT.second.second
@@ -121,34 +120,34 @@ fun train() {
         for (epoch in 1..numEpochs) {
             watch = StopWatch()
             metric = Accumulator(2) // Sum of training loss, no. of tokens
-                // Iterate over dataset
-                for (batch in dataset.getData(manager)) {
-                    val X: NDArray = batch.data.get(0)
-                    val lenX: NDArray = batch.data.get(1)
-                    val Y: NDArray = batch.labels.get(0)
-                    val lenY: NDArray = batch.labels.get(1)
-                    val bos: NDArray = manager
-                        .full(Shape(Y.shape[0]), tgtVocab.getIdx("<bos>"))
-                        .reshape(-1, 1)
-                    val decInput: NDArray = NDArrays.concat(
-                        NDList(bos, Y.get(NDIndex(":, :-1"))),
-                        1
-                    ) // Teacher forcing
-                    Engine.getInstance().newGradientCollector().use { gc ->
-                        val yHat: NDArray = net.forward(
-                            ParameterStore(manager, false),
-                            NDList(X, decInput, lenX),
-                            true
-                        )
-                            .get(0)
-                        val l = loss.evaluate(NDList(Y, lenY), NDList(yHat))
-                        gc.backward(l)
-                        metric.add(floatArrayOf(l.sum().getFloat(), lenY.sum().getLong().toFloat()))
-                    }
-                    TrainingChapter9.gradClipping(net, 1, manager)
-                    // Update parameters
-                    trainer.step()
+            // Iterate over dataset
+            for (batch in dataset.getData(manager)) {
+                val X: NDArray = batch.data.get(0)
+                val lenX: NDArray = batch.data.get(1)
+                val Y: NDArray = batch.labels.get(0)
+                val lenY: NDArray = batch.labels.get(1)
+                val bos: NDArray = manager
+                    .full(Shape(Y.shape[0]), tgtVocab.getIdx("<bos>"))
+                    .reshape(-1, 1)
+                val decInput: NDArray = NDArrays.concat(
+                    NDList(bos, Y.get(NDIndex(":, :-1"))),
+                    1
+                ) // Teacher forcing
+                Engine.getInstance().newGradientCollector().use { gc ->
+                    val yHat: NDArray = net.forward(
+                        ParameterStore(manager, false),
+                        NDList(X, decInput, lenX),
+                        true
+                    )
+                        .get(0)
+                    val l = loss.evaluate(NDList(Y, lenY), NDList(yHat))
+                    gc.backward(l)
+                    metric.add(floatArrayOf(l.sum().getFloat(), lenY.sum().getLong().toFloat()))
                 }
+                TrainingChapter9.gradClipping(net, 1, manager)
+                // Update parameters
+                trainer.step()
+            }
             lossValue = metric.get(0).toDouble() / metric.get(1)
             speed = metric.get(1) / watch.stop()
             if ((epoch + 1) % 10 == 0) {
@@ -170,10 +169,7 @@ fun train() {
         device: Device,
         saveAttentionWeights: Boolean
     ): Pair<String, List<NDArray?>> {
-        val srcTokens: List<Int> =
-            srcVocab.getIdxs(
-                srcSentence.lowercase(Locale.getDefault()).split(" ".toRegex()).dropLastWhile { it.isEmpty() }
-            ) + listOf(srcVocab.getIdx("<eos>"))
+        val srcTokens = srcVocab.getIdxs(srcSentence.lowercase(Locale.getDefault()).split(" ")) + listOf(srcVocab.getIdx("<eos>"))
         val encValidLen = manager.create(srcTokens.size)
         val truncateSrcTokens = NMT.truncatePad(srcTokens, numSteps, srcVocab.getIdx("<pad>"))
         // Add the batch axis
@@ -207,32 +203,35 @@ fun train() {
             }
             outputSeq.add(pred)
         }
-        val outputString: String = " " + tgtVocab.toTokens(outputSeq)
+        val outputString: String = tgtVocab.toTokens(outputSeq).joinToString(separator = " ")
         return Pair(outputString, attentionWeightSeq.toList())
     }
 
     /* Compute the BLEU. */
     fun bleu(predSeq: String, labelSeq: String, k: Int): Double {
-        val predTokens = predSeq.split(" ".toRegex()).dropLastWhile { it.isEmpty() }
-        val labelTokens = labelSeq.split(" ".toRegex()).dropLastWhile { it.isEmpty() }
+        val predTokens = predSeq.split(" ")
+        val labelTokens = labelSeq.split(" ")
         val lenPred = predTokens.size
         val lenLabel = labelTokens.size
-        var score = Math.exp(Math.min(0, 1 - lenLabel / lenPred).toDouble())
+        var score = Math.exp(Math.min(0.toDouble(), 1.0 - lenLabel / lenPred))
         for (n in 1 until k + 1) {
-            var numMatches = 0.0
-            val labelSubs: MutableMap<String, Int> = mutableMapOf()
+            var numMatches = 0
+            val labelSubs = mutableMapOf<String, Int>()
             for (i in 0 until lenLabel - n + 1) {
-                val key: String = " " + labelTokens.subList(i, i + n)
-                labelSubs[key] = labelSubs.getOrDefault(key, 0) + 1
+                val key = labelTokens.subList(i, i + n).joinToString(separator = " ")
+//            println("Key: $key")
+                labelSubs.put(key, labelSubs.getOrDefault(key, 0) + 1)
             }
             for (i in 0 until lenPred - n + 1) {
-                val key: String = " " + predTokens.subList(i, i + n)
+                // val key =predTokens.subList(i, i + n).joinToString(" ")
+                val key = predTokens.subList(i, i + n).joinToString(separator = " ")
+//            println("Key2 : $key")
                 if (labelSubs.getOrDefault(key, 0) > 0) {
-                    numMatches += 1.0
-                    labelSubs[key] = labelSubs.getOrDefault(key, 0) - 1
+                    numMatches += 1
+                    labelSubs.put(key, labelSubs.getOrDefault(key, 0) - 1)
                 }
             }
-            score *= Math.pow((numMatches / (lenPred - n + 1)).toDouble(), Math.pow(0.5, n.toDouble()))
+            score *= Math.pow(numMatches.toDouble() / (lenPred - n + 1).toDouble(), Math.pow(0.5, n.toDouble()))
         }
         return score
     }
@@ -245,12 +244,11 @@ fun train() {
         val attentionWeightSeq = pair.second
         println("%s => %s, bleu %.3f".format(engs[i], translation, bleu(translation, fras[i], 2)))
     }
-
 }
 
 abstract class AttentionDecoder : Decoder() {
     override var attentionWeights: NDArray? = null
-    val attentionWeightArr : MutableList<NDArray> = mutableListOf()
+    val attentionWeightArr: MutableList<NDArray> = mutableListOf()
     abstract override fun initState(encOutputs: NDList): NDList
     override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> {
         throw UnsupportedOperationException("Not implemented")
@@ -290,7 +288,7 @@ class Seq2SeqAttentionDecoder(
     override fun initState(encOutputs: NDList): NDList {
         val outputs = encOutputs[0]
         val hiddenState = encOutputs[1]
-        val encValidLens = if(encOutputs.size >= 3) encOutputs[2] else manager.create(0)
+        val encValidLens = if (encOutputs.size >= 3) encOutputs[2] else manager.create(0)
         return NDList(outputs.swapAxes(0, 1), hiddenState, encValidLens)
     }
 
@@ -328,7 +326,7 @@ class Seq2SeqAttentionDecoder(
             outputs = if (outputs == null) out[0] else outputs.concat(out[0])
 //            println(attention.attentionWeights?.shape)
 //            println(attentionWeights)
-            if(attention.attentionWeights != null )  attentionWeightArr.add(attention.attentionWeights!!)
+            if (attention.attentionWeights != null) attentionWeightArr.add(attention.attentionWeights!!)
         }
         val ret = linear.forward(ps, NDList(outputs), training)
         return NDList(ret[0].swapAxes(0, 1), encOutputs, hiddenState, encValidLens)

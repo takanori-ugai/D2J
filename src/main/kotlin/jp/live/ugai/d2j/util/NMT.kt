@@ -11,17 +11,18 @@ import jp.live.ugai.d2j.timemachine.Vocab
 import java.io.File
 import java.nio.charset.StandardCharsets
 import java.util.Locale
-import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
 
 object NMT {
     fun readDataNMT(): String? {
-        DownloadUtils.download("http://d2l-data.s3-accelerate.amazonaws.com/fra-eng.zip", "fra-eng.zip")
+        DownloadUtils.download(
+            "http://d2l-data.s3-accelerate.amazonaws.com/fra-eng.zip", "fra-eng.zip"
+        )
         val zipFile = ZipFile(File("fra-eng.zip"))
         val entries = zipFile.entries()
         while (entries.hasMoreElements()) {
-            val entry: ZipEntry = entries.nextElement()
-            if (entry.name.contains("fra.txt")) {
+            val entry = entries.nextElement()
+            if (entry.getName().contains("fra.txt")) {
                 val stream = zipFile.getInputStream(entry)
                 return String(stream.readAllBytes(), StandardCharsets.UTF_8)
             }
@@ -29,11 +30,17 @@ object NMT {
         return null
     }
 
+    fun noSpace(currChar: Char, prevChar: Char): Boolean {
+        /* Preprocess the English-French dataset. */
+        return listOf(',', '.', '!', '?').contains(currChar) &&
+            prevChar != ' '
+    }
+
     fun preprocessNMT(_text: String): String {
         // Replace non-breaking space with space, and convert uppercase letters to
         // lowercase ones
-        var text = _text
-        text = text.replace('\u202f', ' ').replace("\\xa0".toRegex(), " ").lowercase(Locale.getDefault())
+
+        val text = _text.replace('\u202f', ' ').replace("\\xa0".toRegex(), " ").lowercase(Locale.getDefault())
 
         // Insert space between words and punctuation marks
         val out = StringBuilder()
@@ -48,23 +55,22 @@ object NMT {
         return out.toString()
     }
 
-    fun noSpace(currChar: Char, prevChar: Char): Boolean {
-        /* Preprocess the English-French dataset. */
-        return (listOf(',', '.', '!', '?').contains(currChar) && prevChar != ' ')
-    }
-
-    fun tokenizeNMT(text: String, numExamples: Int?): Pair<List<List<String>>, List<List<String>>> {
+    fun tokenizeNMT(
+        text: String,
+        numExamples: Int?
+    ): Pair<List<List<String>>, List<List<String>>> {
         val source = mutableListOf<List<String>>()
         val target = mutableListOf<List<String>>()
+
         var i = 0
-        for (line in text.split("\n".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()) {
+        for (line in text.split("\n")) {
             if (numExamples != null && i > numExamples) {
                 break
             }
-            val parts = line.split("\t".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
+            val parts = line.split("\t")
             if (parts.size == 2) {
-                source.add(parts[0].split(" ".toRegex()).dropLastWhile { it.isEmpty() })
-                target.add(parts[1].split(" ".toRegex()).dropLastWhile { it.isEmpty() })
+                source.add(parts[0].split(" "))
+                target.add(parts[1].split(" "))
             }
             i += 1
         }
@@ -73,35 +79,30 @@ object NMT {
 
     fun truncatePad(integerLine: List<Int>, numSteps: Int, paddingToken: Int): List<Int> {
         /* Truncate or pad sequences */
-        val line = integerLine.toMutableList()
+        val line = integerLine
         if (line.size > numSteps) {
             return line.subList(0, numSteps)
         }
-        line.addAll(IntArray(numSteps - line.size) { paddingToken }.toList())
-        return line
+        val paddingTokenArr = List<Int>(numSteps - line.size) { paddingToken } // Pad
+        return line + paddingTokenArr
     }
 
-    fun buildArrayNMT(
-        lines: List<List<String>>,
-        vocab: Vocab,
-        numSteps: Int,
-        manager: NDManager
-    ): Pair<NDArray, NDArray> {
+    fun buildArrayNMT(lines: List<List<String>>, vocab: Vocab, numSteps: Int): Pair<NDArray, NDArray> {
         /* Transform text sequences of machine translation into minibatches. */
-        val linesIntArr = mutableListOf<List<Int>>()
-        for (strings in lines) {
-            linesIntArr.add(vocab.getIdxs(strings))
-        }
+        val linesIntArr = lines.map { vocab.getIdxs(it) }.toMutableList()
         for (i in linesIntArr.indices) {
             val temp: MutableList<Int> = linesIntArr[i].toMutableList()
             temp.add(vocab.getIdx("<eos>"))
             linesIntArr[i] = temp
         }
-        val arr: NDArray = manager.create(Shape(linesIntArr.size.toLong(), numSteps.toLong()), DataType.INT32)
+
+        val manager = NDManager.newBaseManager()
+
+        val arr = manager.create(Shape(linesIntArr.size.toLong(), numSteps.toLong()), DataType.INT32)
         var row = 0
         for (line in linesIntArr) {
             val rowArr = manager.create(truncatePad(line, numSteps, vocab.getIdx("<pad>")).toIntArray())
-            arr[NDIndex("{}:", row)] = rowArr
+            arr.set(NDIndex("{}:", row), rowArr)
             row += 1
         }
         val validLen = arr.neq(vocab.getIdx("<pad>")).sum(intArrayOf(1))
@@ -111,27 +112,31 @@ object NMT {
     fun loadDataNMT(
         batchSize: Int,
         numSteps: Int,
-        numExamples: Int,
-        manager: NDManager
+        numExamples: Int
     ): Pair<ArrayDataset, Pair<Vocab, Vocab>> {
         /* Return the iterator and the vocabularies of the translation dataset. */
         val text = preprocessNMT(readDataNMT()!!)
         val pair = tokenizeNMT(text, numExamples)
         val source = pair.first
         val target = pair.second
-        val srcVocab = Vocab(source, 2, listOf("<pad>", "<bos>", "<eos>"))
+        val srcVocab =
+            Vocab(source, 2, listOf("<pad>", "<bos>", "<eos>"))
         val tgtVocab = Vocab(target, 2, listOf("<pad>", "<bos>", "<eos>"))
-        var pairArr = buildArrayNMT(source, srcVocab, numSteps, manager)
-        val srcArr: NDArray = pairArr.first
-        val srcValidLen: NDArray = pairArr.second
-        pairArr = buildArrayNMT(target, tgtVocab, numSteps, manager)
-        val tgtArr: NDArray = pairArr.first
-        val tgtValidLen: NDArray = pairArr.second
+
+        var pairArr = buildArrayNMT(source, srcVocab, numSteps)
+        val srcArr = pairArr.first
+        val srcValidLen = pairArr.second
+
+        pairArr = buildArrayNMT(target, tgtVocab, numSteps)
+        val tgtArr = pairArr.first
+        val tgtValidLen = pairArr.second
+
         val dataset = ArrayDataset.Builder()
             .setData(srcArr, srcValidLen)
             .optLabels(tgtArr, tgtValidLen)
             .setSampling(batchSize, true)
             .build()
+
         return Pair(dataset, Pair(srcVocab, tgtVocab))
     }
 }

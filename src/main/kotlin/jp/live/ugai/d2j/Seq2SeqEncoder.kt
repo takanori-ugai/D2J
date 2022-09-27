@@ -160,7 +160,7 @@ fun main() {
     val lr = 0.005f
     val device = manager.device
 
-    val dataNMT = loadDataNMT(batchSize, numSteps, 600, manager)
+    val dataNMT = loadDataNMT(batchSize, numSteps, 600)
     val dataset: ArrayDataset = dataNMT.first
     val srcVocab: Vocab = dataNMT.second.first
     val tgtVocab: Vocab = dataNMT.second.second
@@ -180,10 +180,7 @@ fun main() {
         device: Device,
         saveAttentionWeights: Boolean
     ): Pair<String, List<NDArray?>> {
-        val srcTokens: List<Int> =
-            srcVocab.getIdxs(
-                srcSentence.lowercase(Locale.getDefault()).split(" ".toRegex()).dropLastWhile { it.isEmpty() }
-            ) + listOf(srcVocab.getIdx("<eos>"))
+        val srcTokens = srcVocab.getIdxs(srcSentence.lowercase(Locale.getDefault()).split(" ")) + listOf(srcVocab.getIdx("<eos>"))
         val encValidLen = manager.create(srcTokens.size)
         val truncateSrcTokens = NMT.truncatePad(srcTokens, numSteps, srcVocab.getIdx("<pad>"))
         // Add the batch axis
@@ -217,36 +214,37 @@ fun main() {
             }
             outputSeq.add(pred)
         }
-        val outputString: String = " " + tgtVocab.toTokens(outputSeq)
+        val outputString: String = tgtVocab.toTokens(outputSeq).joinToString(separator = " ")
         return Pair(outputString, attentionWeightSeq.toList())
     }
-
     /* Compute the BLEU. */
     fun bleu(predSeq: String, labelSeq: String, k: Int): Double {
-        val predTokens = predSeq.split(" ".toRegex()).dropLastWhile { it.isEmpty() }
-        val labelTokens = labelSeq.split(" ".toRegex()).dropLastWhile { it.isEmpty() }
+        val predTokens = predSeq.split(" ")
+        val labelTokens = labelSeq.split(" ")
         val lenPred = predTokens.size
         val lenLabel = labelTokens.size
-        var score = Math.exp(Math.min(0, 1 - lenLabel / lenPred).toDouble())
+        var score = Math.exp(Math.min(0.toDouble(), 1.0 - lenLabel / lenPred))
         for (n in 1 until k + 1) {
-            var numMatches = 0.0
-            val labelSubs: MutableMap<String, Int> = mutableMapOf()
+            var numMatches = 0
+            val labelSubs = mutableMapOf<String, Int>()
             for (i in 0 until lenLabel - n + 1) {
-                val key: String = " " + labelTokens.subList(i, i + n)
-                labelSubs[key] = labelSubs.getOrDefault(key, 0) + 1
+                val key = labelTokens.subList(i, i + n).joinToString(separator = " ")
+//            println("Key: $key")
+                labelSubs.put(key, labelSubs.getOrDefault(key, 0) + 1)
             }
             for (i in 0 until lenPred - n + 1) {
-                val key: String = " " + predTokens.subList(i, i + n)
+                // val key =predTokens.subList(i, i + n).joinToString(" ")
+                val key = predTokens.subList(i, i + n).joinToString(separator = " ")
+//            println("Key2 : $key")
                 if (labelSubs.getOrDefault(key, 0) > 0) {
-                    numMatches += 1.0
-                    labelSubs[key] = labelSubs.getOrDefault(key, 0) - 1
+                    numMatches += 1
+                    labelSubs.put(key, labelSubs.getOrDefault(key, 0) - 1)
                 }
             }
-            score *= Math.pow((numMatches / (lenPred - n + 1)).toDouble(), Math.pow(0.5, n.toDouble()))
+            score *= Math.pow(numMatches.toDouble() / (lenPred - n + 1).toDouble(), Math.pow(0.5, n.toDouble()))
         }
         return score
     }
-
     val engs = arrayOf("go .", "i lost .", "he's calm .", "i'm home .")
     val fras = arrayOf("va !", "j'ai perdu .", "il est calme .", "je suis chez moi .")
     for (i in engs.indices) {
