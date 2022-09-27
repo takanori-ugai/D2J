@@ -7,7 +7,7 @@ import ai.djl.nn.AbstractBlock
 
 /** The base decoder interface for the encoder-decoder architecture.  */
 abstract class Decoder : AbstractBlock() {
-    var attentionWeights: NDArray? = null
+    open var attentionWeights: NDArray? = null
     abstract fun initState(encOutputs: NDList): NDList
     override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> {
         throw UnsupportedOperationException("Not implemented")

@@ -247,8 +247,8 @@ fun main() {
         return score
     }
 
-    val engs = arrayOf("go .", "i lost .", "he\'s calm .", "i\'m home .")
-    val fras = arrayOf("va !", "j\'ai perdu .", "il est calme .", "je suis chez moi .")
+    val engs = arrayOf("go .", "i lost .", "he's calm .", "i'm home .")
+    val fras = arrayOf("va !", "j'ai perdu .", "il est calme .", "je suis chez moi .")
     for (i in engs.indices) {
         val pair = predictSeq2Seq(net, engs[i], srcVocab, tgtVocab, numSteps, device, false)
         val translation: String = pair.first
