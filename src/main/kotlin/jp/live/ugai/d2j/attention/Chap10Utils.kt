@@ -10,6 +10,9 @@ object Chap10Utils {
         var X = _X
         var validLens = _validLens ?: return X.softmax(-1)
         val shape: Shape = X.shape
+        if (validLens.shape.dimension() == 0) {
+            return X.softmax(-1).reshape(shape)
+        }
         if (validLens.shape.dimension() == 1) {
             validLens = validLens.repeat(shape.get(1))
         } else {
