@@ -83,7 +83,7 @@ fun train() {
     val numEpochs = Integer.getInteger("MAX_EPOCH", 300)
 
     val dropout = 0.2f
-    val lr = 0.01f
+    val lr = 0.001f
     val device = manager.device
 
     val dataNMT = NMT.loadDataNMT(batchSize, numSteps, 600)
@@ -219,13 +219,11 @@ fun train() {
             val labelSubs = mutableMapOf<String, Int>()
             for (i in 0 until lenLabel - n + 1) {
                 val key = labelTokens.subList(i, i + n).joinToString(separator = " ")
-//            println("Key: $key")
                 labelSubs.put(key, labelSubs.getOrDefault(key, 0) + 1)
             }
             for (i in 0 until lenPred - n + 1) {
                 // val key =predTokens.subList(i, i + n).joinToString(" ")
                 val key = predTokens.subList(i, i + n).joinToString(separator = " ")
-//            println("Key2 : $key")
                 if (labelSubs.getOrDefault(key, 0) > 0) {
                     numMatches += 1
                     labelSubs.put(key, labelSubs.getOrDefault(key, 0) - 1)
@@ -247,7 +245,6 @@ fun train() {
 }
 
 abstract class AttentionDecoder : Decoder() {
-    override var attentionWeights: NDArray? = null
     val attentionWeightArr: MutableList<NDArray> = mutableListOf()
     abstract override fun initState(encOutputs: NDList): NDList
     override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> {
@@ -282,7 +279,10 @@ class Seq2SeqAttentionDecoder(
             .setEmbeddingSize(embedSize)
             .setVocabulary(vocab)
             .build()
-//        addChildBlock("embedding", embedding)
+        addChildBlock("embedding", embedding)
+        addChildBlock("rnn", rnn)
+        addChildBlock("attention", attention)
+        addChildBlock("linear", linear)
     }
 
     override fun initState(encOutputs: NDList): NDList {
