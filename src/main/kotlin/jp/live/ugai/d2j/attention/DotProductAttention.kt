@@ -41,6 +41,7 @@ fun main() {
     val ps = ParameterStore(manager, false)
     attention.initialize(manager, DataType.FLOAT32, *input.shapes)
     println(attention.forward(ps, input, false).head())
+    println(attention.attentionWeights)
 
     queries = manager.randomNormal(0f, 1f, Shape(2, 1, 2), DataType.FLOAT32)
     val productAttention = DotProductAttention(0.5f)

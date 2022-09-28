@@ -16,6 +16,7 @@ import ai.djl.training.initializer.XavierInitializer
 import ai.djl.training.loss.Loss
 import ai.djl.training.optimizer.Optimizer
 import ai.djl.training.tracker.Tracker
+import jp.live.ugai.d2j.AttentionDecoder
 import jp.live.ugai.d2j.MaskedSoftmaxCELoss
 import jp.live.ugai.d2j.lstm.EncoderDecoder
 import jp.live.ugai.d2j.manager
@@ -142,7 +143,7 @@ object Chap10Utils {
         numSteps: Int,
         device: Device,
         saveAttentionWeights: Boolean
-    ): Pair<String, List<NDArray?>> {
+    ): Pair<String, List<List<Pair<FloatArray, Shape>>>> {
         val srcTokens = srcVocab.getIdxs(srcSentence.lowercase(Locale.getDefault()).split(" ")) + listOf(srcVocab.getIdx("<eos>"))
         val encValidLen = manager.create(srcTokens.size)
         val truncateSrcTokens = NMT.truncatePad(srcTokens, numSteps, srcVocab.getIdx("<pad>"))
@@ -153,7 +154,7 @@ object Chap10Utils {
         // Add the batch axis
         var decX = manager.create(floatArrayOf(tgtVocab.getIdx("<bos>").toFloat())).expandDims(0)
         val outputSeq: MutableList<Int> = mutableListOf()
-        val attentionWeightSeq: MutableList<NDArray?> = mutableListOf()
+        val attentionWeightSeq: MutableList<List<Pair<FloatArray, Shape>>> = mutableListOf()
         for (i in 0 until numSteps) {
             val output = net.decoder.forward(
                 ParameterStore(manager, false),
@@ -168,7 +169,7 @@ object Chap10Utils {
             val pred = decX.squeeze(0).getLong().toInt()
             // Save attention weights (to be covered later)
             if (saveAttentionWeights) {
-                attentionWeightSeq.add(net.decoder.attentionWeights)
+                attentionWeightSeq.add((net.decoder as AttentionDecoder).attentionWeightArr)
             }
             // Once the end-of-sequence token is predicted, the generation of the
             // output sequence is complete
@@ -178,7 +179,7 @@ object Chap10Utils {
             outputSeq.add(pred)
         }
         val outputString: String = tgtVocab.toTokens(outputSeq).joinToString(separator = " ")
-        return Pair(outputString, attentionWeightSeq.toList())
+        return Pair(outputString, attentionWeightSeq)
     }
 
     fun bleu(predSeq: String, labelSeq: String, k: Int): Double {
