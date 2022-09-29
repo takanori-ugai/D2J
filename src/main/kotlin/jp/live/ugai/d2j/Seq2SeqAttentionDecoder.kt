@@ -37,7 +37,6 @@ import org.jetbrains.letsPlot.ggsize
 import org.jetbrains.letsPlot.letsPlot
 import org.jetbrains.letsPlot.pos.positionIdentity
 import org.jetbrains.letsPlot.scale.scaleFillGradient
-import java.lang.System.exit
 import java.util.Locale
 
 fun main() {
@@ -255,24 +254,24 @@ fun train() {
         .concat(manager.create(attentions[1].last().first).reshape(attentions[1].last().second))
         .concat(manager.create(attentions[2].last().first).reshape(attentions[2].last().second))
         .concat(manager.create(attentions[3].last().first).reshape(attentions[3].last().second))
-        .concat(manager.create(attentions[4].last().first).reshape(attentions[4].last().second)).reshape(5,10)
+        .concat(manager.create(attentions[4].last().first).reshape(attentions[4].last().second)).reshape(5, 10)
     println(matrix)
     val seriesX = mutableListOf<Long>()
     val seriesY = mutableListOf<Long>()
     val seriesW = mutableListOf<Float>()
-    for(i in 0 until matrix.shape[0]) {
+    for (i in 0 until matrix.shape[0]) {
         val row = matrix.get(i)
-        for(j in 0 until row.shape[0]) {
+        for (j in 0 until row.shape[0]) {
             seriesX.add(j)
             seriesY.add(i)
             seriesW.add(row.get(j).getFloat())
         }
     }
-    val data = mapOf( "x" to seriesX, "y" to seriesY)
+    val data = mapOf("x" to seriesX, "y" to seriesY)
     var plot = letsPlot(data)
-    plot += geomBin2D(drop=false, binWidth = Pair(1,1), position = positionIdentity){x="x"; y = "y"; weight = seriesW }
-    plot += scaleFillGradient(low="blue", high="red")
-//plot += scaleFillContinuous("red", "green")
+    plot += geomBin2D(drop = false, binWidth = Pair(1, 1), position = positionIdentity) { x = "x"; y = "y"; weight = seriesW }
+    plot += scaleFillGradient(low = "blue", high = "red")
+// plot += scaleFillContinuous("red", "green")
     plot + ggsize(700, 200)
 }
 
@@ -360,7 +359,7 @@ class Seq2SeqAttentionDecoder(
 //            println(attention.attentionWeights?.shape)
 //            println(attentionWeights)
             if (attention.attentionWeights != null) {
-                attentionWeightArr.add(Pair(attention.attentionWeights!!.toFloatArray(),attention.attentionWeights!!.shape))
+                attentionWeightArr.add(Pair(attention.attentionWeights!!.toFloatArray(), attention.attentionWeights!!.shape))
             }
         }
         val ret = linear.forward(ps, NDList(outputs), training)
