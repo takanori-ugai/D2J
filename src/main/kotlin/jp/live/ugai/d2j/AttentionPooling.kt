@@ -1,14 +1,18 @@
 package jp.live.ugai.d2j
 
+import ai.djl.Device
 import ai.djl.Model
 import ai.djl.engine.Engine
+import ai.djl.metric.Metrics
 import ai.djl.ndarray.NDArray
 import ai.djl.ndarray.NDList
 import ai.djl.ndarray.NDManager
 import ai.djl.ndarray.types.DataType
 import ai.djl.ndarray.types.Shape
 import ai.djl.nn.AbstractBlock
+import ai.djl.nn.Parameter
 import ai.djl.training.DefaultTrainingConfig
+import ai.djl.training.EasyTrain
 import ai.djl.training.ParameterStore
 import ai.djl.training.dataset.ArrayDataset
 import ai.djl.training.evaluator.Accuracy
@@ -26,6 +30,13 @@ import org.jetbrains.letsPlot.pos.positionIdentity
 import org.jetbrains.letsPlot.scale.scaleFillGradient
 
 fun main() {
+    System.setProperty("org.slf4j.simpleLogger.showThreadName", "false")
+    System.setProperty("org.slf4j.simpleLogger.showLogName", "true")
+    System.setProperty("org.slf4j.simpleLogger.log.ai.djl.pytorch", "WARN")
+    System.setProperty("org.slf4j.simpleLogger.log.ai.djl.mxnet", "ERROR")
+    System.setProperty("org.slf4j.simpleLogger.log.ai.djl.ndarray.index", "ERROR")
+    System.setProperty("org.slf4j.simpleLogger.log.ai.djl.tensorflow", "WARN")
+
     val manager = NDManager.newBaseManager()
 
     val batchSize = 10
@@ -37,8 +48,13 @@ fun main() {
     val xVal = manager.arange(0f, 5f, 5.0f / n)
     val yVal = f(xVal)
     val nonLinearDataSet = ArrayDataset.Builder()
-        .setData(xTrain, xVal)
-        .optLabels(yTrain, yVal)
+        .setData(xTrain)
+        .optLabels(yTrain)
+        .setSampling(batchSize, false)
+        .build()
+    val nonLinearDataSetVar = ArrayDataset.Builder()
+        .setData(xVal)
+        .optLabels(yVal)
         .setSampling(batchSize, false)
         .build()
 
@@ -103,10 +119,16 @@ fun main() {
     println(weights.expandDims(1).matMul(values.expandDims(-1)))
 
     class NWKernelRegression(val keys: NDArray, val values0: NDArray) : AbstractBlock() {
-        val w: NDArray = manager.ones(Shape(1))
+        val wParam : Parameter
         var attention: NDArray? = null
         init {
-            w.setRequiresGradient(true)
+            wParam = addParameter(
+                Parameter.builder()
+                    .setName("weight")
+                    .setType(Parameter.Type.BIAS)
+                    .optShape(Shape(1))
+                    .optArray(manager.ones(Shape(1)))
+                    .build())
         }
 
         override fun forwardInternal(
@@ -116,12 +138,11 @@ fun main() {
             params: PairList<String, Any>?
         ): NDList {
             val input = X.head()
-            val ret = attentionPool(diff(input, keys).mul(w), values0)
+            val device: Device = input.getDevice()
+            val tmpW = parameterStore.getValue(wParam, device, training)
+            val ret = attentionPool(diff(input, keys).mul(tmpW), values0)
             attention = ret[1]
-            return ret
-        }
-
-        override fun initializeChildBlocks(manager: NDManager, dataType: DataType, vararg inputShapes: Shape) {
+            return NDList(ret[0])
         }
 
         override fun getOutputShapes(inputs: Array<Shape>): Array<Shape> {
@@ -147,26 +168,9 @@ fun main() {
     model.setBlock(net)
     val trainer = model.newTrainer(config)
     trainer.initialize(Shape(batchSize.toLong(), 2))
+    trainer.setMetrics(Metrics());
     val numEpochs = 10
-    val ps = ParameterStore(manager, false)
-    for (epoch in 1..numEpochs) {
-        // Iterate over dataset
-        var loss: Float = 0f
-        for (batch in nonLinearDataSet.getData(manager)) {
-            val X = batch.getData().head()
-            val y = batch.getLabels().head()
-
-            Engine.getInstance().newGradientCollector().use { gc ->
-                val yHat = net.forward(ps, NDList(X), true)
-                val l = trainer.loss.evaluate(NDList(yHat.head()), NDList(y))
-                gc.backward(l) // gradient calculation
-                loss += l.toFloatArray()[0]
-            }
-            sgd.update("w", net.w, net.w.gradient.div(batchSize))
-        }
-//    sgd.update("w", net.w, net.w.gradient)
-        println("LossValue: $loss ($epoch)")
-    }
-    println(net.w)
+    EasyTrain.fit(trainer, numEpochs, nonLinearDataSet, nonLinearDataSetVar)
+    println(net.parameters.get(0).value.array)
 }
 class AttentionPooling
