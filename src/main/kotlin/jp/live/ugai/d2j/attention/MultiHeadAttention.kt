@@ -89,7 +89,7 @@ class MultiHeadAttention(numHiddens: Int, private val numHeads: Int, dropout: Fl
             values = Chap10Utils.transposeQkv(W_v.forward(ps, NDList(values), false)[0], numHeads)
             val list = NDList(queries, keys, values, validLens)
             attention.initialize(sub, dataType, *list.shapes)
-            val output: NDArray = attention.forward(ps, list, false).head()
+            val output: NDArray = attention.forward(ps, list, false,null).head()
             val outputConcat: NDArray = Chap10Utils.transposeOutput(output, numHeads)
             W_o.initialize(manager, dataType, outputConcat.shape)
         }

@@ -7,7 +7,6 @@ import ai.djl.metric.Metrics
 import ai.djl.ndarray.NDArray
 import ai.djl.ndarray.NDList
 import ai.djl.ndarray.NDManager
-import ai.djl.ndarray.types.DataType
 import ai.djl.ndarray.types.Shape
 import ai.djl.nn.AbstractBlock
 import ai.djl.nn.Parameter
@@ -119,7 +118,7 @@ fun main() {
     println(weights.expandDims(1).matMul(values.expandDims(-1)))
 
     class NWKernelRegression(val keys: NDArray, val values0: NDArray) : AbstractBlock() {
-        val wParam : Parameter
+        val wParam: Parameter
         var attention: NDArray? = null
         init {
             wParam = addParameter(
@@ -128,7 +127,8 @@ fun main() {
                     .setType(Parameter.Type.BIAS)
                     .optShape(Shape(1))
                     .optArray(manager.ones(Shape(1)))
-                    .build())
+                    .build()
+            )
         }
 
         override fun forwardInternal(
@@ -167,8 +167,8 @@ fun main() {
     val net = NWKernelRegression(xTrain, yTrain)
     model.setBlock(net)
     val trainer = model.newTrainer(config)
-    trainer.initialize(Shape(batchSize.toLong(), 2))
-    trainer.setMetrics(Metrics());
+    trainer.initialize(Shape(batchSize.toLong(), 1))
+    trainer.setMetrics(Metrics())
     val numEpochs = 10
     EasyTrain.fit(trainer, numEpochs, nonLinearDataSet, nonLinearDataSetVar)
     println(net.parameters.get(0).value.array)

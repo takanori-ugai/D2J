@@ -96,7 +96,7 @@ class AdditiveAttention(numHiddens: Int, dropout: Float) : AbstractBlock() {
         val scores = result.squeeze(-1)
         attentionWeights = maskedSoftmax(scores, validLens)
         // Shape of `values`: (`batchSize`, no. of key-value pairs, value dimension)
-        val list = dropout.forward(ps, NDList(attentionWeights), training, params)
+        val list = this.dropout.forward(ps, NDList(attentionWeights), training, params)
         return NDList(list.head().batchDot(values))
     }
 
@@ -121,13 +121,13 @@ class AdditiveAttention(numHiddens: Int, dropout: Float) : AbstractBlock() {
 
 /* Scaled dot product attention. */
 class DotProductAttention(dropout: Float) : AbstractBlock() {
-    private val dropout: Dropout
+    private val dropout0: Dropout
     var attentionWeights: NDArray? = null
     private var outputShapes: Array<Shape> = arrayOf<Shape>()
 
     init {
-        this.dropout = Dropout.builder().optRate(dropout).build()
-        addChildBlock("dropout", this.dropout)
+        this.dropout0 = Dropout.builder().optRate(dropout).build()
+        addChildBlock("dropout", this.dropout0)
     }
 
     override fun forwardInternal(
@@ -148,8 +148,8 @@ class DotProductAttention(dropout: Float) : AbstractBlock() {
 
         // Swap the last two dimensions of `keys` and perform batchDot
         val scores = queries.batchDot(keys.swapAxes(1, 2)).div(Math.sqrt(2.0))
-        attentionWeights = maskedSoftmax(scores, validLens)
-        val result = dropout.forward(ps, NDList(attentionWeights), training, params)
+        this.attentionWeights = maskedSoftmax(scores, validLens)
+        val result = this.dropout0.forward(ps, NDList(this.attentionWeights), false, params)
         return NDList(result[0].batchDot(values))
     }
 
@@ -163,8 +163,8 @@ class DotProductAttention(dropout: Float) : AbstractBlock() {
             val keys = sub.zeros(inputShapes[1], dataType)
             val scores = queries.batchDot(keys.swapAxes(1, 2))
             val shapes: Array<Shape> = arrayOf(scores.shape)
-            dropout.initialize(manager, dataType, *shapes)
-            outputShapes = dropout.getOutputShapes(shapes)
+            dropout0.initialize(manager, dataType, *shapes)
+            outputShapes = dropout0.getOutputShapes(shapes)
         }
     }
 }
