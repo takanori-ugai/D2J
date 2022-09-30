@@ -32,6 +32,11 @@ import jp.live.ugai.d2j.util.Accumulator
 import jp.live.ugai.d2j.util.NMT
 import jp.live.ugai.d2j.util.StopWatch
 import jp.live.ugai.d2j.util.TrainingChapter9
+import org.jetbrains.letsPlot.geom.geomBin2D
+import org.jetbrains.letsPlot.ggsize
+import org.jetbrains.letsPlot.letsPlot
+import org.jetbrains.letsPlot.pos.positionIdentity
+import org.jetbrains.letsPlot.scale.scaleFillGradient
 import java.util.Locale
 
 fun main() {
@@ -80,7 +85,7 @@ fun train() {
     val numLayers = 2
     val batchSize = 64
     val numSteps = 10
-    val numEpochs = Integer.getInteger("MAX_EPOCH", 300)
+    val numEpochs = Integer.getInteger("MAX_EPOCH", 30)
 
     val dropout = 0.2f
     val lr = 0.001f
@@ -168,7 +173,7 @@ fun train() {
         numSteps: Int,
         device: Device,
         saveAttentionWeights: Boolean
-    ): Pair<String, List<NDArray?>> {
+    ): Pair<String, List<List<Pair<FloatArray, Shape>>>> {
         val srcTokens = srcVocab.getIdxs(srcSentence.lowercase(Locale.getDefault()).split(" ")) + listOf(srcVocab.getIdx("<eos>"))
         val encValidLen = manager.create(srcTokens.size)
         val truncateSrcTokens = NMT.truncatePad(srcTokens, numSteps, srcVocab.getIdx("<pad>"))
@@ -179,7 +184,7 @@ fun train() {
         // Add the batch axis
         var decX = manager.create(floatArrayOf(tgtVocab.getIdx("<bos>").toFloat())).expandDims(0)
         val outputSeq: MutableList<Int> = mutableListOf()
-        val attentionWeightSeq: MutableList<NDArray?> = mutableListOf()
+        val attentionWeightSeq: MutableList<List<Pair<FloatArray, Shape>>> = mutableListOf()
         for (i in 0 until numSteps) {
             val output = net.decoder.forward(
                 ParameterStore(manager, false),
@@ -194,7 +199,7 @@ fun train() {
             val pred = decX.squeeze(0).getLong().toInt()
             // Save attention weights (to be covered later)
             if (saveAttentionWeights) {
-                attentionWeightSeq.add(net.decoder.attentionWeights)
+                attentionWeightSeq.add((net.decoder as AttentionDecoder).attentionWeightArr)
             }
             // Once the end-of-sequence token is predicted, the generation of the
             // output sequence is complete
@@ -204,7 +209,7 @@ fun train() {
             outputSeq.add(pred)
         }
         val outputString: String = tgtVocab.toTokens(outputSeq).joinToString(separator = " ")
-        return Pair(outputString, attentionWeightSeq.toList())
+        return Pair(outputString, attentionWeightSeq)
     }
 
     /* Compute the BLEU. */
@@ -242,10 +247,36 @@ fun train() {
         val attentionWeightSeq = pair.second
         println("%s => %s, bleu %.3f".format(engs[i], translation, bleu(translation, fras[i], 2)))
     }
+
+    val pair = predictSeq2Seq(net, engs.last(), srcVocab, tgtVocab, numSteps, device, true)
+    val attentions = pair.second
+    val matrix = manager.create(attentions[0].last().first).reshape(attentions[0].last().second)
+        .concat(manager.create(attentions[1].last().first).reshape(attentions[1].last().second))
+        .concat(manager.create(attentions[2].last().first).reshape(attentions[2].last().second))
+        .concat(manager.create(attentions[3].last().first).reshape(attentions[3].last().second))
+        .concat(manager.create(attentions[4].last().first).reshape(attentions[4].last().second)).reshape(5, 10)
+    println(matrix)
+    val seriesX = mutableListOf<Long>()
+    val seriesY = mutableListOf<Long>()
+    val seriesW = mutableListOf<Float>()
+    for (i in 0 until matrix.shape[0]) {
+        val row = matrix.get(i)
+        for (j in 0 until row.shape[0]) {
+            seriesX.add(j)
+            seriesY.add(i)
+            seriesW.add(row.get(j).getFloat())
+        }
+    }
+    val data = mapOf("x" to seriesX, "y" to seriesY)
+    var plot = letsPlot(data)
+    plot += geomBin2D(drop = false, binWidth = Pair(1, 1), position = positionIdentity) { x = "x"; y = "y"; weight = seriesW }
+    plot += scaleFillGradient(low = "blue", high = "red")
+// plot += scaleFillContinuous("red", "green")
+    plot + ggsize(700, 200)
 }
 
 abstract class AttentionDecoder : Decoder() {
-    val attentionWeightArr: MutableList<NDArray> = mutableListOf()
+    var attentionWeightArr: MutableList<Pair<FloatArray, Shape>> = mutableListOf()
     abstract override fun initState(encOutputs: NDList): NDList
     override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> {
         throw UnsupportedOperationException("Not implemented")
@@ -317,6 +348,7 @@ class Seq2SeqAttentionDecoder(
 //        X = self.embedding(X).permute(1, 0, 2)
         // The output `X` shape: (`batchSize`(4), `numSteps`(7), `embedSize`(8))
         val X = embedding.forward(ps, NDList(input), training, params)[0].swapAxes(0, 1)
+        attentionWeightArr = mutableListOf()
         for (x in 0 until X.size(0)) {
             val query = hiddenState[-1].expandDims(1)
             val context = attention.forward(ps, NDList(query, encOutputs, encOutputs, encValidLens), training, params)
@@ -326,7 +358,9 @@ class Seq2SeqAttentionDecoder(
             outputs = if (outputs == null) out[0] else outputs.concat(out[0])
 //            println(attention.attentionWeights?.shape)
 //            println(attentionWeights)
-            if (attention.attentionWeights != null) attentionWeightArr.add(attention.attentionWeights!!)
+            if (attention.attentionWeights != null) {
+                attentionWeightArr.add(Pair(attention.attentionWeights!!.toFloatArray(), attention.attentionWeights!!.shape))
+            }
         }
         val ret = linear.forward(ps, NDList(outputs), training)
         return NDList(ret[0].swapAxes(0, 1), encOutputs, hiddenState, encValidLens)
