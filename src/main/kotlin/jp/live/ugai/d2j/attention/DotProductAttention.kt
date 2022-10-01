@@ -149,7 +149,7 @@ class DotProductAttention(dropout: Float) : AbstractBlock() {
         // Swap the last two dimensions of `keys` and perform batchDot
         val scores = queries.batchDot(keys.swapAxes(1, 2)).div(Math.sqrt(2.0))
         this.attentionWeights = maskedSoftmax(scores, validLens)
-        val result = this.dropout0.forward(ps, NDList(this.attentionWeights), false, params)
+        val result = this.dropout0.forward(ps, NDList(this.attentionWeights), training, params)
         return NDList(result[0].batchDot(values))
     }
 

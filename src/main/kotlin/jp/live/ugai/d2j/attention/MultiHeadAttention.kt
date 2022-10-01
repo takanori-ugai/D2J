@@ -11,6 +11,23 @@ import ai.djl.nn.norm.Dropout
 import ai.djl.training.ParameterStore
 import ai.djl.util.PairList
 
+fun main() {
+    val manager = NDManager.newBaseManager()
+    val numHiddens = 100
+    val numHeads = 5
+    val attention = MultiHeadAttention(numHiddens, numHeads, 0.5f, false)
+    val batchSize = 2
+    val numQueries = 4
+    val numKvpairs = 6
+    val validLens = manager.create(floatArrayOf(3.0f, 2.0f))
+    val X = manager.ones(Shape(batchSize.toLong(), numQueries.toLong(), numHiddens.toLong()))
+    val Y = manager.ones(Shape(batchSize.toLong(), numKvpairs.toLong(), numHiddens.toLong()))
+
+    val ps = ParameterStore(manager, false)
+    val input = NDList(X, Y, Y, validLens)
+    attention.initialize(manager, DataType.FLOAT32, *input.shapes)
+    val result = attention.forward(ps, input, false)
+}
 class MultiHeadAttention(numHiddens: Int, private val numHeads: Int, dropout: Float, useBias: Boolean) :
     AbstractBlock() {
     var attention: DotProductAttention
@@ -52,7 +69,9 @@ class MultiHeadAttention(numHiddens: Int, private val numHeads: Int, dropout: Fl
         var validLens = inputs[3]
         // On axis 0, copy the first item (scalar or vector) for
         // `numHeads` times, then copy the next item, and so on
-        validLens = validLens.repeat(0, numHeads.toLong())
+        if (validLens != null) {
+            validLens = validLens.repeat(0, numHeads.toLong())
+        }
         queries = Chap10Utils.transposeQkv(W_q.forward(ps, NDList(queries), training, params)[0], numHeads)
         keys = Chap10Utils.transposeQkv(W_k.forward(ps, NDList(keys), training, params)[0], numHeads)
         values = Chap10Utils.transposeQkv(W_v.forward(ps, NDList(values), training, params)[0], numHeads)
@@ -89,7 +108,7 @@ class MultiHeadAttention(numHiddens: Int, private val numHeads: Int, dropout: Fl
             values = Chap10Utils.transposeQkv(W_v.forward(ps, NDList(values), false)[0], numHeads)
             val list = NDList(queries, keys, values, validLens)
             attention.initialize(sub, dataType, *list.shapes)
-            val output: NDArray = attention.forward(ps, list, false,null).head()
+            val output: NDArray = attention.forward(ps, list, false).head()
             val outputConcat: NDArray = Chap10Utils.transposeOutput(output, numHeads)
             W_o.initialize(manager, dataType, outputConcat.shape)
         }

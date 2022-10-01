@@ -1,6 +1,5 @@
 package jp.live.ugai.d2j
 
-import ai.djl.engine.Engine
 import ai.djl.modality.nlp.DefaultVocabulary
 import ai.djl.modality.nlp.Vocabulary
 import ai.djl.modality.nlp.embedding.TrainableWordEmbedding
@@ -131,18 +130,25 @@ fun main() {
     }
 
     val X1 = manager.ones(Shape(2, 100, 24))
-    val validLens = manager.create(floatArrayOf(3f,2f))
-    val encoderBlock = TransformerEncoderBlock(24,48,8, 0.5f)
+    val validLens = manager.create(floatArrayOf(3f, 2f))
+    val encoderBlock = TransformerEncoderBlock(24, 48, 8, 0.5f)
     encoderBlock.initialize(manager, DataType.FLOAT32, X1.shape, validLens.shape)
     println(encoderBlock.forward(ps, NDList(X1, validLens), false))
 
-    class TransformerEncoder(vocabSize: Int, val numHiddens: Int, ffnNumHiddens: Long,
-                             numHeads: Long, numBlks: Int, dropout: Float, useBias: Boolean = false): Encoder() {
+    class TransformerEncoder(
+        vocabSize: Int,
+        val numHiddens: Int,
+        ffnNumHiddens: Long,
+        numHeads: Long,
+        numBlks: Int,
+        dropout: Float,
+        useBias: Boolean = false
+    ) : Encoder() {
 
         private val embedding: TrainableWordEmbedding
         val posEncoding = PositionalEncoding(numHiddens, dropout, 1000, manager)
         val blks = mutableListOf<TransformerEncoderBlock>()
-        val attentionWeights = Array<NDArray?>(numBlks){ null }
+        val attentionWeights = Array<NDArray?>(numBlks) { null }
 
         /* The RNN encoder for sequence to sequence learning. */
         init {
@@ -170,7 +176,7 @@ fun main() {
             val validLens = inputs[1]
             val emb = embedding.forward(ps, NDList(X), training, params).singletonOrThrow().mul(Math.sqrt(numHiddens.toDouble()))
             X = posEncoding.forward(ps, NDList(emb), training, params).singletonOrThrow()
-            for(i in 0 until blks.size) {
+            for (i in 0 until blks.size) {
                 X = blks[i].forward(ps, NDList(X, validLens), training, params).singletonOrThrow()
                 attentionWeights[i] = blks[i].attention.attention.attentionWeights
             }
@@ -179,18 +185,23 @@ fun main() {
 
         override fun initializeChildBlocks(manager: NDManager, dataType: DataType, vararg inputShapes: Shape) {
             embedding.initialize(manager, dataType, *inputShapes)
-            for(blk in blks) {
+            for (blk in blks) {
                 blk.initialize(manager, dataType, inputShapes[0].add(numHiddens.toLong()), inputShapes[1])
             }
         }
     }
 
     val encoder = TransformerEncoder(200, 24, 48, 8, 2, 0.5f)
-    encoder.initialize(manager, DataType.FLOAT32, Shape(2,100), validLens.shape)
+    encoder.initialize(manager, DataType.FLOAT32, Shape(2, 100), validLens.shape)
     println(encoder.forward(ps, NDList(manager.ones(Shape(2, 100)), validLens), false))
 
-    class TransformerDecoderBlock(val numHiddens: Int, ffnNumHiddens: Long,
-                                  numHeads: Long, dropout: Float, _i: Int): AbstractBlock() {
+    class TransformerDecoderBlock(
+        val numHiddens: Int,
+        ffnNumHiddens: Long,
+        numHeads: Long,
+        dropout: Float,
+        _i: Int
+    ) : AbstractBlock() {
         val i = _i
         val attention1 = MultiHeadAttention(numHiddens, numHeads.toInt(), dropout, false)
         val addnorm1 = AddNorm(dropout)
@@ -209,10 +220,10 @@ fun main() {
         }
 
         override fun initializeChildBlocks(manager: NDManager, dataType: DataType, vararg inputShapes: Shape) {
-            val shapes = arrayOf(inputShapes[0], inputShapes[0], inputShapes[0], inputShapes[1])
-            attention1.initialize(manager, dataType, *shapes)
+            val shapes1 = arrayOf(inputShapes[0], inputShapes[0], inputShapes[0], inputShapes[1])
+            attention1.initialize(manager, dataType, *shapes1)
             addnorm1.initialize(manager, dataType, inputShapes[0])
-            attention2.initialize(manager, dataType, *shapes)
+            attention2.initialize(manager, dataType, *shapes1)
             addnorm2.initialize(manager, dataType, inputShapes[0])
             ffn.initialize(manager, dataType, inputShapes[0])
             addnorm3.initialize(manager, dataType, inputShapes[0])
@@ -224,23 +235,21 @@ fun main() {
             params: PairList<String, Any>?
         ): NDList {
             val input0 = inputs[0]
-            val encOutputs =  inputs[1]
+            val encOutputs = inputs[1]
             val envValidLens = inputs[2]
 //        # During training, all the tokens of any output sequence are processed
 //        # at the same time, so state[2][self.i] is None as initialized. When
 //        # decoding any output sequence token by token during prediction,
 //        # state[2][self.i] contains representations of the decoded output at
 //        # the i-th block up to the current time step
-//        if state[2][self.i] is None:
-//            key_values = X
-//        else:
-            var keyValues : NDArray
-            println(inputs.size)
-            if(inputs.size < 4 || inputs[3] == null) {
+            var keyValues: NDArray? = null
+            if (inputs.size < 4 || inputs[3] == null) {
                 keyValues = inputs[0]
+            } else if (inputs[3]!!.size() < i.toLong()) {
+                keyValues = inputs[3].concat(inputs[0])
             } else {
-                keyValues = inputs[3].get(i.toLong()).concat(input0, 1)
-                inputs[3].set(NDIndex(i.toLong()), keyValues)
+                val keyValue = inputs[3].get(i.toLong()).concat(input0, 1)
+                keyValues!!.set(NDIndex(i.toLong()), keyValue)
             }
 
             var decValidLens: NDArray?
@@ -249,8 +258,7 @@ fun main() {
                 val numSteps = input0.shape[1]
                 //  Shape of dec_valid_lens: (batch_size, num_steps), where every
                 //  row is [1, 2, ..., num_steps]
-                decValidLens = manager.arange(1f, (numSteps+1).toFloat()).repeat(batchSize).reshape(Shape(batchSize, numSteps))
-                println(decValidLens)
+                decValidLens = manager.arange(1f, (numSteps + 1).toFloat()).repeat(batchSize).reshape(Shape(batchSize, numSteps))
             } else {
                 decValidLens = null
             }
@@ -267,17 +275,15 @@ fun main() {
         override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> {
             return arrayOf<Shape>()
         }
-
     }
 
-    Engine.getInstance().newGradientCollector().use { gc ->
-        val decoderBlk = TransformerDecoderBlock(24, 48, 8, 0.5f, 0)
-        val X = manager.ones(Shape(2, 100, 24))
-        decoderBlk.initialize(manager, DataType.FLOAT32, X.shape, validLens.shape)
-        val state = encoderBlock.forward(ps, NDList(X, validLens, validLens), false)
-        println(state)
-        println(decoderBlk.forward(ps, NDList(X, validLens, validLens), false))
-    }
+    val decoderBlk = TransformerDecoderBlock(24, 48, 8, 0.5f, 0)
+    val X = manager.ones(Shape(2, 100, 24))
+    val input = NDList(X, validLens)
+
+    decoderBlk.initialize(manager, DataType.FLOAT32, *input.shapes)
+    val state = encoderBlock.forward(ps, NDList(X, validLens, validLens), false)
+    println(decoderBlk.forward(ps, NDList(X, state.head(), validLens, null), false))
 }
 
 class Transformer
