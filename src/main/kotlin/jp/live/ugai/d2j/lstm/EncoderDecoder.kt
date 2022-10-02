@@ -9,13 +9,11 @@ import ai.djl.training.ParameterStore
 import ai.djl.util.PairList
 
 /** The base class for the encoder-decoder architecture.  */
-class EncoderDecoder(var encoder: Encoder, decoder: Decoder) : AbstractBlock() {
-    var decoder: Decoder
+class EncoderDecoder(var encoder: Encoder, var decoder: Decoder) : AbstractBlock() {
 
     init {
         addChildBlock("encoder", encoder)
-        this.decoder = decoder
-        addChildBlock("decoder", this.decoder)
+        addChildBlock("decoder", decoder)
     }
 
     override fun initializeChildBlocks(manager: NDManager, dataType: DataType, vararg inputShapes: Shape) {}
@@ -26,11 +24,15 @@ class EncoderDecoder(var encoder: Encoder, decoder: Decoder) : AbstractBlock() {
         training: Boolean,
         params: PairList<String, Any>?
     ): NDList {
-        val encX = inputs[0]
-        val decX = inputs[1]
-        val encOutputs = encoder.forward(parameterStore, NDList(encX), training, params)
+        val encX = NDList(inputs[0])
+        val decX = NDList(inputs[1])
+        if(inputs.size > 2) {
+            encX.add(inputs[2])
+        }
+        val encOutputs = encoder.forward(parameterStore, encX, training, params)
         val decState = decoder.initState(encOutputs)
-        return decoder.forward(parameterStore, NDList(decX).addAll(decState), training, params)
+        val inp = NDList(decX).addAll(decState)
+        return decoder.forward(parameterStore, inp, training, params)
     }
 
     override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> {
