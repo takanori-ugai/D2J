@@ -24,9 +24,9 @@ class EncoderDecoder(var encoder: Encoder, var decoder: Decoder) : AbstractBlock
         training: Boolean,
         params: PairList<String, Any>?
     ): NDList {
-        val encX = NDList(inputs[0])
+        var encX = NDList(inputs[0])
         val decX = NDList(inputs[1])
-        if(inputs.size > 2) {
+        if (inputs.size > 2) {
             encX.add(inputs[2])
         }
         val encOutputs = encoder.forward(parameterStore, encX, training, params)

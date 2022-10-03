@@ -106,7 +106,7 @@ fun main() {
         for (epoch in 1..numEpochs) {
             watch = StopWatch()
             metric = Accumulator(2) // Sum of training loss, no. of tokens
-            jp.live.ugai.d2j.manager.newSubManager(device).use { childManager ->
+            manager.newSubManager(device).use { childManager ->
                 // Iterate over dataset
                 for (batch in dataset.getData(childManager)) {
                     val X: NDArray = batch.data.get(0)
@@ -122,7 +122,7 @@ fun main() {
                     ) // Teacher forcing
                     Engine.getInstance().newGradientCollector().use { gc ->
                         val yHat: NDArray = net.forward(
-                            ParameterStore(jp.live.ugai.d2j.manager, false),
+                            ParameterStore(manager, false),
                             NDList(X, decInput, lenX),
                             true
                         )
@@ -154,7 +154,7 @@ fun main() {
     val numLayers = 2
     val batchSize = 64
     val numSteps = 10
-    val numEpochs = Integer.getInteger("MAX_EPOCH", 300)
+    val numEpochs = Integer.getInteger("MAX_EPOCH", 30)
 
     val dropout = 0.1f
     val lr = 0.005f
@@ -164,6 +164,7 @@ fun main() {
     val dataset: ArrayDataset = dataNMT.first
     val srcVocab: Vocab = dataNMT.second.first
     val tgtVocab: Vocab = dataNMT.second.second
+    println("Target: ${manager.create(floatArrayOf(tgtVocab.getIdx("<bos>").toFloat())).expandDims(0)}")
 
     encoder = Seq2SeqEncoder(srcVocab.length(), embedSize, numHiddens, numLayers, dropout)
     decoder = Seq2SeqDecoder(tgtVocab.length(), embedSize, numHiddens, numLayers, dropout)

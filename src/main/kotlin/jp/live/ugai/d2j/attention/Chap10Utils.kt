@@ -16,7 +16,6 @@ import ai.djl.training.initializer.XavierInitializer
 import ai.djl.training.loss.Loss
 import ai.djl.training.optimizer.Optimizer
 import ai.djl.training.tracker.Tracker
-import jp.live.ugai.d2j.AttentionDecoder
 import jp.live.ugai.d2j.MaskedSoftmaxCELoss
 import jp.live.ugai.d2j.lstm.EncoderDecoder
 import jp.live.ugai.d2j.manager
@@ -32,9 +31,12 @@ object Chap10Utils {
         /* Perform softmax operation by masking elements on the last axis. */
         // `X`: 3D tensor, `validLens`: 1D or 2D tensor
         var X = _X
-        var validLens = _validLens ?: return X.softmax(-1)
         val shape: Shape = X.shape
-        if (validLens.shape.dimension() == 0) {
+        var validLens = _validLens
+        if (_validLens == null) {
+            return X.reshape(Shape(-1, shape.get(shape.dimension() - 1))).softmax(-1).reshape(shape)
+        }
+        if (validLens!!.shape.dimension() == 0) {
             return X.softmax(-1).reshape(shape)
         }
         if (validLens.shape.dimension() == 1) {

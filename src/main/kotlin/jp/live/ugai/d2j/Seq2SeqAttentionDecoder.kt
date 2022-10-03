@@ -25,7 +25,7 @@ import ai.djl.training.optimizer.Optimizer
 import ai.djl.training.tracker.Tracker
 import ai.djl.util.PairList
 import jp.live.ugai.d2j.attention.AdditiveAttention
-import jp.live.ugai.d2j.lstm.Decoder
+import jp.live.ugai.d2j.attention.AttentionDecoder
 import jp.live.ugai.d2j.lstm.EncoderDecoder
 import jp.live.ugai.d2j.timemachine.Vocab
 import jp.live.ugai.d2j.util.Accumulator
@@ -85,7 +85,7 @@ fun train() {
     val numLayers = 2
     val batchSize = 64
     val numSteps = 10
-    val numEpochs = Integer.getInteger("MAX_EPOCH", 30)
+    val numEpochs = Integer.getInteger("MAX_EPOCH", 3)
 
     val dropout = 0.2f
     val lr = 0.001f
@@ -192,10 +192,13 @@ fun train() {
                 false
             )
             val Y = output[0]
+            println("Y::: $Y")
             decState = output.subNDList(1)
+            println("DECSTATE::: $decState")
             // We use the token with the highest prediction likelihood as the input
             // of the decoder at the next time step
             decX = Y.argMax(2)
+            println("DECX::: $decX")
             val pred = decX.squeeze(0).getLong().toInt()
             // Save attention weights (to be covered later)
             if (saveAttentionWeights) {
@@ -273,14 +276,6 @@ fun train() {
     plot += scaleFillGradient(low = "blue", high = "red")
 // plot += scaleFillContinuous("red", "green")
     plot + ggsize(700, 200)
-}
-
-abstract class AttentionDecoder : Decoder() {
-    var attentionWeightArr: MutableList<Pair<FloatArray, Shape>> = mutableListOf()
-    abstract override fun initState(encOutputs: NDList): NDList
-    override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> {
-        throw UnsupportedOperationException("Not implemented")
-    }
 }
 
 class Seq2SeqAttentionDecoder(

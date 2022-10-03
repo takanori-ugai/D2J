@@ -1,15 +1,11 @@
 package jp.live.ugai.d2j
 
-import ai.djl.ndarray.NDArray
 import ai.djl.ndarray.NDList
 import ai.djl.ndarray.NDManager
 import ai.djl.ndarray.index.NDIndex
 import ai.djl.ndarray.types.DataType
 import ai.djl.ndarray.types.Shape
-import ai.djl.nn.AbstractBlock
-import ai.djl.nn.norm.Dropout
 import ai.djl.training.ParameterStore
-import ai.djl.util.PairList
 import jp.live.ugai.d2j.attention.MultiHeadAttention
 
 fun main() {
@@ -57,4 +53,3 @@ fun main() {
 }
 
 class SelfAttention
-

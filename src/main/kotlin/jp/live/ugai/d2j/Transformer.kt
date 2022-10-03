@@ -29,6 +29,7 @@ import ai.djl.training.loss.Loss
 import ai.djl.training.optimizer.Optimizer
 import ai.djl.training.tracker.Tracker
 import ai.djl.util.PairList
+import jp.live.ugai.d2j.attention.AttentionDecoder
 import jp.live.ugai.d2j.attention.MultiHeadAttention
 import jp.live.ugai.d2j.lstm.Encoder
 import jp.live.ugai.d2j.lstm.EncoderDecoder
@@ -37,7 +38,7 @@ import jp.live.ugai.d2j.util.Accumulator
 import jp.live.ugai.d2j.util.NMT
 import jp.live.ugai.d2j.util.StopWatch
 import jp.live.ugai.d2j.util.TrainingChapter9
-import java.lang.System.exit
+import java.util.Locale
 
 fun main() {
     System.setProperty("org.slf4j.simpleLogger.showThreadName", "false")
@@ -95,19 +96,17 @@ fun main() {
         }
 
         override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> {
-            return arrayOf<Shape>()
+            return inputShapes
         }
 
         override fun initializeChildBlocks(manager: NDManager, dataType: DataType, vararg inputShapes: Shape) {
-            val sub = manager.newSubManager()
             dropout.initialize(manager, dataType, *inputShapes)
             ln.initialize(manager, dataType, *inputShapes)
-            sub.close()
         }
     }
 
     val addNorm = AddNorm(0.5f)
-    addNorm.initialize(manager, DataType.FLOAT32, Shape(1, 4))
+    addNorm.initialize(manager, DataType.FLOAT32, Shape(2, 3, 4))
     println(addNorm.forward(ps, NDList(manager.ones(Shape(2, 3, 4)), manager.ones(Shape(2, 3, 4))), false)[0].shapeEquals(manager.ones(Shape(2, 3, 4))))
 
     class TransformerEncoderBlock(
@@ -278,7 +277,11 @@ fun main() {
 //                val keyValue = inputs[3].get(i.toLong()).concat(input0, 1)
                 val keyValue = input0
 //                keyValues!!.set(NDIndex(i.toLong()), keyValue)
-                keyValues = keyValue
+                if (training) {
+                    keyValues = keyValue
+                } else {
+                    keyValues = inputs[3].concat(input0)
+                }
             }
 
             var decValidLens: NDArray?
@@ -368,8 +371,9 @@ fun main() {
             val state = inputs.subNDList(1)
             val pos = posEncoding.forward(
                 ps,
-                NDList(embedding.forward(ps, NDList(X), training).head().mul(Math.sqrt(numHiddens.toDouble()))),
-                training
+                NDList(embedding.forward(ps, NDList(X), training, params).head().mul(Math.sqrt(numHiddens.toDouble()))),
+                training,
+                params
             )
             attentionWeightsArr1 = mutableListOf()
             attentionWeightsArr2 = mutableListOf()
@@ -415,7 +419,7 @@ fun main() {
         encoder.initialize(manager, DataType.FLOAT32, Shape(2, 35), Shape(2))
 
         val decoder = TransformerDecoder(tgtVocab.length(), numHiddens, ffnNumHiddens, numHeads, numBlks, dropout)
-        decoder.initialize(manager, DataType.FLOAT32, Shape(2, 35,256), Shape(2))
+        decoder.initialize(manager, DataType.FLOAT32, Shape(2, 35, 256), Shape(2))
 
         val net = EncoderDecoder(encoder, decoder)
         fun trainSeq2Seq(
@@ -473,15 +477,109 @@ fun main() {
                 }
                 lossValue = metric.get(0).toDouble() / metric.get(1)
                 speed = metric.get(1) / watch.stop()
-                if ((epoch + 1) % 10 == 0) {
+//                if ((epoch + 1) % 10 == 0) {
 //            animator.add(epoch + 1, lossValue.toFloat(), "loss")
 //            animator.show()
-                    println("${epoch + 1} : $lossValue")
-                }
+                println("${epoch + 1} : $lossValue")
+//                }
             }
             println("loss: %.3f, %.1f tokens/sec on %s%n".format(lossValue, speed, device.toString()))
         }
         trainSeq2Seq(net, dataset, lr, numEpochs, tgtVocab, device)
+
+        fun predictSeq2Seq(
+            net: EncoderDecoder,
+            srcSentence: String,
+            srcVocab: Vocab,
+            tgtVocab: Vocab,
+            numSteps: Int,
+            device: Device,
+            saveAttentionWeights: Boolean
+        ): Pair<String, List<NDArray?>> {
+            val srcTokens = srcVocab.getIdxs(srcSentence.lowercase(Locale.getDefault()).split(" ")) + listOf(srcVocab.getIdx("<eos>"))
+            val encValidLen = manager.create(srcTokens.size).reshape(1)
+            val truncateSrcTokens = NMT.truncatePad(srcTokens, numSteps, srcVocab.getIdx("<pad>"))
+            // Add the batch axis
+            val encX = manager.create(truncateSrcTokens.toIntArray()).expandDims(0)
+            val encOutputs = net.encoder.forward(ParameterStore(manager, false), NDList(encX, encValidLen), false)
+            var decState = net.decoder.initState(encOutputs)
+            // Add the batch axis
+            var decX = manager.create(floatArrayOf(tgtVocab.getIdx("<bos>").toFloat())).repeat(35).expandDims(0)
+            val outputSeq: MutableList<Int> = mutableListOf()
+            val attentionWeightSeq: MutableList<NDArray?> = mutableListOf()
+            for (i in 0 until numSteps) {
+//                println(i)
+                val output = net.decoder.forward(
+                    ParameterStore(manager, false),
+                    NDList(decX).addAll(decState),
+                    false
+                )
+
+//                val encOutputs = encoder.forward(parameterStore, encX, training, params)
+//                val decState = decoder.initState(encOutputs)
+//                val inp = NDList(decX).addAll(decState)
+//                return decoder.forward(parameterStore, inp, training, params)
+
+                val Y = output[0]
+                decState = output.subNDList(1)
+                // We use the token with the highest prediction likelihood as the input
+                // of the decoder at the next time step
+//                println("Y:::$Y")
+//                println("Y(1)::: ${Y.get(NDIndex("0,2")).argMax(0).getLong().toInt()}")
+//                decX = Y.argMax(2)
+//                println("DECX: ${decX.squeeze(0)}")
+//                val pred = decX.squeeze(0).getLong().toInt()
+                val pred = Y.get(NDIndex("0,2")).argMax(0).getLong().toInt()
+                // Save attention weights (to be covered later)
+                if (saveAttentionWeights) {
+                    attentionWeightSeq.add(net.decoder.attentionWeights)
+                }
+                // Once the end-of-sequence token is predicted, the generation of the
+                // output sequence is complete
+                if (pred == tgtVocab.getIdx("<eos>")) {
+                    break
+                }
+                outputSeq.add(pred)
+            }
+            val outputString: String = tgtVocab.toTokens(outputSeq).joinToString(separator = " ")
+            return Pair(outputString, attentionWeightSeq.toList())
+        }
+
+        /* Compute the BLEU. */
+        fun bleu(predSeq: String, labelSeq: String, k: Int): Double {
+            val predTokens = predSeq.split(" ")
+            val labelTokens = labelSeq.split(" ")
+            val lenPred = predTokens.size
+            val lenLabel = labelTokens.size
+            var score = Math.exp(Math.min(0.toDouble(), 1.0 - lenLabel / lenPred))
+            for (n in 1 until k + 1) {
+                var numMatches = 0
+                val labelSubs = mutableMapOf<String, Int>()
+                for (i in 0 until lenLabel - n + 1) {
+                    val key = labelTokens.subList(i, i + n).joinToString(separator = " ")
+                    labelSubs.put(key, labelSubs.getOrDefault(key, 0) + 1)
+                }
+                for (i in 0 until lenPred - n + 1) {
+                    // val key =predTokens.subList(i, i + n).joinToString(" ")
+                    val key = predTokens.subList(i, i + n).joinToString(separator = " ")
+                    if (labelSubs.getOrDefault(key, 0) > 0) {
+                        numMatches += 1
+                        labelSubs.put(key, labelSubs.getOrDefault(key, 0) - 1)
+                    }
+                }
+                score *= Math.pow(numMatches.toDouble() / (lenPred - n + 1).toDouble(), Math.pow(0.5, n.toDouble()))
+            }
+            return score
+        }
+
+        val engs = arrayOf("go .", "i lost .", "he's calm .", "i'm home .")
+        val fras = arrayOf("va !", "j'ai perdu .", "il est calme .", "je suis chez moi .")
+        for (i in engs.indices) {
+            val pair = predictSeq2Seq(net, engs[i], srcVocab, tgtVocab, numSteps, device, false)
+            val translation: String = pair.first
+            val attentionWeightSeq = pair.second
+            println("%s => %s, bleu %.3f".format(engs[i], translation, bleu(translation, fras[i], 2)))
+        }
     }
 
     train()
