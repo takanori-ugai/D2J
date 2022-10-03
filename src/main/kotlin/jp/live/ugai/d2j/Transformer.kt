@@ -266,23 +266,38 @@ fun main() {
 //        # decoding any output sequence token by token during prediction,
 //        # state[2][self.i] contains representations of the decoded output at
 //        # the i-th block up to the current time step
+
+            // TODO FIX IT
+//            if state[2][self.i] is None:
+//            key_values = X
+//            else:
+//            key_values = torch.cat((state[2][self.i], X), dim=1)
+//            state[2][self.i] = key_values
+
             var keyValues: NDArray? = null
             if (inputs.size < 4 || inputs[3] == null) {
                 keyValues = inputs[0]
-            } else if (inputs[3]!!.size(0) < i.toLong()) {
-//                keyValues = inputs[3].concat(inputs[0])
+            } else {
                 keyValues = inputs[3]
+            }
+            /*
+            } else if (inputs[3]!!.size(0) < i.toLong()) {
+                keyValues = inputs[3].concat(inputs[0])
+//                keyValues = inputs[3]
             } else {
 //                println(inputs[3].get(i.toLong()).concat(input0))
 //                val keyValue = inputs[3].get(i.toLong()).concat(input0, 1)
-                val keyValue = input0
+                keyValues = inputs[3].get(i.toLong()).concat(input0)
 //                keyValues!!.set(NDIndex(i.toLong()), keyValue)
-                if (training) {
-                    keyValues = keyValue
-                } else {
-                    keyValues = inputs[3].concat(input0)
-                }
+//                if (training) {
+//                    keyValues = keyValue.expandDims(0)
+//                } else {
+//                    keyValues = inputs[3].concat(input0.expandDims(0))
+//                }
             }
+            println("KEYVALUES:: $keyValues")
+
+             */
 
             var decValidLens: NDArray?
             if (training) {
