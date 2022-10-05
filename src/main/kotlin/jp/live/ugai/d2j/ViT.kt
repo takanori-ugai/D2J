@@ -41,9 +41,8 @@ class ViT(
 //    torch.randn(1, num_steps, num_hiddens))
         .setType(Parameter.Type.BIAS)
         .build()
-    val dropOut = Dropout.builder().optRate(embDropout).build()
-    val blks = mutableListOf<Pair<String, AbstractBlock>>()
     val blks0 = SequentialBlock()
+        .add(Dropout.builder().optRate(embDropout).build())
     val head = SequentialBlock()
         .add(LayerNorm.builder().build())
         .add(Linear.builder().setUnits(numClasses.toLong()).build())
@@ -66,8 +65,9 @@ class ViT(
         // X = torch.cat((self.cls_token.expand(X.shape[0], -1, -1), X), 1)
 
         X = clsToken.array.repeat(0, X.shape[0]).concat(X, 1)
-        X = dropOut.forward(parameterStore, NDList(X.add(posEmbedding.array)), training, params).head()
-        X = blks0.forward(parameterStore, NDList(X), training, params).head()
+//        X = dropOut.forward(parameterStore, NDList(X.add(posEmbedding.array)), training, params).head()
+//        X = blks0.forward(parameterStore, NDList(X), training, params).head()
+        X = blks0.forward(parameterStore, NDList(X.add(posEmbedding.array)), training, params).head()
         return head.forward(parameterStore, NDList(X.get(NDIndex(":, 0"))), training, params)
     }
 
@@ -75,7 +75,7 @@ class ViT(
         clsToken.initialize(manager, dataType)
         posEmbedding.initialize(manager, dataType)
         patchEmbedding.initialize(manager, dataType, Shape(inputShapes[0][0], inputShapes[0][1], imgSize.toLong(), imgSize.toLong()))
-        blks0.initialize(manager, dataType, Shape(inputShapes[0][0], numSteps.toLong(), numHiddens.toLong()), Shape(inputShapes[0][0]))
+        blks0.initialize(manager, dataType, Shape(inputShapes[0][0], numSteps.toLong(), numHiddens.toLong()))
         head.initialize(manager, dataType, Shape(inputShapes[0][0], numHiddens.toLong()))
     }
 

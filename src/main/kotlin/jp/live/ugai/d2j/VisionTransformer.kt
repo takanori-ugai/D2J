@@ -97,15 +97,14 @@ fun main() {
 
     val trainer: Trainer = model.newTrainer(config)
     trainer.initialize(X0.shape)
-    val metrics = Metrics()
-    trainer.metrics = metrics
-    EasyTrain.fit(trainer, 5, trainingSet, validationSet)
+    trainer.metrics = Metrics()
+    EasyTrain.fit(trainer, 1, trainingSet, validationSet)
 
     val batch = validationSet.getData(manager).iterator().next()
     val X3 = batch.getData().head()
     val yHat: IntArray = encoder.forward(ps, NDList(X3), false).head().argMax(1).toType(DataType.INT32, false).toIntArray()
     println(yHat.toList().subList(0, 20))
-    println(batch.getLabels().head().toFloatArray().toList().subList(0, 20))
+    println(batch.getLabels().head().toType(DataType.INT32, false).toIntArray().toList().subList(0, 20))
 }
 
 class PatchEmbedding(imgSize: Int = 96, val patchSize: Int = 16, val numHiddens: Int = 512) : AbstractBlock() {
@@ -128,11 +127,9 @@ class PatchEmbedding(imgSize: Int = 96, val patchSize: Int = 16, val numHiddens:
     }
 
     override fun initializeChildBlocks(manager: NDManager, dataType: DataType, vararg inputShapes: Shape) {
-        println(inputShapes.toList())
         conv.initialize(manager, dataType, *inputShapes)
     }
 
-    /* We won't implement this since we won't be using it but it's required as part of an AbstractBlock  */
     override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> {
         return arrayOf(Shape(inputShapes[0][0], numPatches.toLong(), numHiddens.toLong()))
     }
@@ -141,8 +138,9 @@ class PatchEmbedding(imgSize: Int = 96, val patchSize: Int = 16, val numHiddens:
 class ViTBlock(numHiddens: Int, val normShape: Int, mlpNumHiddens: Int, numHeads: Int, dropout: Float, useBias: Boolean = false) : AbstractBlock() {
     val ln1 = LayerNorm.builder().axis(normShape).build()
     val attention = MultiHeadAttention(numHiddens, numHeads, dropout, useBias)
-    val ln2 = LayerNorm.builder().axis(normShape).build()
-    val mlp = ViTMLP(mlpNumHiddens, numHiddens, dropout)
+    val ret0 = SequentialBlock()
+        .add(LayerNorm.builder().axis(normShape).build())
+        .add(ViTMLP(mlpNumHiddens, numHiddens, dropout))
 
     override fun forwardInternal(
         parameterStore: ParameterStore,
@@ -155,19 +153,16 @@ class ViTBlock(numHiddens: Int, val normShape: Int, mlpNumHiddens: Int, numHeads
         X = ln1.forward(parameterStore, NDList(X), training, params).head()
         val att = attention.forward(parameterStore, NDList(X, X, X, validLens), training, params).head()
         X = X.add(att)
-        val ln = ln2.forward(parameterStore, NDList(X), training, params).head()
-        val ret = mlp.forward(parameterStore, NDList(ln), training, params)
-        return ret
+        return ret0.forward(parameterStore, NDList(X), training, params)
     }
 
     override fun initializeChildBlocks(manager: NDManager, dataType: DataType, vararg inputShapes: Shape) {
         val arr = List<Long>(normShape + 1) { normShape.toLong() }
         ln1.initialize(manager, dataType, Shape(arr))
-        val shapes = arrayOf(inputShapes[0], inputShapes[0], inputShapes[0], inputShapes[1])
+        val shapes = arrayOf(inputShapes[0], inputShapes[0], inputShapes[0], Shape(inputShapes[0][0]))
 
         attention.initialize(manager, dataType, *shapes)
-        ln2.initialize(manager, dataType, Shape(arr))
-        mlp.initialize(manager, dataType, inputShapes[0])
+        ret0.initialize(manager, dataType, Shape(arr))
     }
 
     /* We won't implement this since we won't be using it but it's required as part of an AbstractBlock  */
@@ -177,18 +172,12 @@ class ViTBlock(numHiddens: Int, val normShape: Int, mlpNumHiddens: Int, numHeads
 }
 
 class ViTMLP(mlpNumHiddens: Int, mlpNumOutputs: Int, dropout: Float = 0.5f) : SequentialBlock() {
-    val dense1 = Linear.builder().setUnits(mlpNumHiddens.toLong()).build()
-    val gelu: (NDList) -> NDList = Activation::relu
-    val dropout1 = Dropout.builder().optRate(dropout).build()
-    val dense2 = Linear.builder().setUnits(mlpNumOutputs.toLong()).build()
-    val dropout2 = Dropout.builder().optRate(dropout).build()
-
     init {
-        add(dense1)
-        add(gelu)
-        add(dropout1)
-        add(dense2)
-        add(dropout2)
+        add(Linear.builder().setUnits(mlpNumHiddens.toLong()).build())
+        add(Activation::relu)
+        add(Dropout.builder().optRate(dropout).build())
+        add(Linear.builder().setUnits(mlpNumOutputs.toLong()).build())
+        add(Dropout.builder().optRate(dropout).build())
     }
 }
 
