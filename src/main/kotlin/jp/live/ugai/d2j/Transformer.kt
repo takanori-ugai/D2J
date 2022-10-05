@@ -420,6 +420,8 @@ fun main() {
         val numHeads = 4
         val batchSize = 2
         val numEpochs = 30
+        val numSteps = 35
+        println(numSteps)
 
         val dropout = 0.2f
         val lr = 0.001f
