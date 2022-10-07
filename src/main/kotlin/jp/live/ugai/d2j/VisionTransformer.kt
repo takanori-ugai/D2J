@@ -65,7 +65,17 @@ fun main() {
     val batchSize0 = 256
     val lr = 0.001f
     val X0 = manager.ones(Shape(batchSize0.toLong(), 1, imgSize0.toLong(), imgSize0.toLong()))
-    val encoder = ViT(imgSize0, patchSize0, numHiddens0, mlpNumHiddens0, numHeads0, numBlks0, embDropout0, blkDropout0, lr)
+    val encoder = ViT(
+        imgSize0,
+        patchSize0,
+        numHiddens0,
+        mlpNumHiddens0,
+        numHeads0,
+        numBlks0,
+        embDropout0,
+        blkDropout0,
+        lr
+    )
 //    encoder.initialize(manager, DataType.FLOAT32, X0.shape)
 
     val randomShuffle = true
@@ -100,11 +110,16 @@ fun main() {
     val trainer: Trainer = model.newTrainer(config)
     trainer.initialize(X0.shape)
     trainer.metrics = Metrics()
-    EasyTrain.fit(trainer, 1, trainingSet, validationSet)
+    EasyTrain.fit(trainer, 5, trainingSet, validationSet)
 
     val batch = validationSet.getData(manager).iterator().next()
     val X3 = batch.getData().head()
-    val yHat: IntArray = encoder.forward(ps, NDList(X3), false).head().argMax(1).toType(DataType.INT32, false).toIntArray()
+    val yHat: IntArray = encoder
+        .forward(ps, NDList(X3), false)
+        .head()
+        .argMax(1)
+        .toType(DataType.INT32, false)
+        .toIntArray()
     println(yHat.toList().subList(0, 20))
     println(batch.getLabels().head().toType(DataType.INT32, false).toIntArray().toList().subList(0, 20))
 }
@@ -137,7 +152,14 @@ class PatchEmbedding(imgSize: Int = 96, val patchSize: Int = 16, val numHiddens:
     }
 }
 
-class ViTBlock(numHiddens: Int, val normShape: Int, mlpNumHiddens: Int, numHeads: Int, dropout: Float, useBias: Boolean = false) : AbstractBlock() {
+class ViTBlock(
+    numHiddens: Int,
+    val normShape: Int,
+    mlpNumHiddens: Int,
+    numHeads: Int,
+    dropout: Float,
+    useBias: Boolean = false
+) : AbstractBlock() {
     val ln1 = LayerNorm.builder().axis(normShape).build()
     val attention = MultiHeadAttention(numHiddens, numHeads, dropout, useBias)
     val ret0 = SequentialBlock()
