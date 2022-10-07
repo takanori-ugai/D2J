@@ -50,7 +50,7 @@ class ViT(
         addParameter(clsToken)
         addParameter(posEmbedding)
         clsToken.setInitializer(ConstantInitializer(0f))
-        for (i in 0 until numBlks) {
+        repeat(numBlks) {
             blks0.add(ViTBlock(numHiddens, numHiddens, mlpNumHiddens, numHeads, blkDropout, useBias))
         }
     }
@@ -71,10 +71,17 @@ class ViT(
         return head.forward(parameterStore, NDList(X.get(NDIndex(":, 0"))), training, params)
     }
 
-    override fun initializeChildBlocks(manager: NDManager, dataType: DataType, vararg inputShapes: Shape) {
+    override fun initializeChildBlocks(
+        manager: NDManager,
+        dataType: DataType,
+        vararg inputShapes: Shape
+    ) {
         clsToken.initialize(manager, dataType)
         posEmbedding.initialize(manager, dataType)
-        patchEmbedding.initialize(manager, dataType, Shape(inputShapes[0][0], inputShapes[0][1], imgSize.toLong(), imgSize.toLong()))
+        patchEmbedding.initialize(
+            manager, dataType,
+            Shape(inputShapes[0][0], inputShapes[0][1], imgSize.toLong(), imgSize.toLong())
+        )
         blks0.initialize(manager, dataType, Shape(inputShapes[0][0], numSteps.toLong(), numHiddens.toLong()))
         head.initialize(manager, dataType, Shape(inputShapes[0][0], numHiddens.toLong()))
     }
