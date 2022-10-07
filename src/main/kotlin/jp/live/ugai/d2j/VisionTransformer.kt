@@ -84,6 +84,8 @@ fun main() {
         .setSampling(batchSize0, false)
         .optLimit(Long.MAX_VALUE)
         .build()
+    trainingSet.prepare()
+    validationSet.prepare()
     val model: Model = Model.newInstance("softmax-regression")
     model.setBlock(encoder)
     val loss: Loss = Loss.softmaxCrossEntropyLoss()
