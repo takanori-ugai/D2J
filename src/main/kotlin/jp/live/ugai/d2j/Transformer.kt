@@ -135,8 +135,18 @@ fun main() {
         ): NDList {
             val x = inputs[0]
             val validLens = inputs[1]
-            val y = addnorm1.forward(ps, NDList(x, attention.forward(ps, NDList(x, x, x, validLens), training, params).singletonOrThrow()), training, params)
-            val ret = addnorm2.forward(ps, NDList(y.singletonOrThrow(), ffn.forward(ps, y, training, params).singletonOrThrow()), training, params)
+            val y = addnorm1.forward(
+                ps,
+                NDList(x, attention.forward(ps, NDList(x, x, x, validLens), training, params).singletonOrThrow()),
+                training,
+                params
+            )
+            val ret = addnorm2.forward(
+                ps,
+                NDList(y.singletonOrThrow(), ffn.forward(ps, y, training, params).singletonOrThrow()),
+                training,
+                params
+            )
             return ret
         }
 
@@ -198,7 +208,10 @@ fun main() {
         ): NDList {
             var X = inputs[0]
             val validLens = inputs[1]
-            val emb = embedding.forward(ps, NDList(X), training, params).singletonOrThrow().mul(Math.sqrt(numHiddens.toDouble()))
+            val emb = embedding
+                .forward(ps, NDList(X), training, params)
+                .singletonOrThrow()
+                .mul(Math.sqrt(numHiddens.toDouble()))
             X = posEncoding.forward(ps, NDList(emb), training, params).singletonOrThrow()
             for (i in 0 until blks.size) {
                 X = blks[i].forward(ps, NDList(X, validLens), training, params).singletonOrThrow()
@@ -274,7 +287,7 @@ fun main() {
 //            key_values = torch.cat((state[2][self.i], X), dim=1)
 //            state[2][self.i] = key_values
 
-            var keyValues: NDArray? = null
+            var keyValues: NDArray?
             if (inputs.size < 4 || inputs[3] == null) {
                 keyValues = inputs[0]
             } else {
@@ -316,7 +329,12 @@ fun main() {
 //        # (batch_size, num_steps, num_hiddens)
             val Y2 = attention2.forward(ps, NDList(Y.head(), encOutputs, encOutputs, envValidLens), training)
             val Z = addnorm2.forward(ps, NDList(Y.head(), Y2.head()), training)
-            return NDList(addnorm3.forward(ps, NDList(Z.head(), ffn.forward(ps, NDList(Z), training).head()), training).head(), encOutputs, envValidLens, keyValues)
+            return NDList(
+                addnorm3.forward(ps, NDList(Z.head(), ffn.forward(ps, NDList(Z), training).head()), training).head(),
+                encOutputs,
+                envValidLens,
+                keyValues
+            )
         }
 
         override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> {
@@ -432,7 +450,14 @@ fun main() {
         val srcVocab: Vocab = dataNMT.second.first
         val tgtVocab: Vocab = dataNMT.second.second
 
-        val encoder = TransformerEncoder(srcVocab.length(), numHiddens, ffnNumHiddens.toLong(), numHeads.toLong(), numBlks, dropout)
+        val encoder = TransformerEncoder(
+            srcVocab.length(),
+            numHiddens,
+            ffnNumHiddens.toLong(),
+            numHeads.toLong(),
+            numBlks,
+            dropout
+        )
         encoder.initialize(manager, DataType.FLOAT32, Shape(2, 35), Shape(2))
 
         val decoder = TransformerDecoder(tgtVocab.length(), numHiddens, ffnNumHiddens, numHeads, numBlks, dropout)

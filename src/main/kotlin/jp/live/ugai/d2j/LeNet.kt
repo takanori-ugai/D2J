@@ -107,8 +107,8 @@ fun main() {
     }
 
     val batchSize = 256
-    val numEpochs = Integer.getInteger("MAX_EPOCH", 10)
-    val epochCount = DoubleArray(numEpochs) { it.toDouble() + 1f }
+    val numEpochs = 10
+//    val epochCount = DoubleArray(numEpochs) { it.toDouble() + 1f }
 
     val trainIter = FashionMnist.builder()
         .optUsage(Dataset.Usage.TRAIN)

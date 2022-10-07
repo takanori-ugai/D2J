@@ -9,11 +9,8 @@ import ai.djl.training.dataset.ArrayDataset
 import ai.djl.training.util.DownloadUtils
 import jp.live.ugai.d2j.timemachine.Vocab
 import java.io.File
-import java.io.InputStream
 import java.nio.charset.StandardCharsets
-import java.util.Enumeration
 import java.util.Locale
-import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
 
 fun main() {
@@ -21,13 +18,15 @@ fun main() {
 
     fun readDataNMT(): String? {
         DownloadUtils.download("http://d2l-data.s3-accelerate.amazonaws.com/fra-eng.zip", "fra-eng.zip")
-        val zipFile = ZipFile(File("fra-eng.zip"))
-        val entries: Enumeration<out ZipEntry> = zipFile.entries()
-        while (entries.hasMoreElements()) {
-            val entry: ZipEntry = entries.nextElement()
-            if (entry.name.contains("fra.txt")) {
-                val stream: InputStream = zipFile.getInputStream(entry)
-                return String(stream.readAllBytes(), StandardCharsets.UTF_8)
+        ZipFile(File("fra-eng.zip")).use { zipFile ->
+            val entries = zipFile.entries()
+            while (entries.hasMoreElements()) {
+                val entry = entries.nextElement()
+                if (entry.name.contains("fra.txt")) {
+                    zipFile.getInputStream(entry).use { stream ->
+                        return String(stream.readAllBytes(), StandardCharsets.UTF_8)
+                    }
+                }
             }
         }
         return null

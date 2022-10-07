@@ -10,7 +10,7 @@ plugins {
     jacoco
     id("org.jetbrains.dokka") version "1.7.10"
     id("io.gitlab.arturbosch.detekt") version "1.21.0"
-//    id("com.github.sherter.google-java-format") version "0.9"
+    id("com.diffplug.spotless") version "6.11.0"
 //    kotlin("jupyter.api") version "0.10.1-8"
     id("com.github.jk1.dependency-license-report") version "2.1"
     id("com.github.spotbugs") version "5.0.9"
@@ -51,11 +51,6 @@ dependencies {
     implementation("com.opencsv:opencsv:5.7.0")
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.0")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.9.0")
-//    ktlint("com.pinterest:ktlint:0.47.1") {
-//        attributes {
-//            attribute(Bundling.BUNDLING_ATTRIBUTE, objects.named(Bundling.EXTERNAL))
-//        }
-//    }
 }
 
 tasks {
@@ -114,22 +109,7 @@ tasks {
         }
     }
 }
-/*
-task("ktlint", JavaExec::class) {
-    group = "verification"
-    description = "Check Kotlin code style."
-    classpath = ktlint
-    mainClass.set("com.pinterest.ktlint.Main")
-    args = listOf("src/**/*.kt")
-}
 
-val ktlintFormat by tasks.creating(JavaExec::class) {
-    description = "Fix Kotlin code style deviations."
-    classpath = ktlint
-    mainClass.set("com.pinterest.ktlint.Main")
-    args = listOf("-F", "src/**/*.kt")
-}
-*/
 ktlint {
     verbose.set(true)
     outputToConsole.set(true)
@@ -149,7 +129,6 @@ detekt {
     allRules = false // activate all available (even unstable) rules.
     // point to your custom config defining rules to run, overwriting default behavior
     config = files("$projectDir/config/detekt.yml")
-//    baseline = file("$projectDir/config/baseline.xml") // a way of suppressing issues before introducing detekt
 }
 
 spotbugs {
@@ -163,4 +142,17 @@ jacoco {
 
 application {
     mainClass.set("jp.live.ugai.d2j.BatchNorm2Kt")
+}
+
+spotless {
+    java {
+        target("src/*/java/**/*.java")
+        // Use the default importOrder configuration
+        importOrder()
+        removeUnusedImports()
+
+        // Choose one of these formatters.
+        googleJavaFormat("1.15.0") // has its own section below
+        formatAnnotations() // fixes formatting of type annotations, see below
+    }
 }

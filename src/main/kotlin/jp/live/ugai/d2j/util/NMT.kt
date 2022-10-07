@@ -23,8 +23,9 @@ object NMT {
         while (entries.hasMoreElements()) {
             val entry = entries.nextElement()
             if (entry.getName().contains("fra.txt")) {
-                val stream = zipFile.getInputStream(entry)
-                return String(stream.readAllBytes(), StandardCharsets.UTF_8)
+                zipFile.getInputStream(entry).use { stream ->
+                    return String(stream.readAllBytes(), StandardCharsets.UTF_8)
+                }
             }
         }
         return null

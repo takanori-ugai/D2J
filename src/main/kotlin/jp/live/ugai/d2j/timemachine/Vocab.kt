@@ -67,11 +67,7 @@ class Vocab(tokens: List<List<String>>, minFreq: Int, reservedTokens: List<Strin
         fun <T> countCorpus2D(tokens: List<List<T>>): Map<T, Int> {
             val allTokens: MutableList<T> = mutableListOf()
             for (token in tokens) {
-                for (t in token) {
-                    if (t !== "") {
-                        allTokens.add(t)
-                    }
-                }
+                allTokens.addAll(token.filterNot { "".equals(it) })
             }
             return countCorpus(allTokens)
         }
