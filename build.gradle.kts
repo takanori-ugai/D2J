@@ -8,7 +8,7 @@ plugins {
     java
     id("com.github.johnrengelman.shadow") version "7.1.2"
     jacoco
-    id("org.jetbrains.dokka") version "1.7.10"
+    id("org.jetbrains.dokka") version "1.7.20"
     id("io.gitlab.arturbosch.detekt") version "1.21.0"
     id("com.diffplug.spotless") version "6.11.0"
 //    kotlin("jupyter.api") version "0.10.1-8"
@@ -43,9 +43,9 @@ dependencies {
 //    runtimeOnly("ai.djl.pytorch:pytorch-native-cpu:1.12.1")
     //    implementation("ai.djl.pytorch:pytorch-native-cpu:1.12.1:linux-x86_64")
 //    runtimeOnly("ai.djl.pytorch:pytorch-native-cu116:1.12.1:linux-x86_64")
-    implementation("org.jetbrains.lets-plot:lets-plot-common:2.4.0")
-    implementation("org.jetbrains.lets-plot:lets-plot-kotlin-jvm:4.0.0")
-    runtimeOnly("org.slf4j:slf4j-simple:2.0.1")
+    implementation("org.jetbrains.lets-plot:lets-plot-common:2.5.0")
+    implementation("org.jetbrains.lets-plot:lets-plot-kotlin-jvm:4.1.0")
+    runtimeOnly("org.slf4j:slf4j-simple:2.0.3")
     implementation("org.apache.commons:commons-math3:3.6.1")
     implementation(kotlin("stdlib-jdk8"))
     implementation("com.opencsv:opencsv:5.7.0")

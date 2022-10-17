@@ -49,13 +49,13 @@ fun main() {
     val mySeq = List<Int>(35) { it }
 
     for (pair in seqDataIterRandom(mySeq, 2, 5, manager)) {
-        println("X: ${pair[0].toDebugString(50, 50, 50, 50)}")
-        println("Y: ${pair[1].toDebugString(50, 50, 50, 50)}")
+        println("X: ${pair[0].toDebugString(50, 50, 50, 50, true)}")
+        println("Y: ${pair[1].toDebugString(50, 50, 50, 50, true)}")
     }
 
     for (pair in seqDataIterSequential(mySeq, 2, 5, manager)) {
-        println("X: ${pair[0].toDebugString(10, 10, 10, 10)}")
-        println("Y: ${pair[1].toDebugString(10, 10, 10, 10)}")
+        println("X: ${pair[0].toDebugString(10, 10, 10, 10, true)}")
+        println("Y: ${pair[1].toDebugString(10, 10, 10, 10, true)}")
     }
 }
 
