@@ -3,8 +3,8 @@ import io.gitlab.arturbosch.detekt.Detekt
 import org.jlleitschuh.gradle.ktlint.reporter.ReporterType
 
 plugins {
-    kotlin("jvm") version "1.7.20"
-    kotlin("plugin.serialization") version "1.7.20"
+    kotlin("jvm") version "1.7.21"
+    kotlin("plugin.serialization") version "1.7.21"
     java
     id("com.github.johnrengelman.shadow") version "7.1.2"
     jacoco
@@ -21,7 +21,7 @@ plugins {
 group = "jp.live.ugai"
 version = "1.0-SNAPSHOT"
 // val v = "0.19.0-SNAPSHOT"
-val v = "0.20.0-SNAPSHOT"
+val v = "0.21.0-SNAPSHOT"
 
 // val ktlint by configurations.creating
 
@@ -43,12 +43,12 @@ dependencies {
 //    runtimeOnly("ai.djl.pytorch:pytorch-native-cpu:1.12.1")
     //    implementation("ai.djl.pytorch:pytorch-native-cpu:1.12.1:linux-x86_64")
 //    runtimeOnly("ai.djl.pytorch:pytorch-native-cu116:1.12.1:linux-x86_64")
-    implementation("org.jetbrains.lets-plot:lets-plot-common:2.5.0")
+    implementation("org.jetbrains.lets-plot:lets-plot-common:2.5.1")
     implementation("org.jetbrains.lets-plot:lets-plot-kotlin-jvm:4.1.0")
-    runtimeOnly("org.slf4j:slf4j-simple:2.0.3")
+    runtimeOnly("org.slf4j:slf4j-simple:2.0.5")
     implementation("org.apache.commons:commons-math3:3.6.1")
     implementation(kotlin("stdlib-jdk8"))
-    implementation("com.opencsv:opencsv:5.7.0")
+    implementation("com.opencsv:opencsv:5.7.1")
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.0")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.9.0")
 }
