@@ -3,12 +3,12 @@ import io.gitlab.arturbosch.detekt.Detekt
 import org.jlleitschuh.gradle.ktlint.reporter.ReporterType
 
 plugins {
-    kotlin("jvm") version "1.7.21"
-    kotlin("plugin.serialization") version "1.7.21"
+    kotlin("jvm") version "1.8.10"
+    kotlin("plugin.serialization") version "1.8.10"
     java
     id("com.github.johnrengelman.shadow") version "7.1.2"
     jacoco
-    id("org.jetbrains.dokka") version "1.7.20"
+    id("org.jetbrains.dokka") version "1.8.10"
     id("io.gitlab.arturbosch.detekt") version "1.21.0"
     id("com.diffplug.spotless") version "6.11.0"
 //    kotlin("jupyter.api") version "0.10.1-8"
@@ -21,7 +21,7 @@ plugins {
 group = "jp.live.ugai"
 version = "1.0-SNAPSHOT"
 // val v = "0.19.0-SNAPSHOT"
-val v = "0.21.0-SNAPSHOT"
+val v = "0.22.0-SNAPSHOT"
 
 // val ktlint by configurations.creating
 
@@ -35,13 +35,13 @@ repositories {
 dependencies {
     implementation("ai.djl:basicdataset:$v")
     implementation("ai.djl:api:$v")
-    runtimeOnly("ai.djl.mxnet:mxnet-engine:$v")
+//    runtimeOnly("ai.djl.mxnet:mxnet-engine:$v")
     runtimeOnly("ai.djl:model-zoo:$v")
-    runtimeOnly("ai.djl.mxnet:mxnet-model-zoo:$v")
+//    runtimeOnly("ai.djl.mxnet:mxnet-model-zoo:$v")
 
 //    runtimeOnly("ai.djl.mxnet:mxnet-native-cu112mkl:1.9.1:linux-x86_64")
 //    runtimeOnly("ai.djl.mxnet:mxnet-native:1.9.1:win-x86_64")
-//    runtimeOnly("ai.djl.pytorch:pytorch-engine:$v")
+    runtimeOnly("ai.djl.pytorch:pytorch-engine:$v")
 //    runtimeOnly("ai.djl.pytorch:pytorch-jni:1.12.1-$v")
 //    runtimeOnly("ai.djl.pytorch:pytorch-native-cpu:1.12.1")
     //    implementation("ai.djl.pytorch:pytorch-native-cpu:1.12.1:linux-x86_64")
@@ -50,7 +50,7 @@ dependencies {
     implementation("org.jetbrains.lets-plot:lets-plot-kotlin-jvm:4.1.0")
     runtimeOnly("org.slf4j:slf4j-simple:2.0.5")
     implementation("org.apache.commons:commons-math3:3.6.1")
-    implementation(kotlin("stdlib-jdk8"))
+    implementation(kotlin("stdlib"))
     implementation("com.opencsv:opencsv:5.7.1")
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.0")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.9.0")
