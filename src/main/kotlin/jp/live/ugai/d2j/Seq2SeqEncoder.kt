@@ -218,6 +218,7 @@ fun main() {
         val outputString: String = tgtVocab.toTokens(outputSeq).joinToString(separator = " ")
         return Pair(outputString, attentionWeightSeq.toList())
     }
+
     /* Compute the BLEU. */
     fun bleu(predSeq: String, labelSeq: String, k: Int): Double {
         val predTokens = predSeq.split(" ")

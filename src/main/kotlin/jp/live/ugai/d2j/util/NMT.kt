@@ -16,7 +16,8 @@ import java.util.zip.ZipFile
 object NMT {
     fun readDataNMT(): String? {
         DownloadUtils.download(
-            "http://d2l-data.s3-accelerate.amazonaws.com/fra-eng.zip", "fra-eng.zip"
+            "http://d2l-data.s3-accelerate.amazonaws.com/fra-eng.zip",
+            "fra-eng.zip"
         )
         val zipFile = ZipFile(File("fra-eng.zip"))
         val entries = zipFile.entries()

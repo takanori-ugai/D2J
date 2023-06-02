@@ -379,7 +379,8 @@ fun main() {
                         override fun unbatchify(ndList: NDList): Array<NDList> {
                             return arrayOf<NDList>()
                         }
-                    })
+                    }
+                )
                 .setSampling(batchSize, true)
                 .build()
 

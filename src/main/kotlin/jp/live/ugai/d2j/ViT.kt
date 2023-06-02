@@ -79,7 +79,8 @@ class ViT(
         clsToken.initialize(manager, dataType)
         posEmbedding.initialize(manager, dataType)
         patchEmbedding.initialize(
-            manager, dataType,
+            manager,
+            dataType,
             Shape(inputShapes[0][0], inputShapes[0][1], imgSize.toLong(), imgSize.toLong())
         )
         blks0.initialize(manager, dataType, Shape(inputShapes[0][0], numSteps.toLong(), numHiddens.toLong()))

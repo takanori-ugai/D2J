@@ -173,7 +173,7 @@ class ViTBlock(
         params: PairList<String, Any>?
     ): NDList {
         var X = inputs[0]
-        val validLens = if (inputs.size <2) null else inputs[1]
+        val validLens = if (inputs.size < 2) null else inputs[1]
         X = ln1.forward(parameterStore, NDList(X), training, params).head()
         val att = attention.forward(parameterStore, NDList(X, X, X, validLens), training, params).head()
         X = X.add(att)

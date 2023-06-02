@@ -26,6 +26,7 @@ fun main(args: Array<String>) {
         val epochs = mutableListOf<Int>()
         val values = mutableListOf<Float>()
         val metrics = mutableListOf<String>()
+
         // Add a single metric to the table
         fun add(epoch: Int, value: Float, metric: String) {
             epochs.add(epoch)
@@ -111,9 +112,11 @@ fun main(args: Array<String>) {
             yHat.argMax(1).toType(DataType.INT32, false)
                 .eq(y.toType(DataType.INT32, false))
                 .sum().toType(DataType.FLOAT32, false).getFloat()
-        } else yHat.toType(DataType.INT32, false)
-            .eq(y.toType(DataType.INT32, false))
-            .sum().toType(DataType.FLOAT32, false).getFloat()
+        } else {
+            yHat.toType(DataType.INT32, false)
+                .eq(y.toType(DataType.INT32, false))
+                .sum().toType(DataType.FLOAT32, false).getFloat()
+        }
     }
 
     fun evaluateAccuracy(net: (NDArray) -> NDArray, dataIterator: Iterable<Batch>): Float {
@@ -180,7 +183,8 @@ fun main(args: Array<String>) {
                 metric.add(
                     floatArrayOf(
                         l.sum().toType(DataType.FLOAT32, false).getFloat(),
-                        accuracy(yHat, y), y.size().toFloat()
+                        accuracy(yHat, y),
+                        y.size().toFloat()
                     )
                 )
                 gc.close()
