@@ -1,75 +1,102 @@
 package jp.live.ugai.d2j.timemachine
 
+/**
+ * Class representing a vocabulary for a set of tokens.
+ *
+ * @property tokens List of token lists to be included in the vocabulary.
+ * @property minFreq Minimum frequency for a token to be included in the vocabulary.
+ * @property reservedTokens List of reserved tokens to be included in the vocabulary regardless of their frequency.
+ */
 class Vocab(tokens: List<List<String>>, minFreq: Int, reservedTokens: List<String>) {
-    // The index for the unknown token is 0
+    /**
+     * @property unk Index of the unknown token.
+     */
     var unk: Int = 0
+
+    /**
+     * @property tokenFreqs List of pairs of tokens and their frequencies.
+     */
     var tokenFreqs: List<Pair<String, Int>>
+
+    /**
+     * @property idxToToken List of tokens indexed by their indices.
+     */
     var idxToToken: MutableList<String> = mutableListOf()
+
+    /**
+     * @property tokenToIdx Map of tokens to their indices.
+     */
     var tokenToIdx: MutableMap<String, Int> = mutableMapOf()
 
     init {
         // Sort according to frequencies
         tokenFreqs = countCorpus2D(tokens).toList().sortedByDescending { (_, value) -> value }
 
-        val uniqTokens: MutableList<String> = mutableListOf()
-        uniqTokens.add("<unk>")
-        uniqTokens.addAll(reservedTokens)
-        for ((key, value) in tokenFreqs) {
-            if (value >= minFreq && !uniqTokens.contains(key)) {
-                uniqTokens.add(key)
-            }
-        }
-        for (token in uniqTokens) {
+        val uniqTokens = mutableListOf("<unk>").apply { addAll(reservedTokens) }
+        uniqTokens.addAll(tokenFreqs.filter { it.second >= minFreq && !uniqTokens.contains(it.first) }.map { it.first })
+
+        uniqTokens.forEachIndexed { index, token ->
             idxToToken.add(token)
-            tokenToIdx[token] = idxToToken.size - 1
+            tokenToIdx[token] = index
         }
     }
 
-    fun length(): Int {
-        return idxToToken.size
-    }
+    /**
+     * Returns the size of the vocabulary.
+     *
+     * @return Size of the vocabulary.
+     */
+    fun length() = idxToToken.size
 
-    fun getIdxs(tokens: List<String>): List<Int> {
-        val idxs: MutableList<Int> = mutableListOf()
-        for (token in tokens) {
-            idxs.add(getIdx(token))
-        }
-        return idxs
-    }
+    /**
+     * Returns the indices of the given list of tokens.
+     *
+     * @param tokens List of tokens.
+     * @return List of indices.
+     */
+    fun getIdxs(tokens: List<String>) = tokens.map { getIdx(it) }
 
-    fun getIdx(token: String): Int {
-        return tokenToIdx.getOrDefault(token, unk)
-    }
+    /**
+     * Returns the index of the given token.
+     *
+     * @param token Token.
+     * @return Index of the token.
+     */
+    fun getIdx(token: String) = tokenToIdx.getOrDefault(token, unk)
 
-    fun toTokens(indices: List<Int>): List<String> {
-        val tokens: MutableList<String> = mutableListOf()
-        for (index in indices) {
-            tokens.add(toToken(index))
-        }
-        return tokens
-    }
+    /**
+     * Returns the tokens corresponding to the given list of indices.
+     *
+     * @param indices List of indices.
+     * @return List of tokens.
+     */
+    fun toTokens(indices: List<Int>) = indices.map { toToken(it) }
 
-    fun toToken(index: Int): String {
-        return idxToToken[index]
-    }
+    /**
+     * Returns the token corresponding to the given index.
+     *
+     * @param index Index.
+     * @return Token.
+     */
+    fun toToken(index: Int) = idxToToken[index]
 
     companion object {
-        /** Count token frequencies.  */
-        fun <T> countCorpus(tokens: List<T>): Map<T, Int> {
-            val counter = mutableMapOf<T, Int>()
-            for (token in tokens) {
-                counter[token] = counter.getOrDefault(token, 0) + 1
-            }
-            return counter
-        }
+        /**
+         * Counts the frequency of each token in the given list of tokens.
+         *
+         * @param T Type of the tokens.
+         * @param tokens List of tokens.
+         * @return Map of tokens to their frequencies.
+         */
+        fun <T> countCorpus(tokens: List<T>) = tokens.groupingBy { it }.eachCount()
 
-        /** Flatten a list of token lists into a list of tokens  */
-        fun <T> countCorpus2D(tokens: List<List<T>>): Map<T, Int> {
-            val allTokens: MutableList<T> = mutableListOf()
-            for (token in tokens) {
-                allTokens.addAll(token.filterNot { "".equals(it) })
-            }
-            return countCorpus(allTokens)
-        }
+        /**
+         * Flattens a list of token lists into a list of tokens and counts the frequency of each token.
+         *
+         * @param T Type of the tokens.
+         * @param tokens List of token lists.
+         * @return Map of tokens to their frequencies.
+         */
+        fun <T> countCorpus2D(tokens: List<List<T>>) = countCorpus(tokens.flatten())
     }
 }

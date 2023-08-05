@@ -5,10 +5,29 @@ import ai.djl.ndarray.NDList
 import ai.djl.ndarray.types.Shape
 import ai.djl.nn.AbstractBlock
 
-/** The base decoder interface for the encoder-decoder architecture.  */
+/**
+ * This abstract class represents a Decoder.
+ *
+ * @property attentionWeights The attention weights.
+ */
 abstract class Decoder : AbstractBlock() {
     open var attentionWeights: NDArray? = null
+
+    /**
+     * Initializes the state of the Decoder.
+     *
+     * @param encOutputs The encoded outputs.
+     * @return The initialized state.
+     */
     abstract fun initState(encOutputs: NDList): NDList
+
+    /**
+     * Gets the output shapes of the Decoder.
+     *
+     * @param inputShapes The input shapes.
+     * @return The output shapes.
+     * @throws UnsupportedOperationException If the method is not implemented.
+     */
     override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> {
         throw UnsupportedOperationException("Not implemented")
     }

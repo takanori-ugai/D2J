@@ -17,9 +17,10 @@ fun main() {
     val fx = x.map(f)
     val gx = x.map(g)
 
-    val group1 = Array<String>(x.size) { "Expected Risk" }.toList()
-    val group2 = Array<String>(x.size) { "Empirical Risk" }.toList()
+    val group1 = List(x.size) { "Expected Risk" }
+    val group2 = List(x.size) { "Empirical Risk" }
 }
+
 fun plotGD(fLine: List<Float>, res: List<Float>, func: (Float) -> Float, width: Int, height: Int): Plot {
     var data = mapOf(
         "x" to fLine,
@@ -29,11 +30,11 @@ fun plotGD(fLine: List<Float>, res: List<Float>, func: (Float) -> Float, width: 
         "f" to res.map(func),
         "x1" to res
     )
-    var plot = letsPlot()
-    plot += geomLine(data = data) { x = "x" ; y = "fx" }
-    plot += geomLine(data = data1, color = "red") { x = "x1"; y = "f" }
-    plot += geomPoint(data = data1, size = 3.0) { x = "x1"; y = "f" }
-    return (plot + ggsize(width, height))
+    val plot = letsPlot() +
+        geomLine(data = data) { x = "x"; y = "fx" } +
+        geomLine(data = data1, color = "red") { x = "x1"; y = "f" } +
+        geomPoint(data = data1, size = 3.0) { x = "x1"; y = "f" }
+    return plot + ggsize(width, height)
 }
 
 class Optimization

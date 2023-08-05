@@ -30,33 +30,21 @@ import java.net.URL
 object TimeMachine {
     /** Split text lines into word or character tokens.  */
     fun tokenize(lines: List<String>, token: String): List<List<String>> {
-        val output: MutableList<List<String>> = mutableListOf()
-        if ("word" == token) {
-            for (line in lines) {
-                output.add(line.split(" ".toRegex()).dropLastWhile { it.isEmpty() })
-            }
-        } else if ("char" == token) {
-            for (line in lines) {
-                output.add(line.split("".toRegex()).dropLastWhile { it.isEmpty() })
-            }
-        } else {
-            throw IllegalArgumentException("ERROR: unknown token type: $token")
+        return when (token) {
+            "word" -> lines.map { it.split(" ".toRegex()).filter { word -> word.isNotEmpty() } }
+            "char" -> lines.map { it.split("".toRegex()).filter { char -> char.isNotEmpty() } }
+            else -> throw IllegalArgumentException("ERROR: unknown token type: $token")
         }
-        return output
     }
 
     /** Read `The Time Machine` dataset and return an array of the lines  */
     fun readTimeMachine(): List<String> {
         val url = URL("http://d2l-data.s3-accelerate.amazonaws.com/timemachine.txt")
-        var lines: List<String> = mutableListOf()
-        BufferedReader(InputStreamReader(url.openStream())).use { inp ->
-            lines = inp.readLines()
+        return BufferedReader(InputStreamReader(url.openStream())).use { inp ->
+            inp.readLines().map { line ->
+                line.replace("[^A-Za-z]+".toRegex(), " ").trim().lowercase(java.util.Locale.getDefault())
+            }
         }
-        val retLines = mutableListOf<String>()
-        for (line in lines) {
-            retLines.add(line.replace("[^A-Za-z]+".toRegex(), " ").trim().lowercase(java.util.Locale.getDefault()))
-        }
-        return retLines
     }
 
     /** Return token indices and the vocabulary of the time machine dataset.  */
@@ -66,15 +54,10 @@ object TimeMachine {
         val vocab = Vocab(tokens, 0, listOf<String>())
         // Since each text line in the time machine dataset is not necessarily a
         // sentence or a paragraph, flatten all the text lines into a single list
-        var corpus: MutableList<Int> = mutableListOf()
-        for (token in tokens) {
-            for (s in token) {
-                if (!s.isEmpty()) {
-                    corpus.add(vocab.getIdx(s))
-                }
-            }
+        var corpus = tokens.flatMap { token ->
+            token.filter { it.isNotEmpty() }.map { vocab.getIdx(it) }
         }
-        if (maxTokens > 0) {
+        if (maxTokens > 0 && corpus.size > maxTokens) {
             corpus = corpus.subList(0, maxTokens)
         }
         return Pair(corpus, vocab)
@@ -89,54 +72,54 @@ object TimeMachine {
         device: Device,
         manager: NDManager
     ): String {
-        val outputs: MutableList<Int> = mutableListOf()
-        outputs.add(vocab.getIdx("" + prefix[0]))
+        val outputs = mutableListOf(vocab.getIdx("" + prefix[0]))
         val getInput = {
             manager.create(outputs[outputs.size - 1])
                 .toDevice(device, false)
                 .reshape(Shape(1, 1))
         }
-        if (net is RNNModelScratch) {
-            val castedNet = net
-            var state: NDList = castedNet.beginState(1, device)
-            for (c in prefix.substring(1).toCharArray()) { // Warm-up period
-                state = castedNet.forward(getInput(), state).second
-                outputs.add(vocab.getIdx("" + c))
-            }
-            for (i in 0 until numPreds) {
-                val pair = castedNet.forward(getInput(), state)
-                val y = pair.first
-                state = pair.second
-                outputs.add(y.argMax(1).reshape(Shape(1)).getLong(0L).toInt())
-            }
-        } else {
-            val castedNet = net as AbstractBlock
-            var state: NDList? = null
-            for (c in prefix.substring(1).toCharArray()) { // Warm-up period
-                val ps = ParameterStore(manager, false)
-                val input = NDList(getInput())
-                state = if (state == null) {
-                    // Begin state
-                    castedNet.forward(ps, input, false).subNDList(1)
-                } else {
-                    castedNet.forward(ps, input.addAll(state), false).subNDList(1)
+        when (net) {
+            is RNNModelScratch -> {
+                var state: NDList = net.beginState(1, device)
+                for (c in prefix.substring(1)) { // Warm-up period
+                    state = net.forward(getInput(), state).second
+                    outputs.add(vocab.getIdx("" + c))
                 }
-                outputs.add(vocab.getIdx("" + c))
+                repeat(numPreds) {
+                    val pair = net.forward(getInput(), state)
+                    val y = pair.first
+                    state = pair.second
+                    outputs.add(y.argMax(1).reshape(Shape(1)).getLong(0L).toInt())
+                }
             }
-            for (i in 0 until numPreds) {
-                val ps = ParameterStore(manager, false)
-                val input = NDList(getInput())
-                val pair = castedNet.forward(ps, input.addAll(state), false)
-                val y = pair[0]
-                state = pair.subNDList(1)
-                outputs.add(y.argMax(1).reshape(Shape(1)).getLong(0L).toInt())
+
+            is AbstractBlock -> {
+                var state: NDList? = null
+                for (c in prefix.substring(1)) { // Warm-up period
+                    val ps = ParameterStore(manager, false)
+                    val input = NDList(getInput())
+                    state = if (state == null) {
+                        // Begin state
+                        net.forward(ps, input, false).subNDList(1)
+                    } else {
+                        net.forward(ps, input.addAll(state), false).subNDList(1)
+                    }
+                    outputs.add(vocab.getIdx("" + c))
+                }
+                repeat(numPreds) {
+                    val ps = ParameterStore(manager, false)
+                    val input = NDList(getInput())
+                    val pair = net.forward(ps, input.addAll(state), false)
+                    val y = pair[0]
+                    state = pair.subNDList(1)
+                    outputs.add(y.argMax(1).reshape(Shape(1)).getLong(0L).toInt())
+                }
             }
+
+            else -> throw IllegalArgumentException("Unsupported network type: ${net::class.simpleName}")
         }
-        val output = StringBuilder()
-        for (i in outputs) {
-            output.append(vocab.idxToToken[i])
-        }
-        return output.toString()
+
+        return outputs.joinToString("") { vocab.idxToToken[it] }
     }
 
     /** Train a model.  */
@@ -152,38 +135,34 @@ object TimeMachine {
     ) {
         val loss = SoftmaxCrossEntropyLoss()
 //        val animator = Animator()
-        val updater: (Int, NDManager) -> Unit
-        if (net is RNNModelScratch) {
-            updater = { batchSize: Int, subManager: NDManager ->
-                sgd(
-                    net.params,
-                    lr.toFloat(),
-                    batchSize,
-                    subManager
-                )
+        val updater: (Int, NDManager) -> Unit = when (net) {
+            is RNNModelScratch -> { batchSize: Int, subManager: NDManager ->
+                sgd(net.params, lr.toFloat(), batchSize, subManager)
             }
-        } else {
-            // Already initialized net
-            val castedNet = net as AbstractBlock
-            val model = Model.newInstance("model")
-            model.block = castedNet
-            val lrt = Tracker.fixed(lr.toFloat())
-            val sgd: Optimizer = Optimizer.sgd().setLearningRateTracker(lrt).build()
-            val config = DefaultTrainingConfig(loss)
-                .optOptimizer(sgd) // Optimizer (loss function)
-                .optInitializer(
-                    NormalInitializer(0.01f),
-                    Parameter.Type.WEIGHT
-                ) // setting the initializer
-                .optDevices(
-                    manager.engine
-                        .getDevices(1)
-                ) // setting the number of GPUs needed
-                .addEvaluator(Accuracy()) // Model Accuracy
-                .addTrainingListeners(*TrainingListener.Defaults.logging()) // Logging
-            val trainer = model.newTrainer(config)
-            updater = { batchSize: Int, subManager: NDManager -> trainer.step() }
+
+            is AbstractBlock -> { batchSize: Int, subManager: NDManager ->
+                val model = Model.newInstance("model")
+                model.block = net
+                val lrt = Tracker.fixed(lr.toFloat())
+                val sgd: Optimizer = Optimizer.sgd().setLearningRateTracker(lrt).build()
+                val config = DefaultTrainingConfig(loss)
+                    .optOptimizer(sgd) // Optimizer (loss function)
+                    .optInitializer(
+                        NormalInitializer(0.01f),
+                        Parameter.Type.WEIGHT
+                    ) // setting the initializer
+                    .optDevices(
+                        manager.engine
+                            .getDevices(1)
+                    ) // setting the number of GPUs needed
+                    .addEvaluator(Accuracy()) // Model Accuracy
+                    .addTrainingListeners(*TrainingListener.Defaults.logging()) // Logging
+                model.newTrainer(config).step()
+            }
+
+            else -> throw IllegalArgumentException("Unsupported network type: ${net::class.simpleName}")
         }
+
         val predict = { prefix: String -> predictCh8(prefix, 50, net, vocab, device, manager) }
         // Train and predict
         var ppl = 0.0
@@ -193,8 +172,6 @@ object TimeMachine {
             ppl = pair.first
             speed = pair.second
             if ((epoch + 1) % 10 == 0) {
-//            animator.add(epoch + 1, ppl.toFloat(), "")
-//            animator.show()
                 println("${epoch + 1} : $ppl")
             }
         }
@@ -236,9 +213,8 @@ object TimeMachine {
                     }
                 }
                 state?.attach(childManager)
-                var y = Y.transpose().reshape(Shape(-1))
+                var y = Y.transpose().reshape(Shape(-1)).toDevice(device, false)
                 X = X.toDevice(device, false)
-                y = y.toDevice(device, false)
                 Engine.getInstance().newGradientCollector().use { gc ->
                     val yHat: NDArray
 //                    println(state)
@@ -247,8 +223,7 @@ object TimeMachine {
                         yHat = pairResult.first
                         state = pairResult.second
                     } else {
-                        val pairResult: NDList
-                        pairResult = if (state == null) {
+                        val pairResult: NDList = if (state == null) {
                             // Begin state
                             (net as AbstractBlock)
                                 .forward(
@@ -280,22 +255,18 @@ object TimeMachine {
 
     /** Clip the gradient.  */
     fun gradClipping(net: Any, theta: Int, manager: NDManager?) {
-        var result = 0.0
-        val params: NDList
-        if (net is RNNModelScratch) {
-            params = net.params
-        } else {
-            params = NDList()
-            for (pair in (net as AbstractBlock).parameters) {
-                params.add(pair.value.array)
+        val params: NDList = when (net) {
+            is RNNModelScratch -> net.params
+            is AbstractBlock -> NDList().apply { net.parameters.forEach { add(it.value.array) } }
+            else -> throw IllegalArgumentException("Unsupported network type: ${net::class.simpleName}")
+        }
+        val norm = Math.sqrt(
+            params.sumOf { p ->
+                val gradient = p.gradient.stopGradient()
+                gradient.attach(manager)
+                gradient.pow(2).sum().getFloat().toDouble()
             }
-        }
-        for (p in params) {
-            val gradient = p.gradient.stopGradient()
-            gradient.attach(manager)
-            result += gradient.pow(2).sum().getFloat().toDouble()
-        }
-        val norm = Math.sqrt(result)
+        )
         if (norm > theta) {
             for (param in params) {
                 val gradient = param.gradient

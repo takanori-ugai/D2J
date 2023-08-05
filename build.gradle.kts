@@ -3,25 +3,25 @@ import io.gitlab.arturbosch.detekt.Detekt
 import org.jlleitschuh.gradle.ktlint.reporter.ReporterType
 
 plugins {
-    kotlin("jvm") version "1.8.20"
-    kotlin("plugin.serialization") version "1.8.20"
+    kotlin("jvm") version "1.9.0"
+    kotlin("plugin.serialization") version "1.9.0"
     java
     id("com.github.johnrengelman.shadow") version "8.1.1"
     jacoco
-    id("org.jetbrains.dokka") version "1.8.10"
-    id("io.gitlab.arturbosch.detekt") version "1.23.0"
-    id("com.diffplug.spotless") version "6.19.0"
+    id("org.jetbrains.dokka") version "1.8.20"
+    id("io.gitlab.arturbosch.detekt") version "1.23.1"
+    id("com.diffplug.spotless") version "6.20.0"
 //    kotlin("jupyter.api") version "0.10.1-8"
     id("com.github.jk1.dependency-license-report") version "2.1"
-    id("com.github.spotbugs") version "5.0.14"
-    id("org.jlleitschuh.gradle.ktlint") version "11.3.2"
+    id("com.github.spotbugs") version "5.1.1"
+    id("org.jlleitschuh.gradle.ktlint") version "11.5.0"
     application
 }
 
 group = "jp.live.ugai"
 version = "1.0-SNAPSHOT"
 // val v = "0.19.0-SNAPSHOT"
-val v = "0.23.0-SNAPSHOT"
+val v = "0.24.0-SNAPSHOT"
 
 // val ktlint by configurations.creating
 
@@ -40,8 +40,8 @@ dependencies {
 //    runtimeOnly("ai.djl.mxnet:mxnet-model-zoo:$v")
 
 //    runtimeOnly("ai.djl.mxnet:mxnet-native-cu112mkl:1.9.1:linux-x86_64")
-//    runtimeOnly("ai.djl.mxnet:mxnet-native:1.9.1:win-x86_64")
-    runtimeOnly("ai.djl.pytorch:pytorch-engine:$v")
+    runtimeOnly("ai.djl.mxnet:mxnet-engine:$v")
+//    runtimeOnly("ai.djl.pytorch:pytorch-engine:$v")
 //    runtimeOnly("ai.djl.pytorch:pytorch-jni:1.12.1-$v")
 //    runtimeOnly("ai.djl.pytorch:pytorch-native-cpu:1.12.1")
     //    implementation("ai.djl.pytorch:pytorch-native-cpu:1.12.1:linux-x86_64")
@@ -51,7 +51,7 @@ dependencies {
     runtimeOnly("org.slf4j:slf4j-simple:2.0.5")
     implementation("org.apache.commons:commons-math3:3.6.1")
     implementation(kotlin("stdlib"))
-    implementation("com.opencsv:opencsv:5.7.1")
+    implementation("com.opencsv:opencsv:5.8")
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.3")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.9.3")
 }
@@ -131,7 +131,7 @@ detekt {
     buildUponDefaultConfig = true // preconfigure defaults
     allRules = false // activate all available (even unstable) rules.
     // point to your custom config defining rules to run, overwriting default behavior
-    config = files("$projectDir/config/detekt.yml")
+    config.from(files("$projectDir/config/detekt.yml"))
 }
 
 spotbugs {

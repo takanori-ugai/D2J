@@ -14,7 +14,7 @@ import org.jetbrains.letsPlot.geom.geomLine
 import org.jetbrains.letsPlot.ggsize
 import org.jetbrains.letsPlot.intern.Plot
 import org.jetbrains.letsPlot.letsPlot
-fun main(args: Array<String>) {
+fun main() {
     System.setProperty("org.slf4j.simpleLogger.showThreadName", "false")
     System.setProperty("org.slf4j.simpleLogger.showLogName", "true")
     System.setProperty("org.slf4j.simpleLogger.log.ai.djl.pytorch", "WARN")

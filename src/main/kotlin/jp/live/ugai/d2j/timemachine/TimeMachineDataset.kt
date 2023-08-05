@@ -44,31 +44,23 @@ class TimeMachineDataset(builder: Builder) : RandomAccessDataset(builder) {
     }
 
     override fun prepare(progress: Progress?) {
-        if (prepared) {
-            return
-        }
-        var corpusVocabPair = loadCorpusTimeMachine(maxTokens)
-        val corpus: List<Int> = corpusVocabPair.first
-        vocab = corpusVocabPair.second
+        if (prepared) return
+
+        val (corpus, vocab) = loadCorpusTimeMachine(maxTokens)
+        this.vocab = vocab
 
         // Start with a random offset (inclusive of `numSteps - 1`) to partition a
         // sequence
         val offset: Int = Random.nextInt(numSteps)
         val numTokens = ((corpus.size - offset - 1) / batchSize) * batchSize
-        var Xs = manager!!.create(corpus.subList(offset, offset + numTokens).toIntArray())
-        var Ys = manager.create(corpus.subList(offset + 1, offset + 1 + numTokens).toIntArray())
-        Xs = Xs.reshape(Shape(batchSize.toLong(), -1))
-        Ys = Ys.reshape(Shape(batchSize.toLong(), -1))
+        var Xs = manager!!.create(corpus.subList(offset, offset + numTokens).toIntArray()).reshape(Shape(batchSize.toLong(), -1))
+        var Ys = manager.create(corpus.subList(offset + 1, offset + 1 + numTokens).toIntArray()).reshape(Shape(batchSize.toLong(), -1))
         val numBatches = Xs.shape[1].toInt() / numSteps
         val xNDList = NDList()
         val yNDList = NDList()
-        var i = 0
-        while (i < numSteps * numBatches) {
-            val X = Xs[NDIndex(":, {}:{}", i, i + numSteps)]
-            val Y = Ys[NDIndex(":, {}:{}", i, i + numSteps)]
-            xNDList.add(X)
-            yNDList.add(Y)
-            i += numSteps
+        for (i in 0 until numSteps * numBatches step numSteps) {
+            xNDList.add(Xs[NDIndex(":, {}:{}", i, i + numSteps)])
+            yNDList.add(Ys[NDIndex(":, {}:{}", i, i + numSteps)])
         }
         data = NDArrays.concat(xNDList)
         xNDList.close()
@@ -77,31 +69,56 @@ class TimeMachineDataset(builder: Builder) : RandomAccessDataset(builder) {
         prepared = true
     }
 
+    /**
+     * Builder class for TimeMachineDataset.
+     */
     class Builder : BaseBuilder<Builder>() {
+        /**
+         * @property numSteps Number of steps to be used in the dataset.
+         */
         var numSteps = 0
+
+        /**
+         * @property maxTokens Maximum number of tokens to be used in the dataset.
+         */
         var maxTokens = 0
+
+        /**
+         * @property manager NDManager instance to manage the lifecycle of NDArray.
+         */
         var manager: NDManager? = null
-        override fun self(): Builder {
-            return this
-        }
 
-        fun setSteps(steps: Int): Builder {
-            numSteps = steps
-            return this
-        }
+        /**
+         * Returns the current Builder instance.
+         * @return this Builder
+         */
+        override fun self() = this
 
-        fun setMaxTokens(maxTokens: Int): Builder {
-            this.maxTokens = maxTokens
-            return this
-        }
+        /**
+         * Sets the number of steps to be used in the dataset.
+         * @param steps Number of steps
+         * @return this Builder
+         */
+        fun setSteps(steps: Int) = apply { numSteps = steps }
 
-        fun setManager(manager: NDManager): Builder {
-            this.manager = manager
-            return this
-        }
+        /**
+         * Sets the maximum number of tokens to be used in the dataset.
+         * @param maxTokens Maximum number of tokens
+         * @return this Builder
+         */
+        fun setMaxTokens(maxTokens: Int) = apply { this.maxTokens = maxTokens }
 
-        fun build(): TimeMachineDataset {
-            return TimeMachineDataset(this)
-        }
+        /**
+         * Sets the NDManager instance to manage the lifecycle of NDArray.
+         * @param manager NDManager instance
+         * @return this Builder
+         */
+        fun setManager(manager: NDManager) = apply { this.manager = manager }
+
+        /**
+         * Builds a TimeMachineDataset instance with the set parameters.
+         * @return TimeMachineDataset instance
+         */
+        fun build() = TimeMachineDataset(this)
     }
 }

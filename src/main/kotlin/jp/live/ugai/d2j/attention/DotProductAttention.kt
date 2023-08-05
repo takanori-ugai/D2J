@@ -50,7 +50,12 @@ fun main() {
     println(productAttention.forward(ps, input, false).head())
 }
 
-/* Additive attention. */
+/**
+ * This class represents the Additive Attention mechanism.
+ *
+ * @property numHiddens The number of hidden units.
+ * @property dropout The dropout rate.
+ */
 class AdditiveAttention(numHiddens: Int, dropout: Float) : AbstractBlock() {
     private val W_k: Linear
     private val W_q: Linear
@@ -58,6 +63,9 @@ class AdditiveAttention(numHiddens: Int, dropout: Float) : AbstractBlock() {
     private val dropout: Dropout
     var attentionWeights: NDArray? = null
 
+    /**
+     * Initializes the Additive Attention mechanism.
+     */
     init {
         W_k = Linear.builder().setUnits(numHiddens.toLong()).optBias(false).build()
         addChildBlock("W_k", W_k)
@@ -69,6 +77,15 @@ class AdditiveAttention(numHiddens: Int, dropout: Float) : AbstractBlock() {
         addChildBlock("dropout", this.dropout)
     }
 
+    /**
+     * Performs the forward pass of the Additive Attention mechanism.
+     *
+     * @param ps The parameter store.
+     * @param inputs The input data.
+     * @param training A boolean value indicating whether training is being performed.
+     * @param params The parameters.
+     * @return The result of the forward pass.
+     */
     override fun forwardInternal(
         ps: ParameterStore,
         inputs: NDList,
@@ -77,45 +94,58 @@ class AdditiveAttention(numHiddens: Int, dropout: Float) : AbstractBlock() {
     ): NDList {
         // Shape of the output `queries` and `attentionWeights`:
         // (no. of queries, no. of key-value pairs)
-        var queries = inputs[0]
-        var keys = inputs[1]
+        val queries = W_q.forward(ps, NDList(inputs[0]), training, params).head()
+        val keys = W_k.forward(ps, NDList(inputs[1]), training, params).head()
         val values = inputs[2]
         val validLens = inputs[3]
-        queries = W_q.forward(ps, NDList(queries), training, params).head()
-        keys = W_k.forward(ps, NDList(keys), training, params).head()
         // After dimension expansion, shape of `queries`: (`batchSize`, no. of
         // queries, 1, `numHiddens`) and shape of `keys`: (`batchSize`, 1,
         // no. of key-value pairs, `numHiddens`). Sum them up with
         // broadcasting
-        var features = queries.expandDims(2).add(keys.expandDims(1))
-        features = features.tanh()
+        val features = queries.expandDims(2).add(keys.expandDims(1)).tanh()
         // There is only one output of `this.W_v`, so we remove the last
         // one-dimensional entry from the shape. Shape of `scores`:
         // (`batchSize`, no. of queries, no. of key-value pairs)
-        val result = W_v.forward(ps, NDList(features), training, params).head()
-        val scores = result.squeeze(-1)
+        val scores = W_v.forward(ps, NDList(features), training, params).head().squeeze(-1)
+
         attentionWeights = maskedSoftmax(scores, validLens)
         // Shape of `values`: (`batchSize`, no. of key-value pairs, value dimension)
-        val list = this.dropout.forward(ps, NDList(attentionWeights), training, params)
-        return NDList(list.head().batchDot(values))
+        return NDList(this.dropout.forward(ps, NDList(attentionWeights), training, params).head().batchDot(values))
     }
 
+    /**
+     * Gets the output shapes of the Additive Attention mechanism.
+     *
+     * @param inputShapes The input shapes.
+     * @return The output shapes.
+     */
     override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> {
-        throw UnsupportedOperationException("Not implemented")
+        return arrayOf(Shape(outputArrays))
     }
 
+    private var outputArrays: List<Long> = listOf()
+
+    /**
+     * Initializes the child blocks of the Additive Attention mechanism.
+     *
+     * @param manager The NDManager.
+     * @param dataType The data type.
+     * @param inputShapes The input shapes.
+     */
     public override fun initializeChildBlocks(manager: NDManager, dataType: DataType, vararg inputShapes: Shape) {
         W_q.initialize(manager, dataType, inputShapes[0])
         W_k.initialize(manager, dataType, inputShapes[1])
-        val q = W_q.getOutputShapes(arrayOf(inputShapes[0]))[0].shape
-        val k = W_k.getOutputShapes(arrayOf(inputShapes[1]))[0].shape
-        val w = Math.max(q[q.size - 2], k[k.size - 2])
-        val h = Math.max(q[q.size - 1], k[k.size - 1])
+        val outputShapes = arrayOf(
+            W_q.getOutputShapes(arrayOf(inputShapes[0]))[0].shape,
+            W_k.getOutputShapes(arrayOf(inputShapes[1]))[0].shape
+        )
+        val w = outputShapes.maxOf { it[it.size - 2] }
+        val h = outputShapes.maxOf { it[it.size - 1] }
         val shape = longArrayOf(2, 1, w, h)
         W_v.initialize(manager, dataType, Shape(*shape))
-        val dropoutShape = LongArray(shape.size - 1)
-        System.arraycopy(shape, 0, dropoutShape, 0, dropoutShape.size)
-        dropout.initialize(manager, dataType, Shape(*dropoutShape))
+        val dropoutShape = shape.copyOf(shape.size - 1)
+        dropout.initialize(manager, dataType, Shape(*dropoutShape!!))
+        outputArrays = listOf(2L, 1L, inputShapes[2][2])
     }
 }
 
@@ -147,10 +177,8 @@ class DotProductAttention(dropout: Float) : AbstractBlock() {
         val validLens = inputs[3]
 
         // Swap the last two dimensions of `keys` and perform batchDot
-        val scores = queries.batchDot(keys.swapAxes(1, 2)).div(Math.sqrt(2.0))
-        this.attentionWeights = maskedSoftmax(scores, validLens)
-        val result = this.dropout0.forward(ps, NDList(this.attentionWeights), training, params)
-        return NDList(result[0].batchDot(values))
+        this.attentionWeights = maskedSoftmax(queries.batchDot(keys.swapAxes(1, 2)).div(Math.sqrt(2.0)), validLens)
+        return NDList(this.dropout0.forward(ps, NDList(this.attentionWeights), training, params)[0].batchDot(values))
     }
 
     override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> {
@@ -159,12 +187,10 @@ class DotProductAttention(dropout: Float) : AbstractBlock() {
 
     override fun initializeChildBlocks(manager: NDManager, dataType: DataType, vararg inputShapes: Shape) {
         manager.newSubManager().use { sub ->
-            val queries = sub.zeros(inputShapes[0], dataType)
-            val keys = sub.zeros(inputShapes[1], dataType)
-            val scores = queries.batchDot(keys.swapAxes(1, 2))
-            val shapes: Array<Shape> = arrayOf(scores.shape)
-            dropout0.initialize(manager, dataType, *shapes)
-            outputShapes = dropout0.getOutputShapes(shapes)
+            val scoresShape = sub.zeros(inputShapes[0], dataType)
+                .batchDot(sub.zeros(inputShapes[1], dataType).swapAxes(1, 2)).shape
+            dropout0.initialize(manager, dataType, scoresShape)
+            outputShapes = dropout0.getOutputShapes(arrayOf(scoresShape))
         }
     }
 }

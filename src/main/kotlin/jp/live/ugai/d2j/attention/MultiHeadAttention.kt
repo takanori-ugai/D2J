@@ -13,7 +13,8 @@ import ai.djl.util.PairList
 
 fun main() {
     val manager = NDManager.newBaseManager()
-    val numHiddens = 100
+//    val numHiddens = 100
+    val numHiddens = 5
     val numHeads = 5
     val attention = MultiHeadAttention(numHiddens, numHeads, 0.5f, false)
     val batchSize = 2
@@ -27,6 +28,7 @@ fun main() {
     val input = NDList(X, Y, Y, validLens)
     attention.initialize(manager, DataType.FLOAT32, *input.shapes)
     val result = attention.forward(ps, input, false)
+    println(result[0])
 }
 class MultiHeadAttention(numHiddens: Int, private val numHeads: Int, dropout: Float, useBias: Boolean) :
     AbstractBlock() {
@@ -89,7 +91,7 @@ class MultiHeadAttention(numHiddens: Int, private val numHeads: Int, dropout: Fl
     }
 
     override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> {
-        throw UnsupportedOperationException("Not implemented")
+        return arrayOf(inputShapes[0])
     }
 
     override fun initializeChildBlocks(manager: NDManager, dataType: DataType, vararg inputShapes: Shape) {
