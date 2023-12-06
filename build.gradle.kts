@@ -53,7 +53,7 @@ dependencies {
     implementation(kotlin("stdlib"))
     implementation("com.opencsv:opencsv:5.8")
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.3")
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.9.3")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.10.1")
 }
 
 tasks {
