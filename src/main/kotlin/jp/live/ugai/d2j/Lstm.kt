@@ -18,28 +18,40 @@ fun main() {
     val batchSize = 32
     val numSteps = 35
 
-    val dataset = TimeMachineDataset.Builder()
-        .setManager(manager)
-        .setMaxTokens(10000)
-        .setSampling(batchSize, false)
-        .setSteps(numSteps)
-        .build()
+    val dataset =
+        TimeMachineDataset.Builder()
+            .setManager(manager)
+            .setMaxTokens(10000)
+            .setSampling(batchSize, false)
+            .setSteps(numSteps)
+            .build()
     dataset.prepare()
     val vocab = dataset.vocab
 
-    fun normal(shape: Shape, device: Device): NDArray {
+    fun normal(
+        shape: Shape,
+        device: Device,
+    ): NDArray {
         return manager.randomNormal(0.0f, 0.01f, shape, DataType.FLOAT32, device)
     }
 
-    fun three(numInputs: Int, numHiddens: Int, device: Device): NDList {
+    fun three(
+        numInputs: Int,
+        numHiddens: Int,
+        device: Device,
+    ): NDList {
         return NDList(
             normal(Shape(numInputs.toLong(), numHiddens.toLong()), device),
             normal(Shape(numHiddens.toLong(), numHiddens.toLong()), device),
-            manager.zeros(Shape(numHiddens.toLong()), DataType.FLOAT32, device)
+            manager.zeros(Shape(numHiddens.toLong()), DataType.FLOAT32, device),
         )
     }
 
-    fun getLSTMParams(vocabSize: Int, numHiddens: Int, device: Device): NDList {
+    fun getLSTMParams(
+        vocabSize: Int,
+        numHiddens: Int,
+        device: Device,
+    ): NDList {
         // Input gate parameters
         var temp: NDList = three(vocabSize, numHiddens, device)
         val W_xi: NDArray = temp.get(0)
@@ -76,14 +88,22 @@ fun main() {
         return params
     }
 
-    fun initLSTMState(batchSize: Int, numHiddens: Int, device: Device): NDList {
+    fun initLSTMState(
+        batchSize: Int,
+        numHiddens: Int,
+        device: Device,
+    ): NDList {
         return NDList(
             manager.zeros(Shape(batchSize.toLong(), numHiddens.toLong()), DataType.FLOAT32, device),
-            manager.zeros(Shape(batchSize.toLong(), numHiddens.toLong()), DataType.FLOAT32, device)
+            manager.zeros(Shape(batchSize.toLong(), numHiddens.toLong()), DataType.FLOAT32, device),
         )
     }
 
-    fun lstm(inputs: NDArray, state: NDList, params: NDList): Pair<NDArray, NDList> {
+    fun lstm(
+        inputs: NDArray,
+        state: NDList,
+        params: NDList,
+    ): Pair<NDArray, NDList> {
         val W_xi = params[0]
         val W_hi = params[1]
         val b_i = params[2]
@@ -134,12 +154,13 @@ fun main() {
     val model = RNNModelScratch(vocabSize, numHiddens, device, getParamsFn, initLSTMStateFn, lstmFn)
     trainCh8(model, dataset, vocab, lr, numEpochs, device, false, manager)
 
-    val lstmLayer = LSTM.builder()
-        .setNumLayers(1)
-        .setStateSize(numHiddens)
-        .optReturnState(true)
-        .optBatchFirst(false)
-        .build()
+    val lstmLayer =
+        LSTM.builder()
+            .setNumLayers(1)
+            .setStateSize(numHiddens)
+            .optReturnState(true)
+            .optBatchFirst(false)
+            .build()
     val modelConcise = RNNModel(lstmLayer, vocab.length())
     trainCh8(modelConcise, dataset, vocab, lr, numEpochs, device, false, manager)
 }

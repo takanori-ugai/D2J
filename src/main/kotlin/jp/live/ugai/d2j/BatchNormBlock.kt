@@ -35,31 +35,32 @@ fun main() {
     System.setProperty("org.slf4j.simpleLogger.log.ai.djl.ndarray.index", "ERROR")
     System.setProperty("org.slf4j.simpleLogger.log.ai.djl.tensorflow", "WARN")
 
-    val net = SequentialBlock()
-        .add(
-            Conv2d.builder()
-                .setKernelShape(Shape(5, 5))
-                .setFilters(6).build()
-        )
-        .add(BatchNormBlock(6, 4))
-        .add(Pool.maxPool2dBlock(Shape(2, 2), Shape(2, 2)))
-        .add(
-            Conv2d.builder()
-                .setKernelShape(Shape(5, 5))
-                .setFilters(16).build()
-        )
-        .add(BatchNormBlock(16, 4))
-        .add(Activation::sigmoid)
-        .add(Pool.maxPool2dBlock(Shape(2, 2), Shape(2, 2)))
-        .add(Blocks.batchFlattenBlock())
-        .add(Linear.builder().setUnits(120).build())
-        .add(BatchNormBlock(120, 2))
-        .add(Activation::sigmoid)
-        .add(Blocks.batchFlattenBlock())
-        .add(Linear.builder().setUnits(84).build())
-        .add(BatchNormBlock(84, 2))
-        .add(Activation::sigmoid)
-        .add(Linear.builder().setUnits(10).build())
+    val net =
+        SequentialBlock()
+            .add(
+                Conv2d.builder()
+                    .setKernelShape(Shape(5, 5))
+                    .setFilters(6).build(),
+            )
+            .add(BatchNormBlock(6, 4))
+            .add(Pool.maxPool2dBlock(Shape(2, 2), Shape(2, 2)))
+            .add(
+                Conv2d.builder()
+                    .setKernelShape(Shape(5, 5))
+                    .setFilters(16).build(),
+            )
+            .add(BatchNormBlock(16, 4))
+            .add(Activation::sigmoid)
+            .add(Pool.maxPool2dBlock(Shape(2, 2), Shape(2, 2)))
+            .add(Blocks.batchFlattenBlock())
+            .add(Linear.builder().setUnits(120).build())
+            .add(BatchNormBlock(120, 2))
+            .add(Activation::sigmoid)
+            .add(Blocks.batchFlattenBlock())
+            .add(Linear.builder().setUnits(84).build())
+            .add(BatchNormBlock(84, 2))
+            .add(Activation::sigmoid)
+            .add(Linear.builder().setUnits(10).build())
 
     val batchSize = 256
     val numEpochs = Integer.getInteger("MAX_EPOCH", 10)
@@ -71,17 +72,19 @@ fun main() {
 
     val epochCount = IntArray(numEpochs) { it + 1 }
 
-    val trainIter = FashionMnist.builder()
-        .optUsage(Dataset.Usage.TRAIN)
-        .setSampling(batchSize, true)
-        .optLimit(getLong("DATASET_LIMIT", Long.MAX_VALUE))
-        .build()
+    val trainIter =
+        FashionMnist.builder()
+            .optUsage(Dataset.Usage.TRAIN)
+            .setSampling(batchSize, true)
+            .optLimit(getLong("DATASET_LIMIT", Long.MAX_VALUE))
+            .build()
 
-    val testIter = FashionMnist.builder()
-        .optUsage(Dataset.Usage.TEST)
-        .setSampling(batchSize, true)
-        .optLimit(getLong("DATASET_LIMIT", Long.MAX_VALUE))
-        .build()
+    val testIter =
+        FashionMnist.builder()
+            .optUsage(Dataset.Usage.TEST)
+            .setSampling(batchSize, true)
+            .optLimit(getLong("DATASET_LIMIT", Long.MAX_VALUE))
+            .build()
 
     trainIter.prepare()
     testIter.prepare()
@@ -93,11 +96,12 @@ fun main() {
     val lrt: Tracker = Tracker.fixed(lr)
     val sgd: Optimizer = Optimizer.sgd().setLearningRateTracker(lrt).build()
 
-    val config = DefaultTrainingConfig(loss)
-        .optOptimizer(sgd) // Optimizer (loss function)
-        .optDevices(Engine.getInstance().getDevices(1)) // single GPU
-        .addEvaluator(Accuracy()) // Model Accuracy
-        .addTrainingListeners(*TrainingListener.Defaults.logging()) // Logging
+    val config =
+        DefaultTrainingConfig(loss)
+            .optOptimizer(sgd) // Optimizer (loss function)
+            .optDevices(Engine.getInstance().getDevices(1)) // single GPU
+            .addEvaluator(Accuracy()) // Model Accuracy
+            .addTrainingListeners(*TrainingListener.Defaults.logging()) // Logging
 
     val model: Model = Model.newInstance("batch-norm")
     model.block = net
@@ -123,7 +127,6 @@ fun main() {
 }
 
 class BatchNormBlock(numFeatures: Int, numDimensions: Int) : AbstractBlock() {
-
     private var movingMean: NDArray
     private var movingVar: NDArray
     private var gamma: Parameter
@@ -141,20 +144,22 @@ class BatchNormBlock(numFeatures: Int, numDimensions: Int) : AbstractBlock() {
         }
         // The scale parameter and the shift parameter involved in gradient
         // finding and iteration are initialized to 0 and 1 respectively
-        gamma = addParameter(
-            Parameter.builder()
-                .setName("gamma")
-                .setType(Parameter.Type.GAMMA)
-                .optShape(shape)
-                .build()
-        )
-        beta = addParameter(
-            Parameter.builder()
-                .setName("beta")
-                .setType(Parameter.Type.BETA)
-                .optShape(shape)
-                .build()
-        )
+        gamma =
+            addParameter(
+                Parameter.builder()
+                    .setName("gamma")
+                    .setType(Parameter.Type.GAMMA)
+                    .optShape(shape)
+                    .build(),
+            )
+        beta =
+            addParameter(
+                Parameter.builder()
+                    .setName("beta")
+                    .setType(Parameter.Type.BETA)
+                    .optShape(shape)
+                    .build(),
+            )
 
         // All the variables not involved in gradient finding and iteration are
         // initialized to 0. Create a base manager to maintain their values
@@ -172,7 +177,7 @@ class BatchNormBlock(numFeatures: Int, numDimensions: Int) : AbstractBlock() {
         movingVar0: NDArray,
         eps: Float,
         momentum: Float,
-        isTraining: Boolean
+        isTraining: Boolean,
     ): NDList {
         // attach moving mean and var to submanager to close intermediate computation values
         // at the end to avoid memory leak
@@ -225,18 +230,19 @@ class BatchNormBlock(numFeatures: Int, numDimensions: Int) : AbstractBlock() {
         parameterStore: ParameterStore,
         inputs: NDList,
         training: Boolean,
-        params: PairList<String, Any>?
+        params: PairList<String, Any>?,
     ): NDList {
-        val result = batchNormUpdate(
-            inputs.singletonOrThrow(),
-            gamma.array,
-            beta.array,
-            movingMean,
-            movingVar,
-            1e-12f,
-            0.9f,
-            training
-        )
+        val result =
+            batchNormUpdate(
+                inputs.singletonOrThrow(),
+                gamma.array,
+                beta.array,
+                movingMean,
+                movingVar,
+                1e-12f,
+                0.9f,
+                training,
+            )
         // close previous NDArray before assigning new values
         if (training) {
             movingMean.close()

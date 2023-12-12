@@ -37,8 +37,11 @@ object Chap10Utils {
      * @param _validLens The valid lengths of the input.
      * @return The result NDArray after masked softmax operation.
      */
-    fun maskedSoftmax(_X: NDArray, _validLens: NDArray?): NDArray {
-        /* Perform softmax operation by masking elements on the last axis. */
+    fun maskedSoftmax(
+        _X: NDArray,
+        _validLens: NDArray?,
+    ): NDArray {
+        // Perform softmax operation by masking elements on the last axis.
         // `X`: 3D tensor, `validLens`: 1D or 2D tensor
         val shape: Shape = _X.shape
         var validLens = _validLens
@@ -48,11 +51,12 @@ object Chap10Utils {
         if (validLens!!.shape.dimension() == 0) {
             return _X.softmax(-1).reshape(shape)
         }
-        validLens = if (validLens.shape.dimension() == 1) {
-            validLens.repeat(shape.get(1))
-        } else {
-            validLens.reshape(-1)
-        }
+        validLens =
+            if (validLens.shape.dimension() == 1) {
+                validLens.repeat(shape.get(1))
+            } else {
+                validLens.reshape(-1)
+            }
         // On the last axis, replace masked elements with a very large negative
         // value, whose exponentiation outputs 0
         return _X.reshape(Shape(-1, shape.get(shape.dimension() - 1)))
@@ -68,7 +72,10 @@ object Chap10Utils {
      * @param numHeads The number of attention heads.
      * @return The transposed NDArray.
      */
-    fun transposeQkv(_X: NDArray, numHeads: Int): NDArray {
+    fun transposeQkv(
+        _X: NDArray,
+        numHeads: Int,
+    ): NDArray {
         // Shape of input `X`:
         // (`batchSize`, no. of queries or key-value pairs, `numHiddens`).
         // Shape of output `X`:
@@ -95,7 +102,10 @@ object Chap10Utils {
      * @param numHeads The number of attention heads.
      * @return The transposed NDArray.
      */
-    fun transposeOutput(_X: NDArray, numHeads: Int): NDArray {
+    fun transposeOutput(
+        _X: NDArray,
+        numHeads: Int,
+    ): NDArray {
         var X = _X
         X = X.reshape(-1, numHeads.toLong(), X.shape[1], X.shape[2])
         X = X.transpose(0, 2, 1, 3)
@@ -118,14 +128,15 @@ object Chap10Utils {
         lr: Float,
         numEpochs: Int,
         tgtVocab: Vocab,
-        device: Device
+        device: Device,
     ) {
         val loss: Loss = MaskedSoftmaxCELoss()
         val lrt: Tracker = Tracker.fixed(lr)
         val adam: Optimizer = Optimizer.adam().optLearningRateTracker(lrt).build()
-        val config: DefaultTrainingConfig = DefaultTrainingConfig(loss)
-            .optOptimizer(adam) // Optimizer (loss function)
-            .optInitializer(XavierInitializer(), "")
+        val config: DefaultTrainingConfig =
+            DefaultTrainingConfig(loss)
+                .optOptimizer(adam) // Optimizer (loss function)
+                .optInitializer(XavierInitializer(), "")
         val model: Model = Model.newInstance("")
         model.block = net
         val trainer: Trainer = model.newTrainer(config)
@@ -141,19 +152,22 @@ object Chap10Utils {
                 val lenX: NDArray = batch.data.get(1)
                 val Y: NDArray = batch.labels.get(0)
                 val lenY: NDArray = batch.labels.get(1)
-                val bos: NDArray = manager
-                    .full(Shape(Y.shape[0]), tgtVocab.getIdx("<bos>"))
-                    .reshape(-1, 1)
-                val decInput: NDArray = NDArrays.concat(
-                    NDList(bos, Y.get(NDIndex(":, :-1"))),
-                    1
-                ) // Teacher forcing
+                val bos: NDArray =
+                    manager
+                        .full(Shape(Y.shape[0]), tgtVocab.getIdx("<bos>"))
+                        .reshape(-1, 1)
+                val decInput: NDArray =
+                    NDArrays.concat(
+                        NDList(bos, Y.get(NDIndex(":, :-1"))),
+                        1,
+                    ) // Teacher forcing
                 Engine.getInstance().newGradientCollector().use { gc ->
-                    val yHat: NDArray = net.forward(
-                        ParameterStore(manager, false),
-                        NDList(X, decInput, lenX),
-                        true
-                    ).get(0)
+                    val yHat: NDArray =
+                        net.forward(
+                            ParameterStore(manager, false),
+                            NDList(X, decInput, lenX),
+                            true,
+                        ).get(0)
                     val l = loss.evaluate(NDList(Y, lenY), NDList(yHat))
                     gc.backward(l)
                     metric.add(floatArrayOf(l.sum().getFloat(), lenY.sum().getLong().toFloat()))
@@ -171,7 +185,11 @@ object Chap10Utils {
         println("loss: %.3f, %.1f tokens/sec on %s%n".format(lossValue, speed, device.toString()))
     }
 
-    fun tokenizeAndPad(srcSentence: String, srcVocab: Vocab, numSteps: Int): Pair<NDArray, NDArray> {
+    fun tokenizeAndPad(
+        srcSentence: String,
+        srcVocab: Vocab,
+        numSteps: Int,
+    ): Pair<NDArray, NDArray> {
         val srcTokens = srcVocab.getIdxs(srcSentence.lowercase(Locale.getDefault()).split(" ")) + listOf(srcVocab.getIdx("<eos>"))
         val encValidLen = manager.create(srcTokens.size)
         val truncateSrcTokens = NMT.truncatePad(srcTokens, numSteps, srcVocab.getIdx("<pad>"))
@@ -199,7 +217,7 @@ object Chap10Utils {
         tgtVocab: Vocab,
         numSteps: Int,
         device: Device,
-        saveAttentionWeights: Boolean
+        saveAttentionWeights: Boolean,
     ): Pair<String, List<List<Pair<FloatArray, Shape>>>> {
         val (encX, encValidLen) = tokenizeAndPad(srcSentence, srcVocab, numSteps)
         val encOutputs = net.encoder.forward(ParameterStore(manager, false), NDList(encX, encValidLen), false)
@@ -209,11 +227,12 @@ object Chap10Utils {
         val outputSeq: MutableList<Int> = mutableListOf()
         val attentionWeightSeq: MutableList<List<Pair<FloatArray, Shape>>> = mutableListOf()
         for (i in 0 until numSteps) {
-            val output = net.decoder.forward(
-                ParameterStore(manager, false),
-                NDList(decX).addAll(decState),
-                false
-            )
+            val output =
+                net.decoder.forward(
+                    ParameterStore(manager, false),
+                    NDList(decX).addAll(decState),
+                    false,
+                )
             val Y = output[0]
             decState = output.subNDList(1)
             // We use the token with the highest prediction likelihood as the input
@@ -243,7 +262,11 @@ object Chap10Utils {
      * @param k The maximum order of n-grams for which matching statistics are computed.
      * @return The BLEU score.
      */
-    fun bleu(predSeq: String, labelSeq: String, k: Int): Double {
+    fun bleu(
+        predSeq: String,
+        labelSeq: String,
+        k: Int,
+    ): Double {
         val predTokens = predSeq.split(" ")
         val labelTokens = labelSeq.split(" ")
         val lenPred = predTokens.size

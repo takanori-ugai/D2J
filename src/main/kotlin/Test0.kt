@@ -1,5 +1,6 @@
 fun main() {
     val v1: Int = 0
+
     class t(val v1: Int) {
         fun f0(): Int {
             return v1

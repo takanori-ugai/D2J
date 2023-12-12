@@ -43,14 +43,14 @@ fun main() {
                 .optPadding(Shape(2, 2))
                 .optBias(false)
                 .setFilters(6)
-                .build()
+                .build(),
         )
         .add(Activation::sigmoid)
         .add(Pool.avgPool2dBlock(Shape(5, 5), Shape(2, 2), Shape(2, 2)))
         .add(
             Conv2d.builder()
                 .setKernelShape(Shape(5, 5))
-                .setFilters(16).build()
+                .setFilters(16).build(),
         )
         .add(Activation::sigmoid)
         .add(Pool.avgPool2dBlock(Shape(5, 5), Shape(2, 2), Shape(2, 2)))
@@ -62,21 +62,21 @@ fun main() {
             Linear
                 .builder()
                 .setUnits(120)
-                .build()
+                .build(),
         )
         .add(Activation::sigmoid)
         .add(
             Linear
                 .builder()
                 .setUnits(84)
-                .build()
+                .build(),
         )
         .add(Activation::sigmoid)
         .add(
             Linear
                 .builder()
                 .setUnits(10)
-                .build()
+                .build(),
         )
 
     val lr = 0.9f
@@ -88,10 +88,11 @@ fun main() {
     val lrt = Tracker.fixed(lr)
     val sgd = Optimizer.sgd().setLearningRateTracker(lrt).build()
 
-    val config = DefaultTrainingConfig(loss).optOptimizer(sgd) // Optimizer (loss function)
-        .optDevices(Engine.getInstance().getDevices(1)) // Single GPU
-        .addEvaluator(Accuracy()) // Model Accuracy
-        .addTrainingListeners(*TrainingListener.Defaults.basic())
+    val config =
+        DefaultTrainingConfig(loss).optOptimizer(sgd) // Optimizer (loss function)
+            .optDevices(Engine.getInstance().getDevices(1)) // Single GPU
+            .addEvaluator(Accuracy()) // Model Accuracy
+            .addTrainingListeners(*TrainingListener.Defaults.basic())
 
     val trainer = model.newTrainer(config)
 
@@ -110,17 +111,19 @@ fun main() {
     val numEpochs = 10
 //    val epochCount = DoubleArray(numEpochs) { it.toDouble() + 1f }
 
-    val trainIter = FashionMnist.builder()
-        .optUsage(Dataset.Usage.TRAIN)
-        .setSampling(batchSize, true)
-        .optLimit(Long.MAX_VALUE)
-        .build()
+    val trainIter =
+        FashionMnist.builder()
+            .optUsage(Dataset.Usage.TRAIN)
+            .setSampling(batchSize, true)
+            .optLimit(Long.MAX_VALUE)
+            .build()
 
-    val testIter = FashionMnist.builder()
-        .optUsage(Dataset.Usage.TEST)
-        .setSampling(batchSize, true)
-        .optLimit(Long.MAX_VALUE)
-        .build()
+    val testIter =
+        FashionMnist.builder()
+            .optUsage(Dataset.Usage.TEST)
+            .setSampling(batchSize, true)
+            .optLimit(Long.MAX_VALUE)
+            .build()
 
     trainIter.prepare()
     testIter.prepare()
@@ -133,7 +136,7 @@ fun main() {
         trainIter: ArrayDataset,
         testIter: ArrayDataset,
         numEpochs: Int,
-        trainer: Trainer
+        trainer: Trainer,
     ) {
         var avgTrainTimePerEpoch = 0.0
 //    val evaluatorMetrics = new HashMap<>();
@@ -149,11 +152,11 @@ fun main() {
             .forEach { evaluator ->
                 evaluatorMetrics.put(
                     "train_epoch_" + evaluator.name,
-                    metrics.getMetric("train_epoch_" + evaluator.name).map { it.value }.toDoubleArray()
+                    metrics.getMetric("train_epoch_" + evaluator.name).map { it.value }.toDoubleArray(),
                 )
                 evaluatorMetrics.put(
                     "validate_epoch_" + evaluator.name,
-                    metrics.getMetric("validate_epoch_" + evaluator.name).map { it.value }.toDoubleArray()
+                    metrics.getMetric("validate_epoch_" + evaluator.name).map { it.value }.toDoubleArray(),
                 )
             }
 

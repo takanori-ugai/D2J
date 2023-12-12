@@ -21,19 +21,37 @@ fun main() {
     val group2 = List(x.size) { "Empirical Risk" }
 }
 
-fun plotGD(fLine: List<Float>, res: List<Float>, func: (Float) -> Float, width: Int, height: Int): Plot {
-    var data = mapOf(
-        "x" to fLine,
-        "fx" to fLine.map(func)
-    )
-    var data1 = mapOf(
-        "f" to res.map(func),
-        "x1" to res
-    )
-    val plot = letsPlot() +
-        geomLine(data = data) { x = "x"; y = "fx" } +
-        geomLine(data = data1, color = "red") { x = "x1"; y = "f" } +
-        geomPoint(data = data1, size = 3.0) { x = "x1"; y = "f" }
+fun plotGD(
+    fLine: List<Float>,
+    res: List<Float>,
+    func: (Float) -> Float,
+    width: Int,
+    height: Int,
+): Plot {
+    var data =
+        mapOf(
+            "x" to fLine,
+            "fx" to fLine.map(func),
+        )
+    var data1 =
+        mapOf(
+            "f" to res.map(func),
+            "x1" to res,
+        )
+    val plot =
+        letsPlot() +
+            geomLine(data = data) {
+                x = "x"
+                y = "fx"
+            } +
+            geomLine(data = data1, color = "red") {
+                x = "x1"
+                y = "f"
+            } +
+            geomPoint(data = data1, size = 3.0) {
+                x = "x1"
+                y = "f"
+            }
     return plot + ggsize(width, height)
 }
 

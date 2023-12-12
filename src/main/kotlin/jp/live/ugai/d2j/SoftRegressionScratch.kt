@@ -14,6 +14,7 @@ import org.jetbrains.letsPlot.geom.geomLine
 import org.jetbrains.letsPlot.ggsize
 import org.jetbrains.letsPlot.intern.Plot
 import org.jetbrains.letsPlot.letsPlot
+
 fun main() {
     System.setProperty("org.slf4j.simpleLogger.showThreadName", "false")
     System.setProperty("org.slf4j.simpleLogger.showLogName", "true")
@@ -28,7 +29,11 @@ fun main() {
         val metrics = mutableListOf<String>()
 
         // Add a single metric to the table
-        fun add(epoch: Int, value: Float, metric: String) {
+        fun add(
+            epoch: Int,
+            value: Float,
+            metric: String,
+        ) {
             epochs.add(epoch)
             values.add(value)
             metrics.add(metric)
@@ -36,7 +41,12 @@ fun main() {
 
         // Add accuracy, train accuracy, and train loss metrics for a given epoch
         // Then plot it on the graph
-        fun add(epoch: Int, accuracy: Float, trainAcc: Float, trainLoss: Float) {
+        fun add(
+            epoch: Int,
+            accuracy: Float,
+            trainAcc: Float,
+            trainLoss: Float,
+        ) {
             add(epoch, trainLoss, "train loss")
             add(epoch, trainAcc, "train accuracy")
             add(epoch, accuracy, "test accuracy")
@@ -48,7 +58,12 @@ fun main() {
             // updateDisplay(id, LinePlot.create("", data, "epoch", "value", "metric"));
 //        println(data)
             var plot = letsPlot(data)
-            plot += geomLine { x = "epoch" ; y = "value" ; color = "metric" }
+            plot +=
+                geomLine {
+                    x = "epoch"
+                    y = "value"
+                    color = "metric"
+                }
             return plot + ggsize(500, 500)
         }
     }
@@ -63,7 +78,11 @@ fun main() {
     val b = manager.zeros(Shape(numOutputs.toLong()), DataType.FLOAT32)
     val params = NDList(W, b)
 
-    fun updater(params: NDList, lr: Float, batchSize: Int) {
+    fun updater(
+        params: NDList,
+        lr: Float,
+        batchSize: Int,
+    ) {
 //        sgd(params, lr, batchSize)
         for (param in params) {
             // Update param in place.
@@ -88,7 +107,10 @@ fun main() {
         return softmax(X.reshape(Shape(-1, numInputs.toLong())).dot(currentW).add(currentB))
     }
 
-    fun crossEntropy(yHat: NDArray, y: NDArray): NDArray {
+    fun crossEntropy(
+        yHat: NDArray,
+        y: NDArray,
+    ): NDArray {
         // Here, y is not guranteed to be of datatype int or long
         // and in our case we know its a float32.
         // We must first convert it to int or long(here we choose int)
@@ -96,13 +118,17 @@ fun main() {
         // It also takes in a boolean for returning a copy of the existing NDArray
         // but we don't want that so we pass in `false`.
         //     return yHat[NDIndex(":, {}", y.toType(DataType.INT32, false))].log().neg()
-        val pickIndex = NDIndex()
-            .addAllDim(Math.floorMod(-1, yHat.shape.dimension()))
-            .addPickDim(y)
+        val pickIndex =
+            NDIndex()
+                .addAllDim(Math.floorMod(-1, yHat.shape.dimension()))
+                .addPickDim(y)
         return yHat.get(pickIndex).log().neg()
     }
 
-    fun accuracy(yHat: NDArray, y: NDArray): Float {
+    fun accuracy(
+        yHat: NDArray,
+        y: NDArray,
+    ): Float {
         // Check size of 1st dimension greater than 1
         // to see if we have multiple samples
         return if (yHat.shape.size(1) > 1) {
@@ -119,7 +145,10 @@ fun main() {
         }
     }
 
-    fun evaluateAccuracy(net: (NDArray) -> NDArray, dataIterator: Iterable<Batch>): Float {
+    fun evaluateAccuracy(
+        net: (NDArray) -> NDArray,
+        dataIterator: Iterable<Batch>,
+    ): Float {
         val metric: Accumulator = Accumulator(2) // numCorrectedExamples, numExamples
         val batch = dataIterator.iterator().next()
         val X = batch.data.head()
@@ -129,16 +158,18 @@ fun main() {
         return metric[0] / metric[1]
     }
 
-    val trainingSet = FashionMnist.builder()
-        .optUsage(Dataset.Usage.TRAIN)
-        .setSampling(batchSize, randomShuffle)
-        .optLimit(java.lang.Long.getLong("DATASET_LIMIT", Long.MAX_VALUE))
-        .build()
-    val validationSet = FashionMnist.builder()
-        .optUsage(Dataset.Usage.TEST)
-        .setSampling(batchSize, false)
-        .optLimit(java.lang.Long.getLong("DATASET_LIMIT", Long.MAX_VALUE))
-        .build()
+    val trainingSet =
+        FashionMnist.builder()
+            .optUsage(Dataset.Usage.TRAIN)
+            .setSampling(batchSize, randomShuffle)
+            .optLimit(java.lang.Long.getLong("DATASET_LIMIT", Long.MAX_VALUE))
+            .build()
+    val validationSet =
+        FashionMnist.builder()
+            .optUsage(Dataset.Usage.TEST)
+            .setSampling(batchSize, false)
+            .optLimit(java.lang.Long.getLong("DATASET_LIMIT", Long.MAX_VALUE))
+            .build()
 
     var X = manager.create(arrayOf(intArrayOf(1, 2, 3), intArrayOf(4, 5, 6)))
     println(X.sum(intArrayOf(0), true))
@@ -159,11 +190,12 @@ fun main() {
 
     val numEpochs = 5
     val lr = 0.1f
+
     fun trainEpochCh3(
         net: (NDArray) -> NDArray,
         trainIter: Iterable<Batch>,
         loss: (NDArray, NDArray) -> NDArray,
-        updater: (NDList, Float, Int) -> Unit
+        updater: (NDList, Float, Int) -> Unit,
     ): FloatArray {
         val metric: Accumulator = Accumulator(3) // trainLossSum, trainAccSum, numExamples
 
@@ -184,8 +216,8 @@ fun main() {
                     floatArrayOf(
                         l.sum().toType(DataType.FLOAT32, false).getFloat(),
                         accuracy(yHat, y),
-                        y.size().toFloat()
-                    )
+                        y.size().toFloat(),
+                    ),
                 )
                 gc.close()
             }
@@ -202,7 +234,7 @@ fun main() {
         testDataset: Dataset,
         loss: (NDArray, NDArray) -> NDArray,
         numEpochs: Int,
-        updater: (NDList, Float, Int) -> Unit
+        updater: (NDList, Float, Int) -> Unit,
     ) {
         val animator = Animator()
         for (i in 1..numEpochs) {
@@ -223,19 +255,19 @@ fun main() {
 class Accumulator(n: Int) {
     var data: FloatArray = FloatArray(n)
 
-    /* Adds a set of numbers to the array */
+    // Adds a set of numbers to the array
     fun add(args: FloatArray) {
         for (i in args.indices) {
             data[i] += args[i]
         }
     }
 
-    /* Resets the array */
+    // Resets the array
     fun reset() {
         data.fill(0f)
     }
 
-    /* Returns the data point at the given index */
+    // Returns the data point at the given index
     operator fun get(index: Int): Float {
         return data[index]
     }

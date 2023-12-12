@@ -66,12 +66,12 @@ fun main() {
                 .optStride(Shape(2, 2))
                 .optPadding(Shape(3, 3))
                 .setFilters(64)
-                .build()
+                .build(),
         )
         .add(BatchNorm.builder().build())
         .add(Activation::relu)
         .add(
-            Pool.maxPool2dBlock(Shape(3, 3), Shape(2, 2), Shape(1, 1))
+            Pool.maxPool2dBlock(Shape(3, 3), Shape(2, 2), Shape(1, 1)),
         )
     net
         .add(resnetBlock(64, 2, true))
@@ -98,21 +98,23 @@ fun main() {
 
     val epochCount = IntArray(numEpochs) { it + 1 }
 
-    val trainIter = FashionMnist.builder()
-        .addTransform(Resize(96))
-        .addTransform(ToTensor())
-        .optUsage(Dataset.Usage.TRAIN)
-        .setSampling(batchSize, true)
-        .optLimit(java.lang.Long.getLong("DATASET_LIMIT", Long.MAX_VALUE))
-        .build()
+    val trainIter =
+        FashionMnist.builder()
+            .addTransform(Resize(96))
+            .addTransform(ToTensor())
+            .optUsage(Dataset.Usage.TRAIN)
+            .setSampling(batchSize, true)
+            .optLimit(java.lang.Long.getLong("DATASET_LIMIT", Long.MAX_VALUE))
+            .build()
 
-    val testIter = FashionMnist.builder()
-        .addTransform(Resize(96))
-        .addTransform(ToTensor())
-        .optUsage(Dataset.Usage.TEST)
-        .setSampling(batchSize, true)
-        .optLimit(java.lang.Long.getLong("DATASET_LIMIT", Long.MAX_VALUE))
-        .build()
+    val testIter =
+        FashionMnist.builder()
+            .addTransform(Resize(96))
+            .addTransform(ToTensor())
+            .optUsage(Dataset.Usage.TEST)
+            .setSampling(batchSize, true)
+            .optLimit(java.lang.Long.getLong("DATASET_LIMIT", Long.MAX_VALUE))
+            .build()
 
     trainIter.prepare()
     testIter.prepare()
@@ -125,9 +127,10 @@ fun main() {
     val lrt: Tracker = Tracker.fixed(lr)
     val sgd: Optimizer = Optimizer.sgd().setLearningRateTracker(lrt).build()
 
-    val config = DefaultTrainingConfig(loss).optOptimizer(sgd) // Optimizer (loss function)
-        .addEvaluator(Accuracy()) // Model Accuracy
-        .addTrainingListeners(*TrainingListener.Defaults.logging()) // Logging
+    val config =
+        DefaultTrainingConfig(loss).optOptimizer(sgd) // Optimizer (loss function)
+            .addEvaluator(Accuracy()) // Model Accuracy
+            .addTrainingListeners(*TrainingListener.Defaults.logging()) // Logging
 
     val trainer: Trainer = model.newTrainer(config)
 
@@ -144,7 +147,11 @@ fun main() {
     println("%.1f examples/sec".format(trainIter.size() / (avgTrainTimePerEpoch / Math.pow(10.0, 9.0))))
 }
 
-fun resnetBlock(numChannels: Int, numResiduals: Int, firstBlock: Boolean): SequentialBlock {
+fun resnetBlock(
+    numChannels: Int,
+    numResiduals: Int,
+    firstBlock: Boolean,
+): SequentialBlock {
     val blk = SequentialBlock()
     for (i in 0 until numResiduals) {
         if (i == 0 && !firstBlock) {
@@ -170,7 +177,7 @@ class Residual(numChannels: Int, use1x1Conv: Boolean, strideShape: Shape) :
                 .setKernelShape(Shape(3, 3))
                 .optPadding(Shape(1, 1))
                 .optStride(strideShape)
-                .build()
+                .build(),
         )
             .add(BatchNorm.builder().build())
             .add(Activation::relu)
@@ -179,7 +186,7 @@ class Residual(numChannels: Int, use1x1Conv: Boolean, strideShape: Shape) :
                     .setFilters(numChannels)
                     .setKernelShape(Shape(3, 3))
                     .optPadding(Shape(1, 1))
-                    .build()
+                    .build(),
             )
             .add(BatchNorm.builder().build())
         if (use1x1Conv) {
@@ -189,28 +196,29 @@ class Residual(numChannels: Int, use1x1Conv: Boolean, strideShape: Shape) :
                     .setFilters(numChannels)
                     .setKernelShape(Shape(1, 1))
                     .optStride(strideShape)
-                    .build()
+                    .build(),
             )
         } else {
             conv1x1 = SequentialBlock()
             conv1x1.add(Blocks.identityBlock())
         }
-        block = addChildBlock(
-            "residualBlock",
-            ParallelBlock(
-                { list: List<NDList> ->
-                    val unit = list[0]
-                    val parallel = list[1]
-                    NDList(
-                        unit.singletonOrThrow()
-                            .add(parallel.singletonOrThrow())
-                            .ndArrayInternal
-                            .relu()
-                    )
-                },
-                mutableListOf(b1 as Block, conv1x1)
+        block =
+            addChildBlock(
+                "residualBlock",
+                ParallelBlock(
+                    { list: List<NDList> ->
+                        val unit = list[0]
+                        val parallel = list[1]
+                        NDList(
+                            unit.singletonOrThrow()
+                                .add(parallel.singletonOrThrow())
+                                .ndArrayInternal
+                                .relu(),
+                        )
+                    },
+                    mutableListOf(b1 as Block, conv1x1),
+                ),
             )
-        )
     }
 
     override fun toString(): String {
@@ -221,7 +229,7 @@ class Residual(numChannels: Int, use1x1Conv: Boolean, strideShape: Shape) :
         parameterStore: ParameterStore,
         inputs: NDList,
         training: Boolean,
-        params: PairList<String, Any>?
+        params: PairList<String, Any>?,
     ): NDList {
         return block.forward(parameterStore, inputs, training)
     }
@@ -234,7 +242,11 @@ class Residual(numChannels: Int, use1x1Conv: Boolean, strideShape: Shape) :
         return current
     }
 
-    override fun initializeChildBlocks(manager: NDManager, dataType: DataType, vararg inputShapes: Shape) {
+    override fun initializeChildBlocks(
+        manager: NDManager,
+        dataType: DataType,
+        vararg inputShapes: Shape,
+    ) {
         block.initialize(manager, dataType, *inputShapes)
     }
 

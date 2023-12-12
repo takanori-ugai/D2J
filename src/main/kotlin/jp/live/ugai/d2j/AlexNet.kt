@@ -22,7 +22,10 @@ import ai.djl.training.optimizer.Optimizer
 import ai.djl.training.tracker.Tracker
 import jp.live.ugai.d2j.util.Training
 
-fun getLong(nm: String, n: Long): Long {
+fun getLong(
+    nm: String,
+    n: Long,
+): Long {
     val name = System.getProperty(nm)
     return if (null == name) n.toLong() else name.toLong()
 }
@@ -39,7 +42,7 @@ fun main() {
             Conv2d.builder()
                 .setKernelShape(Shape(11, 11))
                 .optStride(Shape(4, 4))
-                .setFilters(96).build()
+                .setFilters(96).build(),
         )
         .add(Activation::relu)
         .add(Pool.maxPool2dBlock(Shape(3, 3), Shape(2, 2)))
@@ -50,7 +53,7 @@ fun main() {
             Conv2d.builder()
                 .setKernelShape(Shape(5, 5))
                 .optPadding(Shape(2, 2))
-                .setFilters(256).build()
+                .setFilters(256).build(),
         )
         .add(Activation::relu)
         .add(Pool.maxPool2dBlock(Shape(3, 3), Shape(2, 2)))
@@ -63,21 +66,21 @@ fun main() {
             Conv2d.builder()
                 .setKernelShape(Shape(3, 3))
                 .optPadding(Shape(1, 1))
-                .setFilters(384).build()
+                .setFilters(384).build(),
         )
         .add(Activation::relu)
         .add(
             Conv2d.builder()
                 .setKernelShape(Shape(3, 3))
                 .optPadding(Shape(1, 1))
-                .setFilters(384).build()
+                .setFilters(384).build(),
         )
         .add(Activation::relu)
         .add(
             Conv2d.builder()
                 .setKernelShape(Shape(3, 3))
                 .optPadding(Shape(1, 1))
-                .setFilters(256).build()
+                .setFilters(256).build(),
         )
         .add(Activation::relu)
         .add(Pool.maxPool2dBlock(Shape(3, 3), Shape(2, 2)))
@@ -89,27 +92,27 @@ fun main() {
             Linear
                 .builder()
                 .setUnits(4096)
-                .build()
+                .build(),
         )
         .add(Activation::relu)
         .add(
             Dropout
                 .builder()
                 .optRate(0.5f)
-                .build()
+                .build(),
         )
         .add(
             Linear
                 .builder()
                 .setUnits(4096)
-                .build()
+                .build(),
         )
         .add(Activation::relu)
         .add(
             Dropout
                 .builder()
                 .optRate(0.5f)
-                .build()
+                .build(),
         )
         // Output layer. Since we are using Fashion-MNIST, the number of
         // classes is 10, instead of 1000 as in the paper
@@ -125,9 +128,10 @@ fun main() {
     val lrt = Tracker.fixed(lr)
     val sgd = Optimizer.sgd().setLearningRateTracker(lrt).build()
 
-    val config = DefaultTrainingConfig(loss).optOptimizer(sgd) // Optimizer (loss function)
-        .addEvaluator(Accuracy()) // Model Accuracy
-        .addTrainingListeners(*TrainingListener.Defaults.logging()) // Logging
+    val config =
+        DefaultTrainingConfig(loss).optOptimizer(sgd) // Optimizer (loss function)
+            .addEvaluator(Accuracy()) // Model Accuracy
+            .addTrainingListeners(*TrainingListener.Defaults.logging()) // Logging
 
     val trainer = model.newTrainer(config)
 
@@ -156,21 +160,23 @@ fun main() {
 //    epochCount[i] = (i + 1);//
 // }
 
-    val trainIter = FashionMnist.builder()
-        .addTransform(Resize(224))
-        .addTransform(ToTensor())
-        .optUsage(Dataset.Usage.TRAIN)
-        .setSampling(batchSize, true)
-        .optLimit(getLong("DATASET_LIMIT", Long.MAX_VALUE))
-        .build()
+    val trainIter =
+        FashionMnist.builder()
+            .addTransform(Resize(224))
+            .addTransform(ToTensor())
+            .optUsage(Dataset.Usage.TRAIN)
+            .setSampling(batchSize, true)
+            .optLimit(getLong("DATASET_LIMIT", Long.MAX_VALUE))
+            .build()
 
-    val testIter = FashionMnist.builder()
-        .addTransform(Resize(224))
-        .addTransform(ToTensor())
-        .optUsage(Dataset.Usage.TEST)
-        .setSampling(batchSize, true)
-        .optLimit(getLong("DATASET_LIMIT", Long.MAX_VALUE))
-        .build()
+    val testIter =
+        FashionMnist.builder()
+            .addTransform(Resize(224))
+            .addTransform(ToTensor())
+            .optUsage(Dataset.Usage.TEST)
+            .setSampling(batchSize, true)
+            .optLimit(getLong("DATASET_LIMIT", Long.MAX_VALUE))
+            .build()
 
     trainIter.prepare()
     testIter.prepare()

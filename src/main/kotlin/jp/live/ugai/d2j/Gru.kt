@@ -18,28 +18,40 @@ fun main() {
     val batchSize = 32
     val numSteps = 35
 
-    val dataset = TimeMachineDataset.Builder()
-        .setManager(manager)
-        .setMaxTokens(10000)
-        .setSampling(batchSize, false)
-        .setSteps(numSteps)
-        .build()
+    val dataset =
+        TimeMachineDataset.Builder()
+            .setManager(manager)
+            .setMaxTokens(10000)
+            .setSampling(batchSize, false)
+            .setSteps(numSteps)
+            .build()
     dataset.prepare()
     val vocab = dataset.vocab
 
-    fun normal(shape: Shape, device: Device): NDArray {
+    fun normal(
+        shape: Shape,
+        device: Device,
+    ): NDArray {
         return manager.randomNormal(0.0f, 0.01f, shape, DataType.FLOAT32, device)
     }
 
-    fun three(numInputs: Int, numHiddens: Int, device: Device): NDList {
+    fun three(
+        numInputs: Int,
+        numHiddens: Int,
+        device: Device,
+    ): NDList {
         return NDList(
             normal(Shape(numInputs.toLong(), numHiddens.toLong()), device),
             normal(Shape(numHiddens.toLong(), numHiddens.toLong()), device),
-            manager.zeros(Shape(numHiddens.toLong()), DataType.FLOAT32, device)
+            manager.zeros(Shape(numHiddens.toLong()), DataType.FLOAT32, device),
         )
     }
 
-    fun getParams(vocabSize: Int, numHiddens: Int, device: Device): NDList {
+    fun getParams(
+        vocabSize: Int,
+        numHiddens: Int,
+        device: Device,
+    ): NDList {
         // Update gate parameters
         var temp = three(vocabSize, numHiddens, device)
         val W_xz = temp[0]
@@ -70,11 +82,19 @@ fun main() {
         return params
     }
 
-    fun initGruState(batchSize: Int, numHiddens: Int, device: Device): NDList {
+    fun initGruState(
+        batchSize: Int,
+        numHiddens: Int,
+        device: Device,
+    ): NDList {
         return NDList(manager.zeros(Shape(batchSize.toLong(), numHiddens.toLong()), DataType.FLOAT32, device))
     }
 
-    fun gru(inputs: NDArray, state: NDList, params: NDList): Pair<NDArray, NDList> {
+    fun gru(
+        inputs: NDArray,
+        state: NDList,
+        params: NDList,
+    ): Pair<NDArray, NDList> {
         val W_xz = params[0]
         val W_hz = params[1]
         val b_z = params[2]
@@ -119,12 +139,13 @@ fun main() {
 //    val model = RNNModelScratch(vocabSize, numHiddens, device, getParamsFn, initGruStateFn, gruFn)
 //    trainCh8(model, dataset, vocab, lr, numEpochs, device, false, manager)
 
-    val gruLayer = GRU.builder()
-        .setNumLayers(1)
-        .setStateSize(numHiddens)
-        .optReturnState(true)
-        .optBatchFirst(false)
-        .build()
+    val gruLayer =
+        GRU.builder()
+            .setNumLayers(1)
+            .setStateSize(numHiddens)
+            .optReturnState(true)
+            .optBatchFirst(false)
+            .build()
     val modelConcise = RNNModel(gruLayer, vocab.length())
     trainCh8(modelConcise, dataset, vocab, lr, numEpochs, device, false, manager)
 }

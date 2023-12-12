@@ -26,26 +26,31 @@ class ViT(
     blkDropout: Float,
     lr: Float = 0.1f,
     useBias: Boolean = false,
-    val numClasses: Int = 10
+    val numClasses: Int = 10,
 ) : AbstractBlock() {
     val patchEmbedding = PatchEmbedding(imgSize, patchSize, numHiddens)
-    val clsToken = Parameter.builder()
-        .optRequiresGrad(true)
-        .setType(Parameter.Type.BIAS)
-        .optShape(Shape(1, 1, numHiddens.toLong()))
-        .build()
+    val clsToken =
+        Parameter.builder()
+            .optRequiresGrad(true)
+            .setType(Parameter.Type.BIAS)
+            .optShape(Shape(1, 1, numHiddens.toLong()))
+            .build()
     val numSteps: Int = patchEmbedding.numPatches + 1
-    val posEmbedding = Parameter.builder()
-        .optRequiresGrad(true)
-        .optShape(Shape(1, numSteps.toLong(), numHiddens.toLong()))
+    val posEmbedding =
+        Parameter.builder()
+            .optRequiresGrad(true)
+            .optShape(Shape(1, numSteps.toLong(), numHiddens.toLong()))
 //    torch.randn(1, num_steps, num_hiddens))
-        .setType(Parameter.Type.BIAS)
-        .build()
-    val blks0 = SequentialBlock()
-        .add(Dropout.builder().optRate(embDropout).build())
-    val head = SequentialBlock()
-        .add(LayerNorm.builder().build())
-        .add(Linear.builder().setUnits(numClasses.toLong()).build())
+            .setType(Parameter.Type.BIAS)
+            .build()
+    val blks0 =
+        SequentialBlock()
+            .add(Dropout.builder().optRate(embDropout).build())
+    val head =
+        SequentialBlock()
+            .add(LayerNorm.builder().build())
+            .add(Linear.builder().setUnits(numClasses.toLong()).build())
+
     init {
         addParameter(clsToken)
         addParameter(posEmbedding)
@@ -59,7 +64,7 @@ class ViT(
         parameterStore: ParameterStore,
         inputs: NDList,
         training: Boolean,
-        params: PairList<String, Any>?
+        params: PairList<String, Any>?,
     ): NDList {
         var X = patchEmbedding.forward(parameterStore, inputs, training, params).head()
         // X = torch.cat((self.cls_token.expand(X.shape[0], -1, -1), X), 1)
@@ -74,14 +79,14 @@ class ViT(
     override fun initializeChildBlocks(
         manager: NDManager,
         dataType: DataType,
-        vararg inputShapes: Shape
+        vararg inputShapes: Shape,
     ) {
         clsToken.initialize(manager, dataType)
         posEmbedding.initialize(manager, dataType)
         patchEmbedding.initialize(
             manager,
             dataType,
-            Shape(inputShapes[0][0], inputShapes[0][1], imgSize.toLong(), imgSize.toLong())
+            Shape(inputShapes[0][0], inputShapes[0][1], imgSize.toLong(), imgSize.toLong()),
         )
         blks0.initialize(manager, dataType, Shape(inputShapes[0][0], numSteps.toLong(), numHiddens.toLong()))
         head.initialize(manager, dataType, Shape(inputShapes[0][0], numHiddens.toLong()))

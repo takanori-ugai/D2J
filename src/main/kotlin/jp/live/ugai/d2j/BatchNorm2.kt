@@ -30,46 +30,49 @@ fun main() {
 
     val batchSize = 256
     val numEpochs = Integer.getInteger("MAX_EPOCH", 10)
-    val trainIter = FashionMnist.builder()
-        .optUsage(Dataset.Usage.TRAIN)
-        .setSampling(batchSize, true)
-        .optLimit(getLong("DATASET_LIMIT", Long.MAX_VALUE))
-        .build()
+    val trainIter =
+        FashionMnist.builder()
+            .optUsage(Dataset.Usage.TRAIN)
+            .setSampling(batchSize, true)
+            .optLimit(getLong("DATASET_LIMIT", Long.MAX_VALUE))
+            .build()
 
-    val testIter = FashionMnist.builder()
-        .optUsage(Dataset.Usage.TEST)
-        .setSampling(batchSize, true)
-        .optLimit(getLong("DATASET_LIMIT", Long.MAX_VALUE))
-        .build()
+    val testIter =
+        FashionMnist.builder()
+            .optUsage(Dataset.Usage.TEST)
+            .setSampling(batchSize, true)
+            .optLimit(getLong("DATASET_LIMIT", Long.MAX_VALUE))
+            .build()
 
     trainIter.prepare()
     testIter.prepare()
 
-    val block: SequentialBlock = SequentialBlock()
-        .add(
-            Conv2d.builder()
-                .setKernelShape(Shape(5, 5))
-                .setFilters(6).build()
-        )
-        .add(BatchNorm.builder().build())
-        .add(Pool.maxPool2dBlock(Shape(2, 2), Shape(2, 2)))
-        .add(
-            Conv2d.builder()
-                .setKernelShape(Shape(5, 5))
-                .setFilters(16).build()
-        )
-        .add(BatchNorm.builder().build())
-        .add(Activation::sigmoid)
-        .add(Pool.maxPool2dBlock(Shape(2, 2), Shape(2, 2)))
-        .add(Blocks.batchFlattenBlock())
-        .add(Linear.builder().setUnits(120).build())
-        .add(BatchNorm.builder().build())
-        .add(Activation::sigmoid)
-        .add(Blocks.batchFlattenBlock())
-        .add(Linear.builder().setUnits(84).build())
-        .add(BatchNorm.builder().build())
-        .add(Activation::sigmoid)
-        .add(Linear.builder().setUnits(10).build())
+    val block: SequentialBlock =
+        SequentialBlock()
+            .add(
+                Conv2d.builder()
+                    .setKernelShape(Shape(5, 5))
+                    .setFilters(6).build(),
+            )
+            .add(BatchNorm.builder().build())
+            .add(Pool.maxPool2dBlock(Shape(2, 2), Shape(2, 2)))
+            .add(
+                Conv2d.builder()
+                    .setKernelShape(Shape(5, 5))
+                    .setFilters(16).build(),
+            )
+            .add(BatchNorm.builder().build())
+            .add(Activation::sigmoid)
+            .add(Pool.maxPool2dBlock(Shape(2, 2), Shape(2, 2)))
+            .add(Blocks.batchFlattenBlock())
+            .add(Linear.builder().setUnits(120).build())
+            .add(BatchNorm.builder().build())
+            .add(Activation::sigmoid)
+            .add(Blocks.batchFlattenBlock())
+            .add(Linear.builder().setUnits(84).build())
+            .add(BatchNorm.builder().build())
+            .add(Activation::sigmoid)
+            .add(Linear.builder().setUnits(10).build())
 
     val loss: Loss = Loss.softmaxCrossEntropyLoss()
 
@@ -79,10 +82,11 @@ fun main() {
     val model: Model = Model.newInstance("batch-norm")
     model.block = block
 
-    val config = DefaultTrainingConfig(loss)
-        .optOptimizer(sgd) // Optimizer (loss function)
-        .addEvaluator(Accuracy()) // Model Accuracy
-        .addTrainingListeners(*TrainingListener.Defaults.logging()) // Logging
+    val config =
+        DefaultTrainingConfig(loss)
+            .optOptimizer(sgd) // Optimizer (loss function)
+            .addEvaluator(Accuracy()) // Model Accuracy
+            .addTrainingListeners(*TrainingListener.Defaults.logging()) // Logging
 
     val trainer: Trainer = model.newTrainer(config)
     trainer.initialize(Shape(1, 1, 28, 28))

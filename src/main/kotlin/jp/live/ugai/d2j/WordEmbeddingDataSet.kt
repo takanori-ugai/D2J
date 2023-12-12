@@ -43,12 +43,19 @@ fun main() {
     var vocab = Vocab(sentences, 10, listOf<String>())
     println(vocab.length())
 
-    fun keep(token: String, counter: Map<Any, Double>, numTokens: Int): Boolean {
+    fun keep(
+        token: String,
+        counter: Map<Any, Double>,
+        numTokens: Int,
+    ): Boolean {
         // Return True if to keep this token during subsampling
         return kotlin.random.Random.nextFloat() < Math.sqrt(1e-4 / counter[token]!! * numTokens)
     }
 
-    fun subSampling(sentences: List<List<String>>, vocab: Vocab): List<List<String>> {
+    fun subSampling(
+        sentences: List<List<String>>,
+        vocab: Vocab,
+    ): List<List<String>> {
         val tempSentences = mutableListOf<List<String>>()
         for (i in sentences.indices) {
             val tmp = mutableListOf<String>()
@@ -88,11 +95,19 @@ fun main() {
     val label = List<String>(sentences.size) { "body" }
     val label2 = List<String>(subsampled.size) { "subsampled" }
     val data = mapOf("x" to y1 + y2, "cond" to label + label2)
-    var plot = letsPlot(data) { x = "x"; fill = "cond" }
+    var plot =
+        letsPlot(data) {
+            x = "x"
+            fill = "cond"
+        }
     plot += geomHistogram(binWidth = 5)
     plot += ggsize(500, 250)
 
-    fun compareCounts(token: String, sentences: List<List<String>>, subsampled: List<List<String>>): String {
+    fun compareCounts(
+        token: String,
+        sentences: List<List<String>>,
+        subsampled: List<List<String>>,
+    ): String {
         var beforeCount = 0
         for (element in sentences) {
             beforeCount += element.count { it.equals(token) }
@@ -120,7 +135,7 @@ fun main() {
 
     fun getCentersAndContext(
         corpus: List<List<Int>>,
-        maxWindowSize: Int
+        maxWindowSize: Int,
     ): kotlin.Pair<List<Int>, List<List<Int>>> {
         var centers = mutableListOf<Int>()
         val contexts = mutableListOf<List<Int>>()
@@ -148,7 +163,7 @@ fun main() {
     val tinyDataset =
         listOf<List<Int>>(
             (0 until 7).toList(),
-            (7 until 10).toList()
+            (7 until 10).toList(),
         )
 
     println("dataset $tinyDataset")
@@ -159,7 +174,7 @@ fun main() {
             "Center " +
                 centerContextPair.first.get(i) +
                 " has contexts" +
-                centerContextPair.second.get(i)
+                centerContextPair.second.get(i),
         )
     }
 
@@ -169,7 +184,7 @@ fun main() {
     println("# center-context pairs:${allCenters.size}")
 
     class RandomGenerator(samplingWeights: List<Double>) {
-        /* Draw a random int in [0, n] according to n sampling weights. */
+        // Draw a random int in [0, n] according to n sampling weights.
 
         private val population: kotlin.collections.List<Int>
         private val samplingWeights: kotlin.collections.List<Double>
@@ -204,7 +219,11 @@ fun main() {
     val generatorOutput = List(10) { generator.draw() }
     println(generatorOutput)
 
-    fun getNegatives(allContexts: List<List<Int>>, corpus: List<List<Int>>, K: Int): List<List<Int>> {
+    fun getNegatives(
+        allContexts: List<List<Int>>,
+        corpus: List<List<Int>>,
+        K: Int,
+    ): List<List<Int>> {
         val counter = Vocab.countCorpus2D(corpus)
         val samplingWeights = mutableListOf<Double>()
         for (entry in counter) {
@@ -240,7 +259,7 @@ fun main() {
                 Math.max(
                     maxLen,
                     ndList.get(1).countNonzero().getLong() +
-                        ndList.get(2).countNonzero().getLong()
+                        ndList.get(2).countNonzero().getLong(),
                 )
         }
         for (ndList in data) { // center, context, negative = ndList
@@ -286,7 +305,7 @@ fun main() {
             NDArrays.concat(centers).reshape(data.size.toLong(), -1),
             NDArrays.concat(contextsNegatives).reshape(data.size.toLong(), -1),
             NDArrays.concat(masks).reshape(data.size.toLong(), -1),
-            NDArrays.concat(labels).reshape(data.size.toLong(), -1)
+            NDArrays.concat(labels).reshape(data.size.toLong(), -1),
         )
     }
 
@@ -294,13 +313,13 @@ fun main() {
         NDList(
             manager.create(intArrayOf(1)),
             manager.create(intArrayOf(2, 2)),
-            manager.create(intArrayOf(3, 3, 3, 3))
+            manager.create(intArrayOf(3, 3, 3, 3)),
         )
     val x2 =
         NDList(
             manager.create(intArrayOf(1)),
             manager.create(intArrayOf(2, 2, 2)),
-            manager.create(intArrayOf(3, 3))
+            manager.create(intArrayOf(3, 3)),
         )
 
     val batchedData = batchifyData(listOf<NDList>(x1, x2))
@@ -309,7 +328,10 @@ fun main() {
         println(names[i] + " shape: " + batchedData.get(i))
     }
 
-    fun convertNDArray(data: List<List<Any>>, manager: NDManager): NDList {
+    fun convertNDArray(
+        data: List<List<Any>>,
+        manager: NDManager,
+    ): NDList {
         val centers: MutableList<Int> = (data[0] as List<Int>).toMutableList()
         val contexts: List<MutableList<Int>> = (data[1] as List<List<Int>>).map { it.toMutableList() }
         val negatives: List<MutableList<Int>> = (data[2] as List<List<Int>>).map { it.toMutableList() }
@@ -343,7 +365,7 @@ fun main() {
         }
         val negativesNDArray =
             manager.create(
-                negatives.map { it.toIntArray() }.toTypedArray()
+                negatives.map { it.toIntArray() }.toTypedArray(),
             )
 
         return NDList(centersNDArray, contextsNDArray, negativesNDArray)
@@ -353,7 +375,7 @@ fun main() {
         batchSize: Int,
         maxWindowSize: Int,
         numNoiseWords: Int,
-        manager: NDManager
+        manager: NDManager,
     ): Pair<ArrayDataset, Vocab> {
         val sentences = readPTB()
         val vocab = Vocab(sentences, 10, listOf<String>())
@@ -379,7 +401,7 @@ fun main() {
                         override fun unbatchify(ndList: NDList): Array<NDList> {
                             return arrayOf<NDList>()
                         }
-                    }
+                    },
                 )
                 .setSampling(batchSize, true)
                 .build()

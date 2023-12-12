@@ -62,7 +62,12 @@ fun main() {
 /**
  * Generate a minibatch of subsequences using random sampling.
  */
-fun seqDataIterRandom(_corpus: List<Int>, batchSize: Int, numSteps: Int, manager: NDManager): List<NDList> {
+fun seqDataIterRandom(
+    _corpus: List<Int>,
+    batchSize: Int,
+    numSteps: Int,
+    manager: NDManager,
+): List<NDList> {
     // Start with a random offset (inclusive of `numSteps - 1`) to partition a
     // sequence
     var corpus = _corpus.subList(Random.nextInt(numSteps - 1), _corpus.size)
@@ -101,7 +106,11 @@ fun seqDataIterRandom(_corpus: List<Int>, batchSize: Int, numSteps: Int, manager
     return pairs
 }
 
-fun data(pos: Int, corpus: List<Int>, numSteps: Int): List<Int> {
+fun data(
+    pos: Int,
+    corpus: List<Int>,
+    numSteps: Int,
+): List<Int> {
     // Return a sequence of length `numSteps` starting from `pos`
     return corpus.subList(pos, pos + numSteps)
 }
@@ -113,7 +122,7 @@ fun seqDataIterSequential(
     corpus: List<Int>,
     batchSize: Int,
     numSteps: Int,
-    manager: NDManager
+    manager: NDManager,
 ): List<NDList> {
     // Start with a random offset to partition a sequence
     val offset = Random.nextInt(numSteps)

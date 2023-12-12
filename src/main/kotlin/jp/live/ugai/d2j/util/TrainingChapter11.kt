@@ -31,21 +31,29 @@ import org.jetbrains.letsPlot.letsPlot
 
 object TrainingChapter11 {
     /** Gets the airfoil dataset  */
-    fun getDataCh11(batchSize: Int, n: Int): AirfoilRandomAccess {
+    fun getDataCh11(
+        batchSize: Int,
+        n: Int,
+    ): AirfoilRandomAccess {
         // Load data
-        val airfoil = AirfoilRandomAccess.builder()
-            .optUsage(Dataset.Usage.TRAIN)
-            .setSampling(batchSize, true)
-            .optNormalize(true)
-            .optLimit(n.toLong())
-            .build()
+        val airfoil =
+            AirfoilRandomAccess.builder()
+                .optUsage(Dataset.Usage.TRAIN)
+                .setSampling(batchSize, true)
+                .optNormalize(true)
+                .optLimit(n.toLong())
+                .build()
         // Prepare Data
         airfoil.prepare()
         return airfoil
     }
 
     /** Evaluate the loss of a model on the given dataset  */
-    fun evaluateLoss(dataIterator: Iterable<Batch>, w: NDArray, b: NDArray): Float {
+    fun evaluateLoss(
+        dataIterator: Iterable<Batch>,
+        w: NDArray,
+        b: NDArray,
+    ): Float {
         val metric = Accumulator(2) // sumLoss, numExamples
         for (batch in dataIterator) {
             val X = batch.data.head()
@@ -58,13 +66,21 @@ object TrainingChapter11 {
         return metric.get(0) / metric.get(1)
     }
 
-    fun plotLossEpoch(loss: List<Number>, epoch: List<Number>): Plot {
-        var data = mapOf(
-            "epoch" to epoch,
-            "loss" to loss
-        )
+    fun plotLossEpoch(
+        loss: List<Number>,
+        epoch: List<Number>,
+    ): Plot {
+        var data =
+            mapOf(
+                "epoch" to epoch,
+                "loss" to loss,
+            )
         var plot = letsPlot()
-        plot += geomLine(data = data) { x = "epoch"; y = "loss" }
+        plot +=
+            geomLine(data = data) {
+                x = "epoch"
+                y = "loss"
+            }
         return (plot + ggsize(500, 400))
     }
 
@@ -74,7 +90,7 @@ object TrainingChapter11 {
         hyperparams: MutableMap<String, Float>,
         dataset: AirfoilRandomAccess,
         featureDim: Int,
-        numEpochs: Int
+        numEpochs: Int,
     ): LossTime {
         val manager = NDManager.newBaseManager()
         val w = manager.randomNormal(0f, 0.01f, Shape(featureDim.toLong(), 1L), DataType.FLOAT32)
@@ -116,7 +132,11 @@ object TrainingChapter11 {
         return LossTime(epoch, loss, stopWatch.cumsum())
     }
 
-    fun trainConciseCh11(sgd: Optimizer?, dataset: AirfoilRandomAccess, numEpochs: Int): LossTime {
+    fun trainConciseCh11(
+        sgd: Optimizer?,
+        dataset: AirfoilRandomAccess,
+        numEpochs: Int,
+    ): LossTime {
         // Initialization
         val manager = NDManager.newBaseManager()
         val net = SequentialBlock()
@@ -126,11 +146,12 @@ object TrainingChapter11 {
         val model = Model.newInstance("concise implementation")
         model.block = net
         val loss: Loss = Loss.l2Loss()
-        val config = DefaultTrainingConfig(loss)
-            .optOptimizer(sgd)
-            .optDevices(manager.engine.getDevices(1)) // single GPU
-            .addEvaluator(Accuracy()) // Model Accuracy
-            .addTrainingListeners(*TrainingListener.Defaults.logging()) // Logging
+        val config =
+            DefaultTrainingConfig(loss)
+                .optOptimizer(sgd)
+                .optDevices(manager.engine.getDevices(1)) // single GPU
+                .addEvaluator(Accuracy()) // Model Accuracy
+                .addTrainingListeners(*TrainingListener.Defaults.logging()) // Logging
         val trainer: Trainer = model.newTrainer(config)
         var n = 0
         val stopWatch = StopWatch()
@@ -150,14 +171,15 @@ object TrainingChapter11 {
                 n += X.shape[0].toInt()
                 if (n % 200 == 0) {
                     stopWatch.stop()
-                    lastLoss = evaluateLoss(
-                        dataset.getData(manager),
-                        linear.parameters[0]
-                            .value
-                            .array
-                            .reshape(Shape(dataset.columnNames.size.toLong(), 1L)),
-                        linear.parameters[1].value.array
-                    )
+                    lastLoss =
+                        evaluateLoss(
+                            dataset.getData(manager),
+                            linear.parameters[0]
+                                .value
+                                .array
+                                .reshape(Shape(dataset.columnNames.size.toLong(), 1L)),
+                            linear.parameters[1].value.array,
+                        )
                     lossArray.add(lastLoss.toDouble())
                     val lastEpoch = 1.0 * n / X.shape[0] / len
                     epochArray.add(lastEpoch)
@@ -169,7 +191,7 @@ object TrainingChapter11 {
 //        plotLossEpoch(lossArray, epochArray)
         System.out.printf("loss: %.3f, %.3f sec/epoch\n", lastLoss, stopWatch.avg())
         return LossTime(epochArray, lossArray, stopWatch.cumsum())
-    } /* End Ch11 Optimization */
+    } // End Ch11 Optimization
 }
 
 class LossTime(val epoch: List<Number>, val loss: List<Number>, val time: List<Double>)

@@ -11,7 +11,10 @@ import jp.live.ugai.d2j.attention.MultiHeadAttention
 fun main() {
     val manager = NDManager.newBaseManager()
 
-    fun transposeQkv(_X: NDArray, numHeads: Int): NDArray? {
+    fun transposeQkv(
+        _X: NDArray,
+        numHeads: Int,
+    ): NDArray? {
         // Shape of input `X`:
         // (`batchSize`, no. of queries or key-value pairs, `numHiddens`).
         // Shape of output `X`:
@@ -31,7 +34,10 @@ fun main() {
         return X.reshape(-1, X.shape[2], X.shape[3])
     }
 
-    fun transposeOutput(_X: NDArray, numHeads: Int): NDArray? {
+    fun transposeOutput(
+        _X: NDArray,
+        numHeads: Int,
+    ): NDArray? {
         var X = _X
         X = X.reshape(-1, numHeads.toLong(), X.shape[1], X.shape[2])
         X = X.transpose(0, 2, 1, 3)

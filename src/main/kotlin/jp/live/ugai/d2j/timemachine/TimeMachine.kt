@@ -29,7 +29,10 @@ import java.net.URL
 
 object TimeMachine {
     /** Split text lines into word or character tokens.  */
-    fun tokenize(lines: List<String>, token: String): List<List<String>> {
+    fun tokenize(
+        lines: List<String>,
+        token: String,
+    ): List<List<String>> {
         return when (token) {
             "word" -> lines.map { it.split(" ".toRegex()).filter { word -> word.isNotEmpty() } }
             "char" -> lines.map { it.split("".toRegex()).filter { char -> char.isNotEmpty() } }
@@ -54,9 +57,10 @@ object TimeMachine {
         val vocab = Vocab(tokens, 0, listOf<String>())
         // Since each text line in the time machine dataset is not necessarily a
         // sentence or a paragraph, flatten all the text lines into a single list
-        var corpus = tokens.flatMap { token ->
-            token.filter { it.isNotEmpty() }.map { vocab.getIdx(it) }
-        }
+        var corpus =
+            tokens.flatMap { token ->
+                token.filter { it.isNotEmpty() }.map { vocab.getIdx(it) }
+            }
         if (maxTokens > 0 && corpus.size > maxTokens) {
             corpus = corpus.subList(0, maxTokens)
         }
@@ -70,7 +74,7 @@ object TimeMachine {
         net: Any,
         vocab: Vocab,
         device: Device,
-        manager: NDManager
+        manager: NDManager,
     ): String {
         val outputs = mutableListOf(vocab.getIdx("" + prefix[0]))
         val getInput = {
@@ -98,12 +102,13 @@ object TimeMachine {
                 for (c in prefix.substring(1)) { // Warm-up period
                     val ps = ParameterStore(manager, false)
                     val input = NDList(getInput())
-                    state = if (state == null) {
-                        // Begin state
-                        net.forward(ps, input, false).subNDList(1)
-                    } else {
-                        net.forward(ps, input.addAll(state), false).subNDList(1)
-                    }
+                    state =
+                        if (state == null) {
+                            // Begin state
+                            net.forward(ps, input, false).subNDList(1)
+                        } else {
+                            net.forward(ps, input.addAll(state), false).subNDList(1)
+                        }
                     outputs.add(vocab.getIdx("" + c))
                 }
                 repeat(numPreds) {
@@ -131,37 +136,39 @@ object TimeMachine {
         numEpochs: Int,
         device: Device,
         useRandomIter: Boolean,
-        manager: NDManager
+        manager: NDManager,
     ) {
         val loss = SoftmaxCrossEntropyLoss()
 //        val animator = Animator()
-        val updater: (Int, NDManager) -> Unit = when (net) {
-            is RNNModelScratch -> { batchSize: Int, subManager: NDManager ->
-                sgd(net.params, lr.toFloat(), batchSize, subManager)
-            }
+        val updater: (Int, NDManager) -> Unit =
+            when (net) {
+                is RNNModelScratch -> { batchSize: Int, subManager: NDManager ->
+                    sgd(net.params, lr.toFloat(), batchSize, subManager)
+                }
 
-            is AbstractBlock -> { batchSize: Int, subManager: NDManager ->
-                val model = Model.newInstance("model")
-                model.block = net
-                val lrt = Tracker.fixed(lr.toFloat())
-                val sgd: Optimizer = Optimizer.sgd().setLearningRateTracker(lrt).build()
-                val config = DefaultTrainingConfig(loss)
-                    .optOptimizer(sgd) // Optimizer (loss function)
-                    .optInitializer(
-                        NormalInitializer(0.01f),
-                        Parameter.Type.WEIGHT
-                    ) // setting the initializer
-                    .optDevices(
-                        manager.engine
-                            .getDevices(1)
-                    ) // setting the number of GPUs needed
-                    .addEvaluator(Accuracy()) // Model Accuracy
-                    .addTrainingListeners(*TrainingListener.Defaults.logging()) // Logging
-                model.newTrainer(config).step()
-            }
+                is AbstractBlock -> { batchSize: Int, subManager: NDManager ->
+                    val model = Model.newInstance("model")
+                    model.block = net
+                    val lrt = Tracker.fixed(lr.toFloat())
+                    val sgd: Optimizer = Optimizer.sgd().setLearningRateTracker(lrt).build()
+                    val config =
+                        DefaultTrainingConfig(loss)
+                            .optOptimizer(sgd) // Optimizer (loss function)
+                            .optInitializer(
+                                NormalInitializer(0.01f),
+                                Parameter.Type.WEIGHT,
+                            ) // setting the initializer
+                            .optDevices(
+                                manager.engine
+                                    .getDevices(1),
+                            ) // setting the number of GPUs needed
+                            .addEvaluator(Accuracy()) // Model Accuracy
+                            .addTrainingListeners(*TrainingListener.Defaults.logging()) // Logging
+                    model.newTrainer(config).step()
+                }
 
-            else -> throw IllegalArgumentException("Unsupported network type: ${net::class.simpleName}")
-        }
+                else -> throw IllegalArgumentException("Unsupported network type: ${net::class.simpleName}")
+            }
 
         val predict = { prefix: String -> predictCh8(prefix, 50, net, vocab, device, manager) }
         // Train and predict
@@ -176,7 +183,7 @@ object TimeMachine {
             }
         }
         println(
-            "perplexity: %.1f, %.1f tokens/sec on %s%n".format(ppl, speed, device.toString())
+            "perplexity: %.1f, %.1f tokens/sec on %s%n".format(ppl, speed, device.toString()),
         )
         println(predict("time traveller"))
         println(predict("traveller"))
@@ -189,7 +196,7 @@ object TimeMachine {
         updater: (Int, NDManager) -> Unit,
         device: Device,
         useRandomIter: Boolean,
-        manager: NDManager
+        manager: NDManager,
     ): Pair<Double, Double> {
         val watch = StopWatch()
         watch.start()
@@ -223,22 +230,23 @@ object TimeMachine {
                         yHat = pairResult.first
                         state = pairResult.second
                     } else {
-                        val pairResult: NDList = if (state == null) {
-                            // Begin state
-                            (net as AbstractBlock)
-                                .forward(
-                                    ParameterStore(manager, false),
-                                    NDList(X),
-                                    true
-                                )
-                        } else {
-                            (net as AbstractBlock)
-                                .forward(
-                                    ParameterStore(manager, false),
-                                    NDList(X).addAll(state),
-                                    true
-                                )
-                        }
+                        val pairResult: NDList =
+                            if (state == null) {
+                                // Begin state
+                                (net as AbstractBlock)
+                                    .forward(
+                                        ParameterStore(manager, false),
+                                        NDList(X),
+                                        true,
+                                    )
+                            } else {
+                                (net as AbstractBlock)
+                                    .forward(
+                                        ParameterStore(manager, false),
+                                        NDList(X).addAll(state),
+                                        true,
+                                    )
+                            }
                         yHat = pairResult[0]
                         state = pairResult.subNDList(1)
                     }
@@ -254,19 +262,25 @@ object TimeMachine {
     }
 
     /** Clip the gradient.  */
-    fun gradClipping(net: Any, theta: Int, manager: NDManager?) {
-        val params: NDList = when (net) {
-            is RNNModelScratch -> net.params
-            is AbstractBlock -> NDList().apply { net.parameters.forEach { add(it.value.array) } }
-            else -> throw IllegalArgumentException("Unsupported network type: ${net::class.simpleName}")
-        }
-        val norm = Math.sqrt(
-            params.sumOf { p ->
-                val gradient = p.gradient.stopGradient()
-                gradient.attach(manager)
-                gradient.pow(2).sum().getFloat().toDouble()
+    fun gradClipping(
+        net: Any,
+        theta: Int,
+        manager: NDManager?,
+    ) {
+        val params: NDList =
+            when (net) {
+                is RNNModelScratch -> net.params
+                is AbstractBlock -> NDList().apply { net.parameters.forEach { add(it.value.array) } }
+                else -> throw IllegalArgumentException("Unsupported network type: ${net::class.simpleName}")
             }
-        )
+        val norm =
+            Math.sqrt(
+                params.sumOf { p ->
+                    val gradient = p.gradient.stopGradient()
+                    gradient.attach(manager)
+                    gradient.pow(2).sum().getFloat().toDouble()
+                },
+            )
         if (norm > theta) {
             for (param in params) {
                 val gradient = param.gradient

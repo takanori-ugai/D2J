@@ -64,7 +64,7 @@ fun main() {
         Shape(batchSize.toLong(), numHiddens.toLong()),
         Shape(batchSize.toLong(), batchSize.toLong(), numHiddens.toLong()),
         Shape(1, batchSize.toLong(), (numHiddens + embedSize).toLong()),
-        Shape(4, numHiddens.toLong())
+        Shape(4, numHiddens.toLong()),
     )
     val X = manager.zeros(Shape(batchSize.toLong(), numSteps.toLong()))
     val output = encoder.forward(ps, NDList(X), false)
@@ -100,20 +100,22 @@ fun train() {
     val decoder = Seq2SeqAttentionDecoder(tgtVocab.length().toLong(), embedSize, numHiddens, numLayers)
 
     val net = EncoderDecoder(encoder, decoder)
+
     fun trainSeq2Seq(
         net: EncoderDecoder,
         dataset: ArrayDataset,
         lr: Float,
         numEpochs: Int,
         tgtVocab: Vocab,
-        device: Device
+        device: Device,
     ) {
         val loss: Loss = MaskedSoftmaxCELoss()
         val lrt: Tracker = Tracker.fixed(lr)
         val adam: Optimizer = Optimizer.adam().optLearningRateTracker(lrt).build()
-        val config: DefaultTrainingConfig = DefaultTrainingConfig(loss)
-            .optOptimizer(adam) // Optimizer (loss function)
-            .optInitializer(XavierInitializer(), "")
+        val config: DefaultTrainingConfig =
+            DefaultTrainingConfig(loss)
+                .optOptimizer(adam) // Optimizer (loss function)
+                .optInitializer(XavierInitializer(), "")
         val model: Model = Model.newInstance("")
         model.block = net
         val trainer: Trainer = model.newTrainer(config)
@@ -131,20 +133,23 @@ fun train() {
                 val lenX: NDArray = batch.data.get(1)
                 val Y: NDArray = batch.labels.get(0)
                 val lenY: NDArray = batch.labels.get(1)
-                val bos: NDArray = manager
-                    .full(Shape(Y.shape[0]), tgtVocab.getIdx("<bos>"))
-                    .reshape(-1, 1)
-                val decInput: NDArray = NDArrays.concat(
-                    NDList(bos, Y.get(NDIndex(":, :-1"))),
-                    1
-                ) // Teacher forcing
+                val bos: NDArray =
+                    manager
+                        .full(Shape(Y.shape[0]), tgtVocab.getIdx("<bos>"))
+                        .reshape(-1, 1)
+                val decInput: NDArray =
+                    NDArrays.concat(
+                        NDList(bos, Y.get(NDIndex(":, :-1"))),
+                        1,
+                    ) // Teacher forcing
                 Engine.getInstance().newGradientCollector().use { gc ->
-                    val yHat: NDArray = net.forward(
-                        ParameterStore(manager, false),
-                        NDList(X, decInput, lenX),
-                        true
-                    )
-                        .get(0)
+                    val yHat: NDArray =
+                        net.forward(
+                            ParameterStore(manager, false),
+                            NDList(X, decInput, lenX),
+                            true,
+                        )
+                            .get(0)
                     val l = loss.evaluate(NDList(Y, lenY), NDList(yHat))
                     gc.backward(l)
                     metric.add(floatArrayOf(l.sum().getFloat(), lenY.sum().getLong().toFloat()))
@@ -172,7 +177,7 @@ fun train() {
         tgtVocab: Vocab,
         numSteps: Int,
         device: Device,
-        saveAttentionWeights: Boolean
+        saveAttentionWeights: Boolean,
     ): Pair<String, List<List<Pair<FloatArray, Shape>>>> {
         val srcTokens = srcVocab.getIdxs(srcSentence.lowercase(Locale.getDefault()).split(" ")) + listOf(srcVocab.getIdx("<eos>"))
         val encValidLen = manager.create(srcTokens.size)
@@ -186,11 +191,12 @@ fun train() {
         val outputSeq: MutableList<Int> = mutableListOf()
         val attentionWeightSeq: MutableList<List<Pair<FloatArray, Shape>>> = mutableListOf()
         for (i in 0 until numSteps) {
-            val output = net.decoder.forward(
-                ParameterStore(manager, false),
-                NDList(decX).addAll(decState),
-                false
-            )
+            val output =
+                net.decoder.forward(
+                    ParameterStore(manager, false),
+                    NDList(decX).addAll(decState),
+                    false,
+                )
             val Y = output[0]
             println("Y::: $Y")
             decState = output.subNDList(1)
@@ -215,8 +221,12 @@ fun train() {
         return Pair(outputString, attentionWeightSeq)
     }
 
-    /* Compute the BLEU. */
-    fun bleu(predSeq: String, labelSeq: String, k: Int): Double {
+    // Compute the BLEU.
+    fun bleu(
+        predSeq: String,
+        labelSeq: String,
+        k: Int,
+    ): Double {
         val predTokens = predSeq.split(" ")
         val labelTokens = labelSeq.split(" ")
         val lenPred = predTokens.size
@@ -253,11 +263,12 @@ fun train() {
 
     val pair = predictSeq2Seq(net, engs.last(), srcVocab, tgtVocab, numSteps, device, true)
     val attentions = pair.second
-    val matrix = manager.create(attentions[0].last().first).reshape(attentions[0].last().second)
-        .concat(manager.create(attentions[1].last().first).reshape(attentions[1].last().second))
-        .concat(manager.create(attentions[2].last().first).reshape(attentions[2].last().second))
-        .concat(manager.create(attentions[3].last().first).reshape(attentions[3].last().second))
-        .concat(manager.create(attentions[4].last().first).reshape(attentions[4].last().second)).reshape(5, 10)
+    val matrix =
+        manager.create(attentions[0].last().first).reshape(attentions[0].last().second)
+            .concat(manager.create(attentions[1].last().first).reshape(attentions[1].last().second))
+            .concat(manager.create(attentions[2].last().first).reshape(attentions[2].last().second))
+            .concat(manager.create(attentions[3].last().first).reshape(attentions[3].last().second))
+            .concat(manager.create(attentions[4].last().first).reshape(attentions[4].last().second)).reshape(5, 10)
     println(matrix)
     val seriesX = mutableListOf<Long>()
     val seriesY = mutableListOf<Long>()
@@ -272,7 +283,12 @@ fun train() {
     }
     val data = mapOf("x" to seriesX, "y" to seriesY)
     var plot = letsPlot(data)
-    plot += geomBin2D(drop = false, binWidth = Pair(1, 1), position = positionIdentity) { x = "x"; y = "y"; weight = seriesW }
+    plot +=
+        geomBin2D(drop = false, binWidth = Pair(1, 1), position = positionIdentity) {
+            x = "x"
+            y = "y"
+            weight = seriesW
+        }
     plot += scaleFillGradient(low = "blue", high = "red")
 // plot += scaleFillContinuous("red", "green")
     plot + ggsize(700, 200)
@@ -283,28 +299,30 @@ class Seq2SeqAttentionDecoder(
     private val embedSize: Int,
     private val numHiddens: Int,
     private val numLayers: Int,
-    dropout: Float = 0f
+    dropout: Float = 0f,
 ) : AttentionDecoder() {
     val attention = AdditiveAttention(numHiddens, dropout)
     val embedding: TrainableWordEmbedding
-    val rnn = GRU.builder()
-        .setNumLayers(numLayers)
-        .setStateSize(numHiddens)
-        .optReturnState(true)
-        .optBatchFirst(false)
-        .optDropRate(dropout)
-        .build()
+    val rnn =
+        GRU.builder()
+            .setNumLayers(numLayers)
+            .setStateSize(numHiddens)
+            .optReturnState(true)
+            .optBatchFirst(false)
+            .optDropRate(dropout)
+            .build()
     val linear = Linear.builder().setUnits(vocabSize).build()
 
     init {
         val list: List<String> = (0 until vocabSize).map { it.toString() }
         val vocab: Vocabulary = DefaultVocabulary(list)
         // Embedding layer
-        embedding = TrainableWordEmbedding.builder()
-            .optNumEmbeddings(vocabSize.toInt())
-            .setEmbeddingSize(embedSize)
-            .setVocabulary(vocab)
-            .build()
+        embedding =
+            TrainableWordEmbedding.builder()
+                .optNumEmbeddings(vocabSize.toInt())
+                .setEmbeddingSize(embedSize)
+                .setVocabulary(vocab)
+                .build()
         addChildBlock("embedding", embedding)
         addChildBlock("rnn", rnn)
         addChildBlock("attention", attention)
@@ -318,7 +336,11 @@ class Seq2SeqAttentionDecoder(
         return NDList(outputs.swapAxes(0, 1), hiddenState, encValidLens)
     }
 
-    override fun initializeChildBlocks(manager: NDManager, dataType: DataType, vararg inputShapes: Shape) {
+    override fun initializeChildBlocks(
+        manager: NDManager,
+        dataType: DataType,
+        vararg inputShapes: Shape,
+    ) {
         embedding.initialize(manager, dataType, inputShapes[0])
         attention.initialize(manager, DataType.FLOAT32, inputShapes[1], inputShapes[1])
         rnn.initialize(manager, DataType.FLOAT32, Shape(1, 4, (numHiddens + embedSize).toLong()))
@@ -329,7 +351,7 @@ class Seq2SeqAttentionDecoder(
         ps: ParameterStore,
         inputs: NDList,
         training: Boolean,
-        params: PairList<String, Any>?
+        params: PairList<String, Any>?,
     ): NDList {
         var outputs: NDArray? = null
         val encOutputs = inputs[1]

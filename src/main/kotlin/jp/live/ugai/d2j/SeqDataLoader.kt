@@ -41,7 +41,12 @@ class SeqDataLoader(batchSize: Int, numSteps: Int, useRandomIter: Boolean, maxTo
     /**
      * Generate a minibatch of subsequences using random sampling.
      */
-    fun seqDataIterRandom(corpus: List<Int>, batchSize: Int, numSteps: Int, manager: NDManager): List<NDList> {
+    fun seqDataIterRandom(
+        corpus: List<Int>,
+        batchSize: Int,
+        numSteps: Int,
+        manager: NDManager,
+    ): List<NDList> {
         // Start with a random offset (inclusive of `numSteps - 1`) to partition a
         // sequence
         var corpus = corpus
@@ -94,17 +99,19 @@ class SeqDataLoader(batchSize: Int, numSteps: Int, useRandomIter: Boolean, maxTo
         corpus: List<Int>,
         batchSize: Int,
         numSteps: Int,
-        manager: NDManager
+        manager: NDManager,
     ): List<NDList> {
         // Start with a random offset to partition a sequence
         val offset = Random().nextInt(numSteps)
         val numTokens = (corpus.size - offset - 1) / batchSize * batchSize
-        var Xs = manager.create(
-            corpus.subList(offset, offset + numTokens).toIntArray()
-        )
-        var Ys = manager.create(
-            corpus.subList(offset + 1, offset + 1 + numTokens).toIntArray()
-        )
+        var Xs =
+            manager.create(
+                corpus.subList(offset, offset + numTokens).toIntArray(),
+            )
+        var Ys =
+            manager.create(
+                corpus.subList(offset + 1, offset + 1 + numTokens).toIntArray(),
+            )
         Xs = Xs.reshape(Shape(batchSize.toLong(), -1))
         Ys = Ys.reshape(Shape(batchSize.toLong(), -1))
         val numBatches = Xs.shape[1].toInt() / numSteps
@@ -130,7 +137,7 @@ class SeqDataLoader(batchSize: Int, numSteps: Int, useRandomIter: Boolean, maxTo
             batchSize: Int,
             numSteps: Int,
             useRandomIter: Boolean,
-            maxTokens: Int
+            maxTokens: Int,
         ): Pair<List<NDList>, Vocab> {
             val seqData = SeqDataLoader(batchSize, numSteps, useRandomIter, maxTokens)
             return Pair(seqData.dataIter, seqData.vocab) // ArrayList<NDList>, Vocab

@@ -63,18 +63,19 @@ fun main() {
 
     println(currentShape[0])
 
-    val net = SequentialBlock()
-        .add(
-            Conv2d.builder()
-                .setFilters(64)
-                .setKernelShape(Shape(7, 7))
-                .optStride(Shape(2, 2))
-                .optPadding(Shape(3, 3))
-                .build()
-        )
-        .add(BatchNorm.builder().build())
-        .add { arrays: NDList? -> Activation.relu(arrays) }
-        .add(Pool.maxPool2dBlock(Shape(3, 3), Shape(2, 2), Shape(1, 1)))
+    val net =
+        SequentialBlock()
+            .add(
+                Conv2d.builder()
+                    .setFilters(64)
+                    .setKernelShape(Shape(7, 7))
+                    .optStride(Shape(2, 2))
+                    .optPadding(Shape(3, 3))
+                    .build(),
+            )
+            .add(BatchNorm.builder().build())
+            .add { arrays: NDList? -> Activation.relu(arrays) }
+            .add(Pool.maxPool2dBlock(Shape(3, 3), Shape(2, 2), Shape(1, 1)))
 
     var numChannels: Int = 64
     val growthRate = 32
@@ -108,21 +109,23 @@ fun main() {
 
     val epochCount = IntArray(numEpochs) { it + 1 }
 
-    val trainIter = FashionMnist.builder()
-        .addTransform(Resize(96))
-        .addTransform(ToTensor())
-        .optUsage(Dataset.Usage.TRAIN)
-        .setSampling(batchSize, true)
-        .optLimit(java.lang.Long.getLong("DATASET_LIMIT", Long.MAX_VALUE))
-        .build()
+    val trainIter =
+        FashionMnist.builder()
+            .addTransform(Resize(96))
+            .addTransform(ToTensor())
+            .optUsage(Dataset.Usage.TRAIN)
+            .setSampling(batchSize, true)
+            .optLimit(java.lang.Long.getLong("DATASET_LIMIT", Long.MAX_VALUE))
+            .build()
 
-    val testIter = FashionMnist.builder()
-        .addTransform(Resize(96))
-        .addTransform(ToTensor())
-        .optUsage(Dataset.Usage.TEST)
-        .setSampling(batchSize, true)
-        .optLimit(java.lang.Long.getLong("DATASET_LIMIT", Long.MAX_VALUE))
-        .build()
+    val testIter =
+        FashionMnist.builder()
+            .addTransform(Resize(96))
+            .addTransform(ToTensor())
+            .optUsage(Dataset.Usage.TEST)
+            .setSampling(batchSize, true)
+            .optLimit(java.lang.Long.getLong("DATASET_LIMIT", Long.MAX_VALUE))
+            .build()
 
     trainIter.prepare()
     testIter.prepare()
@@ -135,9 +138,10 @@ fun main() {
     val lrt: Tracker = Tracker.fixed(lr)
     val sgd: Optimizer = Optimizer.sgd().setLearningRateTracker(lrt).build()
 
-    val config = DefaultTrainingConfig(loss).optOptimizer(sgd) // Optimizer (loss function)
-        .addEvaluator(Accuracy()) // Model Accuracy
-        .addTrainingListeners(*TrainingListener.Defaults.logging()) // Logging
+    val config =
+        DefaultTrainingConfig(loss).optOptimizer(sgd) // Optimizer (loss function)
+            .addEvaluator(Accuracy()) // Model Accuracy
+            .addTrainingListeners(*TrainingListener.Defaults.logging()) // Logging
 
     val trainer: Trainer = model.newTrainer(config)
     trainer.initialize(Shape(1, 1, 96, 96))
@@ -155,7 +159,7 @@ fun transitionBlock(numChannels: Int): SequentialBlock {
                 .setFilters(numChannels)
                 .setKernelShape(Shape(1, 1))
                 .optStride(Shape(1, 1))
-                .build()
+                .build(),
         )
         .add(Pool.avgPool2dBlock(Shape(2, 2), Shape(2, 2)))
 }
@@ -170,7 +174,7 @@ fun convBlock(numChannels: Int): SequentialBlock? {
                 .setKernelShape(Shape(3, 3))
                 .optPadding(Shape(1, 1))
                 .optStride(Shape(1, 1))
-                .build()
+                .build(),
         )
 }
 
@@ -191,7 +195,7 @@ class DenseBlock(numConvs: Int, numChannels: Int) : AbstractBlock(VERSION) {
         parameterStore: ParameterStore,
         X: NDList,
         training: Boolean,
-        params: PairList<String, Any>?
+        params: PairList<String, Any>?,
     ): NDList {
         var X = X
         var Y: NDArray
@@ -206,27 +210,33 @@ class DenseBlock(numConvs: Int, numChannels: Int) : AbstractBlock(VERSION) {
         val shapesX: Array<Shape> = inputs
         for (block in net.children.values()) {
             val shapesY: Array<Shape> = block.getOutputShapes(shapesX)
-            shapesX[0] = Shape(
-                shapesX[0].get(0),
-                shapesY[0].get(1) + shapesX[0].get(1),
-                shapesX[0].get(2),
-                shapesX[0].get(3)
-            )
+            shapesX[0] =
+                Shape(
+                    shapesX[0].get(0),
+                    shapesY[0].get(1) + shapesX[0].get(1),
+                    shapesX[0].get(2),
+                    shapesX[0].get(3),
+                )
         }
         return shapesX
     }
 
-    override fun initializeChildBlocks(manager: NDManager, dataType: DataType, vararg inputShapes: Shape) {
+    override fun initializeChildBlocks(
+        manager: NDManager,
+        dataType: DataType,
+        vararg inputShapes: Shape,
+    ) {
         var shapesX: Shape = inputShapes[0]
         for (block in net.children.values()) {
             block.initialize(manager, DataType.FLOAT32, shapesX)
             val shapesY: Array<Shape> = block.getOutputShapes(arrayOf(shapesX))
-            shapesX = Shape(
-                shapesX.get(0),
-                shapesY[0].get(1) + shapesX.get(1),
-                shapesX.get(2),
-                shapesX.get(3)
-            )
+            shapesX =
+                Shape(
+                    shapesX.get(0),
+                    shapesY[0].get(1) + shapesX.get(1),
+                    shapesX.get(2),
+                    shapesX.get(3),
+                )
         }
     }
 

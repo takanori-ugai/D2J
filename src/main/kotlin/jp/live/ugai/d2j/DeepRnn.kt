@@ -9,12 +9,13 @@ fun main() {
     val batchSize = 32
     val numSteps = 35
 
-    val dataset = TimeMachineDataset.Builder()
-        .setManager(manager)
-        .setMaxTokens(10000)
-        .setSampling(batchSize, false)
-        .setSteps(numSteps)
-        .build()
+    val dataset =
+        TimeMachineDataset.Builder()
+            .setManager(manager)
+            .setMaxTokens(10000)
+            .setSampling(batchSize, false)
+            .setSteps(numSteps)
+            .build()
     dataset.prepare()
     val vocab = dataset.vocab
 
@@ -22,12 +23,13 @@ fun main() {
     val numHiddens = 256
     val numLayers = 1
     val device = manager.device
-    val lstmLayer = LSTM0.builder()
-        .setNumLayers(numLayers)
-        .setStateSize(numHiddens)
-        .optReturnState(true)
-        .optBatchFirst(false)
-        .build()
+    val lstmLayer =
+        LSTM0.builder()
+            .setNumLayers(numLayers)
+            .setStateSize(numHiddens)
+            .optReturnState(true)
+            .optBatchFirst(false)
+            .build()
 
     val model = RNNModel(lstmLayer, vocabSize)
 

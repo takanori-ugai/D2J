@@ -53,7 +53,11 @@ fun main() {
     trainCh8(net, trainIter, vocab, lr, numEpochs, manager.device, false)
 }
 
-fun getParams(vocabSize: Int, numHiddens: Int, device: Device): NDList {
+fun getParams(
+    vocabSize: Int,
+    numHiddens: Int,
+    device: Device,
+): NDList {
     // Hidden layer parameters
     val W_xh: NDArray = normal(Shape(vocabSize.toLong(), numHiddens.toLong()), device)
     val W_hh: NDArray = normal(Shape(numHiddens.toLong(), numHiddens.toLong()), device)
@@ -70,15 +74,26 @@ fun getParams(vocabSize: Int, numHiddens: Int, device: Device): NDList {
     return params
 }
 
-fun normal(shape: Shape, device: Device): NDArray {
+fun normal(
+    shape: Shape,
+    device: Device,
+): NDArray {
     return manager.randomNormal(0f, 0.01f, shape, DataType.FLOAT32, device)
 }
 
-fun initRNNState(batchSize: Int, numHiddens: Int, device: Device): NDList {
+fun initRNNState(
+    batchSize: Int,
+    numHiddens: Int,
+    device: Device,
+): NDList {
     return NDList(manager.zeros(Shape(batchSize.toLong(), numHiddens.toLong()), DataType.FLOAT32, device))
 }
 
-fun rnn(inputs: NDArray, state: NDList, params: NDList): Pair<NDArray, NDList> {
+fun rnn(
+    inputs: NDArray,
+    state: NDList,
+    params: NDList,
+): Pair<NDArray, NDList> {
     // Shape of `inputs`: (`numSteps`, `batchSize`, `vocabSize`)
     val W_xh = params[0]
     val W_hh = params[1]
@@ -99,7 +114,13 @@ fun rnn(inputs: NDArray, state: NDList, params: NDList): Pair<NDArray, NDList> {
     return Pair(if (outputs.size > 1) NDArrays.concat(outputs) else outputs[0], NDList(H))
 }
 
-fun predictCh8(prefix: String, numPreds: Int, net: RNNModelScratch, vocab: Vocab, device: Device): String {
+fun predictCh8(
+    prefix: String,
+    numPreds: Int,
+    net: RNNModelScratch,
+    vocab: Vocab,
+    device: Device,
+): String {
     var state: NDList = net.beginState(1, device)
     val outputs: MutableList<Int> = ArrayList()
     outputs.add(vocab.getIdx("" + prefix[0]))
@@ -127,7 +148,11 @@ fun predictCh8(prefix: String, numPreds: Int, net: RNNModelScratch, vocab: Vocab
 }
 
 /** Clip the gradient.  */
-fun gradClipping(net: RNNModelScratch, theta: Int, manager: NDManager) {
+fun gradClipping(
+    net: RNNModelScratch,
+    theta: Int,
+    manager: NDManager,
+) {
     var result = 0.0
     for (p in net.params) {
         val gradient = p.gradient
@@ -150,7 +175,7 @@ fun trainEpochCh8(
     loss: Loss,
     updater: (Int, NDManager) -> Unit,
     device: Device,
-    useRandomIter: Boolean
+    useRandomIter: Boolean,
 ): Pair<Double, Double> {
     val watch = StopWatch()
     watch.start()
@@ -198,7 +223,7 @@ fun trainCh8(
     lr: Int,
     numEpochs: Int,
     device: Device,
-    useRandomIter: Boolean
+    useRandomIter: Boolean,
 ) {
     val loss = SoftmaxCrossEntropyLoss()
 //    val animator = Animator()

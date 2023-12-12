@@ -33,7 +33,10 @@ class TimeMachineDataset(builder: Builder) : RandomAccessDataset(builder) {
         prepared = false
     }
 
-    override fun get(manager: NDManager, index: Long): Record {
+    override fun get(
+        manager: NDManager,
+        index: Long,
+    ): Record {
         val X = data[NDIndex("{}", index)]
         val Y = labels[NDIndex("{}", index)]
         return Record(NDList(X), NDList(Y))

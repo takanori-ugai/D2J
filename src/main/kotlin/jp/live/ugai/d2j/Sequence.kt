@@ -32,9 +32,10 @@ fun main() {
     val T = 1000L // Generate a total of 1000 points
 
     val time = manager.arange(1f, (T + 1).toFloat())
-    val x = time.mul(0.01).sin().add(
-        manager.randomNormal(0f, 0.2f, Shape(T), DataType.FLOAT32)
-    )
+    val x =
+        time.mul(0.01).sin().add(
+            manager.randomNormal(0f, 0.2f, Shape(T), DataType.FLOAT32),
+        )
     val tau = 4L
     val features = manager.zeros(Shape(T - tau, tau))
 
@@ -47,11 +48,12 @@ fun main() {
     val nTrain = 600
 // Only the first `nTrain` examples are used for training
 // Only the first `nTrain` examples are used for training
-    val trainIter = ArrayDataset.Builder()
-        .setData(features[NDIndex(":{}", nTrain)])
-        .optLabels(labels[NDIndex(":{}", nTrain)])
-        .setSampling(batchSize, true)
-        .build()
+    val trainIter =
+        ArrayDataset.Builder()
+            .setData(features[NDIndex(":{}", nTrain)])
+            .optLabels(labels[NDIndex(":{}", nTrain)])
+            .setSampling(batchSize, true)
+            .build()
 
     val net = getNet()
     val model = train(net, trainIter, batchSize, 5, 0.01f)
@@ -73,15 +75,22 @@ fun main() {
 
 // var trainer: Trainer? = null
 
-fun train(net: SequentialBlock, dataset: ArrayDataset, batchSize: Int, numEpochs: Int, learningRate: Float): Model {
+fun train(
+    net: SequentialBlock,
+    dataset: ArrayDataset,
+    batchSize: Int,
+    numEpochs: Int,
+    learningRate: Float,
+): Model {
     // Square Loss
     val loss: Loss = Loss.l2Loss()
     val lrt: Tracker = Tracker.fixed(learningRate)
     val adam: Optimizer = Optimizer.adam().optLearningRateTracker(lrt).build()
-    val config = DefaultTrainingConfig(loss)
-        .optOptimizer(adam) // Optimizer (loss function)
-        .optInitializer(XavierInitializer(), "")
-        .addTrainingListeners(*TrainingListener.Defaults.logging()) // Logging
+    val config =
+        DefaultTrainingConfig(loss)
+            .optOptimizer(adam) // Optimizer (loss function)
+            .optInitializer(XavierInitializer(), "")
+            .addTrainingListeners(*TrainingListener.Defaults.logging()) // Logging
     val model: Model = Model.newInstance("sequence")
     model.block = net
     val trainer = model.newTrainer(config)

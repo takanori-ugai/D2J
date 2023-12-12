@@ -87,14 +87,15 @@ fun main() {
         lr: Float,
         numEpochs: Int,
         tgtVocab: Vocab,
-        device: Device
+        device: Device,
     ) {
         val loss: Loss = MaskedSoftmaxCELoss()
         val lrt: Tracker = Tracker.fixed(lr)
         val adam: Optimizer = Optimizer.adam().optLearningRateTracker(lrt).build()
-        val config: DefaultTrainingConfig = DefaultTrainingConfig(loss)
-            .optOptimizer(adam) // Optimizer (loss function)
-            .optInitializer(XavierInitializer(), "")
+        val config: DefaultTrainingConfig =
+            DefaultTrainingConfig(loss)
+                .optOptimizer(adam) // Optimizer (loss function)
+                .optInitializer(XavierInitializer(), "")
         val model: Model = Model.newInstance("")
         model.block = net
         val trainer: Trainer = model.newTrainer(config)
@@ -113,20 +114,23 @@ fun main() {
                     val lenX: NDArray = batch.data.get(1)
                     val Y: NDArray = batch.labels.get(0)
                     val lenY: NDArray = batch.labels.get(1)
-                    val bos: NDArray = childManager
-                        .full(Shape(Y.shape[0]), tgtVocab.getIdx("<bos>"))
-                        .reshape(-1, 1)
-                    val decInput: NDArray = NDArrays.concat(
-                        NDList(bos, Y.get(NDIndex(":, :-1"))),
-                        1
-                    ) // Teacher forcing
+                    val bos: NDArray =
+                        childManager
+                            .full(Shape(Y.shape[0]), tgtVocab.getIdx("<bos>"))
+                            .reshape(-1, 1)
+                    val decInput: NDArray =
+                        NDArrays.concat(
+                            NDList(bos, Y.get(NDIndex(":, :-1"))),
+                            1,
+                        ) // Teacher forcing
                     Engine.getInstance().newGradientCollector().use { gc ->
-                        val yHat: NDArray = net.forward(
-                            ParameterStore(manager, false),
-                            NDList(X, decInput, lenX),
-                            true
-                        )
-                            .get(0)
+                        val yHat: NDArray =
+                            net.forward(
+                                ParameterStore(manager, false),
+                                NDList(X, decInput, lenX),
+                                true,
+                            )
+                                .get(0)
                         val l = loss.evaluate(NDList(Y, lenY), NDList(yHat))
                         gc.backward(l)
                         metric.add(floatArrayOf(l.sum().getFloat(), lenY.sum().getLong().toFloat()))
@@ -145,7 +149,7 @@ fun main() {
             }
         }
         println(
-            "loss: %.3f, %.1f tokens/sec on %s%n".format(lossValue, speed, device.toString())
+            "loss: %.3f, %.1f tokens/sec on %s%n".format(lossValue, speed, device.toString()),
         )
     }
 
@@ -179,7 +183,7 @@ fun main() {
         tgtVocab: Vocab,
         numSteps: Int,
         device: Device,
-        saveAttentionWeights: Boolean
+        saveAttentionWeights: Boolean,
     ): Pair<String, List<NDArray?>> {
         val srcTokens = srcVocab.getIdxs(srcSentence.lowercase(Locale.getDefault()).split(" ")) + listOf(srcVocab.getIdx("<eos>"))
         val encValidLen = manager.create(srcTokens.size)
@@ -193,11 +197,12 @@ fun main() {
         val outputSeq: MutableList<Int> = mutableListOf()
         val attentionWeightSeq: MutableList<NDArray?> = mutableListOf()
         for (i in 0 until numSteps) {
-            val output = net.decoder.forward(
-                ParameterStore(manager, false),
-                NDList(decX).addAll(decState),
-                false
-            )
+            val output =
+                net.decoder.forward(
+                    ParameterStore(manager, false),
+                    NDList(decX).addAll(decState),
+                    false,
+                )
             val Y = output[0]
             decState = output.subNDList(1)
             // We use the token with the highest prediction likelihood as the input
@@ -219,8 +224,12 @@ fun main() {
         return Pair(outputString, attentionWeightSeq.toList())
     }
 
-    /* Compute the BLEU. */
-    fun bleu(predSeq: String, labelSeq: String, k: Int): Double {
+    // Compute the BLEU.
+    fun bleu(
+        predSeq: String,
+        labelSeq: String,
+        k: Int,
+    ): Double {
         val predTokens = predSeq.split(" ")
         val labelTokens = labelSeq.split(" ")
         val lenPred = predTokens.size
@@ -261,29 +270,35 @@ class Seq2SeqEncoder(vocabSize: Int, embedSize: Int, numHiddens: Int, numLayers:
     private val embedding: TrainableWordEmbedding
     private val rnn: GRU
 
-    /* The RNN encoder for sequence to sequence learning. */
+    // The RNN encoder for sequence to sequence learning.
     init {
         val list: List<String> = (0 until vocabSize).map { it.toString() }
         val vocab: Vocabulary = DefaultVocabulary(list)
         // Embedding layer
-        embedding = TrainableWordEmbedding.builder()
-            .optNumEmbeddings(vocabSize)
-            .setEmbeddingSize(embedSize)
-            .setVocabulary(vocab)
-            .build()
+        embedding =
+            TrainableWordEmbedding.builder()
+                .optNumEmbeddings(vocabSize)
+                .setEmbeddingSize(embedSize)
+                .setVocabulary(vocab)
+                .build()
         addChildBlock("embedding", embedding)
-        rnn = GRU.builder()
-            .setNumLayers(numLayers)
-            .setStateSize(numHiddens)
-            .optReturnState(true)
-            .optBatchFirst(false)
-            .optDropRate(dropout)
-            .build()
+        rnn =
+            GRU.builder()
+                .setNumLayers(numLayers)
+                .setStateSize(numHiddens)
+                .optReturnState(true)
+                .optBatchFirst(false)
+                .optDropRate(dropout)
+                .build()
         addChildBlock("rnn", rnn)
     }
 
     /** {@inheritDoc}  */
-    override fun initializeChildBlocks(manager: NDManager, dataType: DataType, vararg inputShapes: Shape) {
+    override fun initializeChildBlocks(
+        manager: NDManager,
+        dataType: DataType,
+        vararg inputShapes: Shape,
+    ) {
         embedding.initialize(manager, dataType, inputShapes[0])
         val shapes: Array<Shape> = embedding.getOutputShapes(arrayOf(inputShapes[0]))
         manager.newSubManager().use { sub ->
@@ -297,7 +312,7 @@ class Seq2SeqEncoder(vocabSize: Int, embedSize: Int, numHiddens: Int, numLayers:
         ps: ParameterStore,
         inputs: NDList,
         training: Boolean,
-        params: PairList<String, Any>?
+        params: PairList<String, Any>?,
     ): NDList {
         var X = inputs.head()
         // The output `X` shape: (`batchSize`, `numSteps`, `embedSize`)
@@ -309,8 +324,11 @@ class Seq2SeqEncoder(vocabSize: Int, embedSize: Int, numHiddens: Int, numLayers:
 }
 
 class MaskedSoftmaxCELoss : SoftmaxCrossEntropyLoss() {
-    /* The softmax cross-entropy loss with masks. */
-    override fun evaluate(labels: NDList, predictions: NDList): NDArray {
+    // The softmax cross-entropy loss with masks.
+    override fun evaluate(
+        labels: NDList,
+        predictions: NDList,
+    ): NDArray {
         val weights = labels.head().onesLike().expandDims(-1).sequenceMask(labels[1])
         // Remove the states from the labels NDList because otherwise, it will throw an error as SoftmaxCrossEntropyLoss
         // expects only one NDArray for label and one NDArray for prediction
