@@ -21,7 +21,7 @@ plugins {
 group = "jp.live.ugai"
 version = "1.0-SNAPSHOT"
 // val v = "0.19.0-SNAPSHOT"
-val v = "0.24.0-SNAPSHOT"
+val v = "0.25.0-SNAPSHOT"
 
 // val ktlint by configurations.creating
 
@@ -117,6 +117,13 @@ ktlint {
     verbose.set(true)
     outputToConsole.set(true)
     coloredOutput.set(true)
+/*
+    additionalEditorconfig.set(
+        mapOf(
+            "property_naming" to "false"
+        )
+    )
+*/
     reporters {
         reporter(ReporterType.CHECKSTYLE)
         reporter(ReporterType.JSON)
