@@ -178,11 +178,10 @@ fun trainCh8(
             sgd(net.params, lr.toFloat(), batchSize, subManager)
         }
     } else {
-        { batchSize: Int, subManager: NDManager ->
+        { _, _ ->
             // Already initialized net
-            val castedNet = net as AbstractBlock
-            val model: Model = Model.newInstance("model")
-            model.block = castedNet
+            val model = Model.newInstance("model")
+            model.block = net as AbstractBlock
             val lrt: Tracker = Tracker.fixed(lr)
             val sgd: Optimizer = Optimizer.sgd().setLearningRateTracker(lrt).build()
             val config: DefaultTrainingConfig = DefaultTrainingConfig(loss)
@@ -197,13 +196,13 @@ fun trainCh8(
     }
     val predict: (String) -> String =
         { prefix ->
-            predictCh8(prefix, 50, net, vocab, device, manager!!)
+            predictCh8(prefix, 50, net, vocab, device, manager)
         }
     // Train and predict
     var ppl = 0.0
     var speed = 0.0
     for (epoch in 0 until numEpochs) {
-        val pair = trainEpochCh8(net, dataset, loss, updater, device, useRandomIter, manager!!)
+        val pair = trainEpochCh8(net, dataset, loss, updater, device, useRandomIter, manager)
         ppl = pair.first
         speed = pair.second
         if ((epoch + 1) % 10 == 0) {

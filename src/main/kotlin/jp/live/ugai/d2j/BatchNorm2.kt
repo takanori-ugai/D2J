@@ -20,44 +20,88 @@ import ai.djl.training.optimizer.Optimizer
 import ai.djl.training.tracker.Tracker
 import jp.live.ugai.d2j.util.Training
 
+/**
+ * The main function where the execution of code starts.
+ */
 fun main() {
+    // Set system properties
+    setSystemProperties()
+
+    val batchSize = 256
+    val numEpochs = 10
+
+    // Prepare training and testing datasets
+    val trainIter = prepareDataset(Dataset.Usage.TRAIN, batchSize)
+    val testIter = prepareDataset(Dataset.Usage.TEST, batchSize)
+
+    trainIter.prepare()
+    testIter.prepare()
+
+    // Prepare model block
+    val block = prepareModelBlock()
+
+    val loss: Loss = Loss.softmaxCrossEntropyLoss()
+    val lrt: Tracker = Tracker.fixed(1.0f)
+    val sgd: Optimizer = Optimizer.sgd().setLearningRateTracker(lrt).build()
+
+    // Initialize model
+    val model: Model = Model.newInstance("batch-norm")
+    model.block = block
+
+    // Configure training
+    val config = DefaultTrainingConfig(loss)
+        .optOptimizer(sgd) // Optimizer (loss function)
+        .addEvaluator(Accuracy()) // Model Accuracy
+        .addTrainingListeners(*TrainingListener.Defaults.logging()) // Logging
+
+    // Initialize trainer
+    val trainer: Trainer = model.newTrainer(config)
+    trainer.initialize(Shape(1, 1, 28, 28))
+
+    // Train the model
+    val evaluatorMetrics: MutableMap<String, DoubleArray> = mutableMapOf()
+    val avgTrainTimePerEpoch = Training.trainingChapter6(trainIter, testIter, numEpochs, trainer, evaluatorMetrics)
+}
+
+/**
+ * Sets the system properties for logging.
+ */
+fun setSystemProperties() {
     System.setProperty("org.slf4j.simpleLogger.showThreadName", "false")
     System.setProperty("org.slf4j.simpleLogger.showLogName", "true")
     System.setProperty("org.slf4j.simpleLogger.log.ai.djl.pytorch", "WARN")
     System.setProperty("org.slf4j.simpleLogger.log.ai.djl.mxnet", "ERROR")
     System.setProperty("org.slf4j.simpleLogger.log.ai.djl.ndarray.index", "ERROR")
     System.setProperty("org.slf4j.simpleLogger.log.ai.djl.tensorflow", "WARN")
+}
 
-    val batchSize = 256
-    val numEpochs = Integer.getInteger("MAX_EPOCH", 10)
-    val trainIter = FashionMnist.builder()
-        .optUsage(Dataset.Usage.TRAIN)
+/**
+ * Prepares the dataset for training or testing.
+ *
+ * @param usage Dataset usage (TRAIN or TEST).
+ * @param batchSize The number of samples per batch.
+ * @return The prepared FashionMnist dataset.
+ */
+fun prepareDataset(usage: Dataset.Usage, batchSize: Int): FashionMnist {
+    return FashionMnist.builder()
+        .optUsage(usage)
         .setSampling(batchSize, true)
         .optLimit(getLong("DATASET_LIMIT", Long.MAX_VALUE))
         .build()
+        .apply { prepare() }
+}
 
-    val testIter = FashionMnist.builder()
-        .optUsage(Dataset.Usage.TEST)
-        .setSampling(batchSize, true)
-        .optLimit(getLong("DATASET_LIMIT", Long.MAX_VALUE))
-        .build()
-
-    trainIter.prepare()
-    testIter.prepare()
-
-    val block: SequentialBlock = SequentialBlock()
-        .add(
-            Conv2d.builder()
-                .setKernelShape(Shape(5, 5))
-                .setFilters(6).build()
-        )
+/**
+ * Prepares the model block for the neural network.
+ *
+ * @return The prepared SequentialBlock.
+ */
+fun prepareModelBlock(): SequentialBlock {
+    return SequentialBlock()
+        .add(Conv2d.builder().setKernelShape(Shape(5, 5)).setFilters(6).build())
         .add(BatchNorm.builder().build())
         .add(Pool.maxPool2dBlock(Shape(2, 2), Shape(2, 2)))
-        .add(
-            Conv2d.builder()
-                .setKernelShape(Shape(5, 5))
-                .setFilters(16).build()
-        )
+        .add(Conv2d.builder().setKernelShape(Shape(5, 5)).setFilters(16).build())
         .add(BatchNorm.builder().build())
         .add(Activation::sigmoid)
         .add(Pool.maxPool2dBlock(Shape(2, 2), Shape(2, 2)))
@@ -70,25 +114,6 @@ fun main() {
         .add(BatchNorm.builder().build())
         .add(Activation::sigmoid)
         .add(Linear.builder().setUnits(10).build())
-
-    val loss: Loss = Loss.softmaxCrossEntropyLoss()
-
-    val lrt: Tracker = Tracker.fixed(1.0f)
-    val sgd: Optimizer = Optimizer.sgd().setLearningRateTracker(lrt).build()
-
-    val model: Model = Model.newInstance("batch-norm")
-    model.block = block
-
-    val config = DefaultTrainingConfig(loss)
-        .optOptimizer(sgd) // Optimizer (loss function)
-        .addEvaluator(Accuracy()) // Model Accuracy
-        .addTrainingListeners(*TrainingListener.Defaults.logging()) // Logging
-
-    val trainer: Trainer = model.newTrainer(config)
-    trainer.initialize(Shape(1, 1, 28, 28))
-
-    val evaluatorMetrics: MutableMap<String, DoubleArray> = mutableMapOf()
-    val avgTrainTimePerEpoch = Training.trainingChapter6(trainIter, testIter, numEpochs, trainer, evaluatorMetrics)
 }
 
 class BatchNorm2

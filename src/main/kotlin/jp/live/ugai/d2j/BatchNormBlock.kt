@@ -134,10 +134,10 @@ class BatchNormBlock(numFeatures: Int, numDimensions: Int) : AbstractBlock() {
     // or the number of output channels for a convolutional layer.
     // num_dims: 2 for a fully-connected layer and 4 for a convolutional layer.
     init {
-        if (numDimensions == 2) {
-            shape = Shape(1, numFeatures.toLong())
+        shape = if (numDimensions == 2) {
+            Shape(1, numFeatures.toLong())
         } else {
-            shape = Shape(1, numFeatures.toLong(), 1, 1)
+            Shape(1, numFeatures.toLong(), 1, 1)
         }
         // The scale parameter and the shift parameter involved in gradient
         // finding and iteration are initialized to 0 and 1 respectively

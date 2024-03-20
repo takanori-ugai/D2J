@@ -46,16 +46,7 @@ object Training {
      * epochs.
      */
     fun sgd(params: NDList, lr: Float, batchSize: Int, subManager: NDManager) {
-        val lrt = Tracker.fixed(lr)
-        val opt = Optimizer.sgd().setLearningRateTracker(lrt).build()
-        for (param in params) {
-            // Update param in place.
-            // param = param - param.gradient * lr / batchSize
-//            val gradient = param.gradient
-//            gradient.attach(subManager)
-//            param.subi(gradient.mul(lr).div(batchSize))
-            opt.update(param.toString(), param, param.gradient.div(batchSize))
-        }
+        sgd(params, lr, batchSize)
     }
 
     fun accuracy(yHat: NDArray, y: NDArray): Float {

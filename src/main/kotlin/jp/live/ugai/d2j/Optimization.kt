@@ -13,7 +13,7 @@ fun main() {
 
     val manager = NDManager.newBaseManager()
     val X = manager.arange(0.5f, 1.5f, 0.01f)
-    val x = X.toFloatArray().toList()
+    val x = X.toFloatArray()
     val fx = x.map(f)
     val gx = x.map(g)
 

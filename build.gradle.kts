@@ -13,8 +13,8 @@ plugins {
     id("com.diffplug.spotless") version "6.20.0"
 //    kotlin("jupyter.api") version "0.10.1-8"
     id("com.github.jk1.dependency-license-report") version "2.1"
-    id("com.github.spotbugs") version "5.1.1"
-    id("org.jlleitschuh.gradle.ktlint") version "11.5.0"
+    id("com.github.spotbugs") version "5.1.3"
+    id("org.jlleitschuh.gradle.ktlint") version "11.5.1"
     application
 }
 
@@ -40,6 +40,7 @@ dependencies {
 //    runtimeOnly("ai.djl.mxnet:mxnet-model-zoo:$v")
 
 //    runtimeOnly("ai.djl.mxnet:mxnet-native-cu112mkl:1.9.1:linux-x86_64")
+    runtimeOnly("ai.djl.mxnet:mxnet-native-mkl:1.9.1:win-x86_64")
     runtimeOnly("ai.djl.mxnet:mxnet-engine:$v")
 //    runtimeOnly("ai.djl.pytorch:pytorch-engine:$v")
 //    runtimeOnly("ai.djl.pytorch:pytorch-jni:1.12.1-$v")
@@ -155,7 +156,7 @@ spotless {
         removeUnusedImports()
 
         // Choose one of these formatters.
-        googleJavaFormat("1.15.0") // has its own section below
+        googleJavaFormat("1.17.0") // has its own section below
         formatAnnotations() // fixes formatting of type annotations, see below
     }
 }

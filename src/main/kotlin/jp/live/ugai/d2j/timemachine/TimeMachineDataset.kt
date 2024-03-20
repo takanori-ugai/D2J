@@ -54,7 +54,11 @@ class TimeMachineDataset(builder: Builder) : RandomAccessDataset(builder) {
         val offset: Int = Random.nextInt(numSteps)
         val numTokens = ((corpus.size - offset - 1) / batchSize) * batchSize
         var Xs = manager!!.create(corpus.subList(offset, offset + numTokens).toIntArray()).reshape(Shape(batchSize.toLong(), -1))
-        var Ys = manager.create(corpus.subList(offset + 1, offset + 1 + numTokens).toIntArray()).reshape(Shape(batchSize.toLong(), -1))
+        var Ys = manager.create(
+            corpus.subList(offset + 1, offset + 1 + numTokens).toIntArray()
+        ).reshape(
+            Shape(batchSize.toLong(), -1)
+        )
         val numBatches = Xs.shape[1].toInt() / numSteps
         val xNDList = NDList()
         val yNDList = NDList()

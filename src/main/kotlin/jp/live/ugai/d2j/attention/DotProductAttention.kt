@@ -144,7 +144,7 @@ class AdditiveAttention(numHiddens: Int, dropout: Float) : AbstractBlock() {
         val shape = longArrayOf(2, 1, w, h)
         W_v.initialize(manager, dataType, Shape(*shape))
         val dropoutShape = shape.copyOf(shape.size - 1)
-        dropout.initialize(manager, dataType, Shape(*dropoutShape!!))
+        dropout.initialize(manager, dataType, Shape(*dropoutShape))
         outputArrays = listOf(2L, 1L, inputShapes[2][2])
     }
 }
