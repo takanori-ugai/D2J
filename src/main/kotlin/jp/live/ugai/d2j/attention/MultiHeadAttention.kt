@@ -30,6 +30,7 @@ fun main() {
     val result = attention.forward(ps, input, false)
     println(result[0])
 }
+
 class MultiHeadAttention(numHiddens: Int, private val numHeads: Int, dropout: Float, useBias: Boolean) :
     AbstractBlock() {
     var attention: DotProductAttention
@@ -56,7 +57,7 @@ class MultiHeadAttention(numHiddens: Int, private val numHeads: Int, dropout: Fl
         ps: ParameterStore,
         inputs: NDList,
         training: Boolean,
-        params: PairList<String, Any>?
+        params: PairList<String, Any>?,
     ): NDList {
         // Shape of `queries`, `keys`, or `values`:
         // (`batchSize`, no. of queries or key-value pairs, `numHiddens`)
@@ -80,9 +81,10 @@ class MultiHeadAttention(numHiddens: Int, private val numHeads: Int, dropout: Fl
 
         // Shape of `output`: (`batchSize` * `numHeads`, no. of queries,
         // `numHiddens` / `numHeads`)
-        val output: NDArray = attention
-            .forward(ps, NDList(queries, keys, values, validLens), training, params)
-            .get(0)
+        val output: NDArray =
+            attention
+                .forward(ps, NDList(queries, keys, values, validLens), training, params)
+                .get(0)
 
         // Shape of `outputConcat`:
         // (`batchSize`, no. of queries, `numHiddens`)
@@ -94,7 +96,11 @@ class MultiHeadAttention(numHiddens: Int, private val numHeads: Int, dropout: Fl
         return arrayOf(inputShapes[0])
     }
 
-    override fun initializeChildBlocks(manager: NDManager, dataType: DataType, vararg inputShapes: Shape) {
+    override fun initializeChildBlocks(
+        manager: NDManager,
+        dataType: DataType,
+        vararg inputShapes: Shape,
+    ) {
         manager.newSubManager().use { sub ->
             var queries = sub.zeros(inputShapes[0], dataType)
             var keys = sub.zeros(inputShapes[1], dataType)

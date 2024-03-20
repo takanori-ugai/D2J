@@ -15,7 +15,6 @@ import ai.djl.util.PairList
  * @property decoder The decoder part of the architecture.
  */
 class EncoderDecoder(var encoder: Encoder, var decoder: Decoder) : AbstractBlock() {
-
     /**
      * Initializes the Encoder-Decoder architecture.
      */
@@ -31,7 +30,11 @@ class EncoderDecoder(var encoder: Encoder, var decoder: Decoder) : AbstractBlock
      * @param dataType The data type.
      * @param inputShapes The input shapes.
      */
-    override fun initializeChildBlocks(manager: NDManager, dataType: DataType, vararg inputShapes: Shape) {}
+    override fun initializeChildBlocks(
+        manager: NDManager,
+        dataType: DataType,
+        vararg inputShapes: Shape,
+    ) {}
 
     /**
      * Performs the forward pass of the Encoder-Decoder architecture.
@@ -46,7 +49,7 @@ class EncoderDecoder(var encoder: Encoder, var decoder: Decoder) : AbstractBlock
         parameterStore: ParameterStore,
         inputs: NDList,
         training: Boolean,
-        params: PairList<String, Any>?
+        params: PairList<String, Any>?,
     ): NDList {
         val encX = if (inputs.size > 2) NDList(inputs[0], inputs[2]) else NDList(inputs[0])
         val decState = decoder.initState(encoder.forward(parameterStore, encX, training, params))

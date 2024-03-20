@@ -7,7 +7,10 @@ import java.util.function.Function
 object Functions {
     // Applies the function `func` to `x` element-wise
     // Returns a new float array with the result
-    fun callFunc(x: FloatArray, func: Function<Float?, Float>): FloatArray {
+    fun callFunc(
+        x: FloatArray,
+        func: Function<Float?, Float>,
+    ): FloatArray {
         val y = FloatArray(x.size)
         for (i in x.indices) {
             y[i] = func.apply(x[i])
@@ -37,7 +40,11 @@ object Functions {
      * for output.
      */
     fun interface TriFunction<T, U, V, W> {
-        fun apply(t: T, u: U, v: V): W
+        fun apply(
+            t: T,
+            u: U,
+            v: V,
+        ): W
     }
 
     /**
@@ -45,7 +52,12 @@ object Functions {
      * output.
      */
     fun interface QuadFunction<T, U, V, W, R> {
-        fun apply(t: T, u: U, v: V, w: W): R
+        fun apply(
+            t: T,
+            u: U,
+            v: V,
+            w: W,
+        ): R
     }
 
     /**
@@ -69,6 +81,9 @@ object Functions {
      * void for return.
      */
     fun interface voidTwoFunction<T, U> {
-        fun apply(t: T, u: U)
+        fun apply(
+            t: T,
+            u: U,
+        )
     }
 }

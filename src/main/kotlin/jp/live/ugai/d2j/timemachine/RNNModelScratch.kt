@@ -19,7 +19,7 @@ class RNNModelScratch(
     device: Device,
     getParams: (Int, Int, Device) -> NDList,
     initRNNState: (Int, Int, Device) -> NDList,
-    forwardFn: (NDArray, NDList, NDList) -> Pair<NDArray, NDList>
+    forwardFn: (NDArray, NDList, NDList) -> Pair<NDArray, NDList>,
 ) {
     var params: NDList = getParams(vocabSize, numHiddens, device)
     var initState: (Int, Int, Device) -> NDList = initRNNState
@@ -32,7 +32,10 @@ class RNNModelScratch(
      * @param state The state.
      * @return A pair containing the output and the new state.
      */
-    fun forward(X: NDArray, state: NDList): Pair<NDArray, NDList> {
+    fun forward(
+        X: NDArray,
+        state: NDList,
+    ): Pair<NDArray, NDList> {
         return forwardFn(X.transpose().oneHot(vocabSize), state, params)
     }
 
@@ -43,7 +46,10 @@ class RNNModelScratch(
      * @param device The device.
      * @return The initial state.
      */
-    fun beginState(batchSize: Int, device: Device): NDList {
+    fun beginState(
+        batchSize: Int,
+        device: Device,
+    ): NDList {
         return initState(batchSize, numHiddens, device)
     }
 }

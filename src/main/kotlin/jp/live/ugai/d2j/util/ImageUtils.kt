@@ -9,7 +9,12 @@ import java.awt.RenderingHints
 import java.awt.image.BufferedImage
 
 object ImageUtils {
-    fun showImages(images: List<BufferedImage>, labels: List<String>, width: Int, height: Int): BufferedImage {
+    fun showImages(
+        images: List<BufferedImage>,
+        labels: List<String>,
+        width: Int,
+        height: Int,
+    ): BufferedImage {
         val col = Math.min(1280 / width, images.size)
         val row = (images.size + col - 1) / col
         val textHeight = 28
@@ -36,7 +41,11 @@ object ImageUtils {
         return output
     }
 
-    fun showImages(images: List<BufferedImage>, width: Int, height: Int): BufferedImage {
+    fun showImages(
+        images: List<BufferedImage>,
+        width: Int,
+        height: Int,
+    ): BufferedImage {
         val col = Math.min(1280 / width, images.size)
         val row = (images.size + col - 1) / col
         val w = col * (width + 3)
@@ -56,7 +65,11 @@ object ImageUtils {
         return output
     }
 
-    fun drawBBoxes(img: Image, boxes: NDArray, labels: List<String>?) {
+    fun drawBBoxes(
+        img: Image,
+        boxes: NDArray,
+        labels: List<String>?,
+    ) {
         var labels = labels
         if (labels == null) {
             labels = List(boxes.size(0).toInt()) { "" }
@@ -83,7 +96,7 @@ object ImageUtils {
             bbox.getFloat(0).toDouble(),
             bbox.getFloat(1).toDouble(),
             width.toDouble(),
-            height.toDouble()
+            height.toDouble(),
         )
     }
 }

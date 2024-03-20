@@ -73,7 +73,6 @@ fun setSystemProperties() {
     System.setProperty("org.slf4j.simpleLogger.log.ai.djl.mxnet", "ERROR")
     System.setProperty("org.slf4j.simpleLogger.log.ai.djl.ndarray.index", "ERROR")
     System.setProperty("org.slf4j.simpleLogger.log.ai.djl.tensorflow", "WARN")
-}
 
 /**
  * Prepares the dataset for training or testing.

@@ -43,21 +43,23 @@ fun main() {
 
     val manager = NDManager.newBaseManager()
 
-    val dataset: TimeMachineDataset = TimeMachineDataset.Builder()
-        .setManager(manager)
-        .setMaxTokens(10000)
-        .setSampling(batchSize, false)
-        .setSteps(numSteps)
-        .build()
+    val dataset: TimeMachineDataset =
+        TimeMachineDataset.Builder()
+            .setManager(manager)
+            .setMaxTokens(10000)
+            .setSampling(batchSize, false)
+            .setSteps(numSteps)
+            .build()
     dataset.prepare()
     val vocab = dataset.vocab
     val numHiddens = 256
-    val rnnLayer = RNN.builder()
-        .setNumLayers(1)
-        .setStateSize(numHiddens)
-        .optReturnState(true)
-        .optBatchFirst(false)
-        .build()
+    val rnnLayer =
+        RNN.builder()
+            .setNumLayers(1)
+            .setStateSize(numHiddens)
+            .optReturnState(true)
+            .optBatchFirst(false)
+            .build()
     val state = beginState(batchSize, 1, numHiddens)
     println(state.size)
     println(state[0].shape)
@@ -84,7 +86,11 @@ fun main() {
     predictCh8("time traveller", 10, net, vocab, device, manager)
 }
 
-fun beginState(batchSize: Int, numLayers: Int, numHiddens: Int): NDList {
+fun beginState(
+    batchSize: Int,
+    numLayers: Int,
+    numHiddens: Int,
+): NDList {
     return NDList(manager.zeros(Shape(numLayers.toLong(), batchSize.toLong(), numHiddens.toLong())))
 }
 
@@ -94,7 +100,7 @@ fun predictCh8(
     net: Any,
     vocab: Vocab,
     device: Device,
-    manager: NDManager
+    manager: NDManager,
 ): String {
     val outputs: MutableList<Int> = ArrayList()
     outputs.add(vocab.getIdx("" + prefix[0]))
@@ -121,33 +127,35 @@ fun predictCh8(
         val castedNet = net as AbstractBlock
         var state: NDList? = null
         for (c in prefix.substring(1).toCharArray()) { // Warm-up period
-            state = if (state == null) {
-                // Begin state
-                castedNet
-                    .forward(
-                        ParameterStore(manager, false),
-                        NDList(getInput()),
-                        false
-                    )
-                    .subNDList(1)
-            } else {
-                castedNet
-                    .forward(
-                        ParameterStore(manager, false),
-                        NDList(getInput()).addAll(state),
-                        false
-                    )
-                    .subNDList(1)
-            }
+            state =
+                if (state == null) {
+                    // Begin state
+                    castedNet
+                        .forward(
+                            ParameterStore(manager, false),
+                            NDList(getInput()),
+                            false,
+                        )
+                        .subNDList(1)
+                } else {
+                    castedNet
+                        .forward(
+                            ParameterStore(manager, false),
+                            NDList(getInput()).addAll(state),
+                            false,
+                        )
+                        .subNDList(1)
+                }
             outputs.add(vocab.getIdx("" + c))
         }
         var y: NDArray
         for (i in 0 until numPreds) {
-            val pair = castedNet.forward(
-                ParameterStore(manager, false),
-                NDList(getInput()).addAll(state),
-                false
-            )
+            val pair =
+                castedNet.forward(
+                    ParameterStore(manager, false),
+                    NDList(getInput()).addAll(state),
+                    false,
+                )
             y = pair[0]
             state = pair.subNDList(1)
             outputs.add(y.argMax(1).reshape(Shape(1)).getLong(0L).toInt())
@@ -169,31 +177,34 @@ fun trainCh8(
     numEpochs: Int,
     device: Device,
     useRandomIter: Boolean,
-    manager: NDManager
+    manager: NDManager,
 ) {
     val loss = SoftmaxCrossEntropyLoss()
 //    val animator = Animator()
-    val updater: (Int, NDManager) -> Unit = if (net is RNNModelScratch) {
-        { batchSize: Int, subManager: NDManager ->
-            sgd(net.params, lr.toFloat(), batchSize, subManager)
+    val updater: (Int, NDManager) -> Unit =
+        if (net is RNNModelScratch) {
+            { batchSize: Int, subManager: NDManager ->
+                sgd(net.params, lr.toFloat(), batchSize, subManager)
+            }
+        } else {
+            { batchSize: Int, subManager: NDManager ->
+                // Already initialized net
+                val castedNet = net as AbstractBlock
+                val model: Model = Model.newInstance("model")
+                model.block = castedNet
+                val lrt: Tracker = Tracker.fixed(lr)
+                val sgd: Optimizer = Optimizer.sgd().setLearningRateTracker(lrt).build()
+                val config: DefaultTrainingConfig =
+                    DefaultTrainingConfig(loss)
+                        .optOptimizer(sgd) // Optimizer (loss function)
+                        .optInitializer(NormalInitializer(0.01f), Parameter.Type.WEIGHT) // setting the initializer
+                        .optDevices(Engine.getInstance().getDevices(1)) // setting the number of GPUs needed
+                        .addEvaluator(Accuracy()) // Model Accuracy
+                        .addTrainingListeners(*TrainingListener.Defaults.logging()) // Logging
+                val trainer: Trainer = model.newTrainer(config)
+                trainer.step()
+            }
         }
-    } else {
-        { _, _ ->
-            // Already initialized net
-            val model = Model.newInstance("model")
-            model.block = net as AbstractBlock
-            val lrt: Tracker = Tracker.fixed(lr)
-            val sgd: Optimizer = Optimizer.sgd().setLearningRateTracker(lrt).build()
-            val config: DefaultTrainingConfig = DefaultTrainingConfig(loss)
-                .optOptimizer(sgd) // Optimizer (loss function)
-                .optInitializer(NormalInitializer(0.01f), Parameter.Type.WEIGHT) // setting the initializer
-                .optDevices(Engine.getInstance().getDevices(1)) // setting the number of GPUs needed
-                .addEvaluator(Accuracy()) // Model Accuracy
-                .addTrainingListeners(*TrainingListener.Defaults.logging()) // Logging
-            val trainer: Trainer = model.newTrainer(config)
-            trainer.step()
-        }
-    }
     val predict: (String) -> String =
         { prefix ->
             predictCh8(prefix, 50, net, vocab, device, manager)
@@ -212,7 +223,7 @@ fun trainCh8(
         }
     }
     println(
-        "perplexity: %.1f, %.1f tokens/sec on %s%n".format(ppl, speed, device.toString())
+        "perplexity: %.1f, %.1f tokens/sec on %s%n".format(ppl, speed, device.toString()),
     )
     println(predict("time traveller"))
     println(predict("traveller"))
@@ -226,7 +237,7 @@ fun trainEpochCh8(
     updater: (Int, NDManager) -> Unit,
     device: Device,
     useRandomIter: Boolean,
-    manager: NDManager
+    manager: NDManager,
 ): Pair<Double, Double> {
     val watch = StopWatch()
     watch.start()
@@ -259,22 +270,23 @@ fun trainEpochCh8(
                     state = pairResult.second
                 } else {
                     val pairResult: NDList
-                    pairResult = if (state == null) {
-                        // Begin state
-                        (net as AbstractBlock)
-                            .forward(
-                                ParameterStore(manager, false),
-                                NDList(X),
-                                true
-                            )
-                    } else {
-                        (net as AbstractBlock)
-                            .forward(
-                                ParameterStore(manager, false),
-                                NDList(X).addAll(state),
-                                true
-                            )
-                    }
+                    pairResult =
+                        if (state == null) {
+                            // Begin state
+                            (net as AbstractBlock)
+                                .forward(
+                                    ParameterStore(manager, false),
+                                    NDList(X),
+                                    true,
+                                )
+                        } else {
+                            (net as AbstractBlock)
+                                .forward(
+                                    ParameterStore(manager, false),
+                                    NDList(X).addAll(state),
+                                    true,
+                                )
+                        }
                     yHat = pairResult[0]
                     state = pairResult.subNDList(1)
                 }
@@ -290,7 +302,11 @@ fun trainEpochCh8(
 }
 
 /** Clip the gradient.  */
-fun gradClipping(net: Any, theta: Int, manager: NDManager) {
+fun gradClipping(
+    net: Any,
+    theta: Int,
+    manager: NDManager,
+) {
     var result = 0.0
     val params: NDList
     if (net is RNNModelScratch) {

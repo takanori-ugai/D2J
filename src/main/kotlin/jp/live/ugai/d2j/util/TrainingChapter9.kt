@@ -6,7 +6,11 @@ import ai.djl.nn.AbstractBlock
 
 object TrainingChapter9 {
     /** Clip the gradient.  */
-    fun gradClipping(net: Any, theta: Int, manager: NDManager) {
+    fun gradClipping(
+        net: Any,
+        theta: Int,
+        manager: NDManager,
+    ) {
         var result = 0.0
         val params: NDList
         params = NDList()

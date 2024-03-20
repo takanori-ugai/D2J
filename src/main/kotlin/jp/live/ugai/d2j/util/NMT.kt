@@ -17,7 +17,7 @@ object NMT {
     fun readDataNMT(): String? {
         DownloadUtils.download(
             "http://d2l-data.s3-accelerate.amazonaws.com/fra-eng.zip",
-            "fra-eng.zip"
+            "fra-eng.zip",
         )
         val zipFile = ZipFile(File("fra-eng.zip"))
         val entries = zipFile.entries()
@@ -32,8 +32,11 @@ object NMT {
         return null
     }
 
-    fun noSpace(currChar: Char, prevChar: Char): Boolean {
-        /* Preprocess the English-French dataset. */
+    fun noSpace(
+        currChar: Char,
+        prevChar: Char,
+    ): Boolean {
+        // Preprocess the English-French dataset.
         return listOf(',', '.', '!', '?').contains(currChar) &&
             prevChar != ' '
     }
@@ -59,7 +62,7 @@ object NMT {
 
     fun tokenizeNMT(
         text: String,
-        numExamples: Int?
+        numExamples: Int?,
     ): Pair<List<List<String>>, List<List<String>>> {
         val source = mutableListOf<List<String>>()
         val target = mutableListOf<List<String>>()
@@ -79,8 +82,12 @@ object NMT {
         return Pair(source, target)
     }
 
-    fun truncatePad(integerLine: List<Int>, numSteps: Int, paddingToken: Int): List<Int> {
-        /* Truncate or pad sequences */
+    fun truncatePad(
+        integerLine: List<Int>,
+        numSteps: Int,
+        paddingToken: Int,
+    ): List<Int> {
+        // Truncate or pad sequences
         val line = integerLine
         if (line.size > numSteps) {
             return line.subList(0, numSteps)
@@ -89,8 +96,12 @@ object NMT {
         return line + paddingTokenArr
     }
 
-    fun buildArrayNMT(lines: List<List<String>>, vocab: Vocab, numSteps: Int): Pair<NDArray, NDArray> {
-        /* Transform text sequences of machine translation into minibatches. */
+    fun buildArrayNMT(
+        lines: List<List<String>>,
+        vocab: Vocab,
+        numSteps: Int,
+    ): Pair<NDArray, NDArray> {
+        // Transform text sequences of machine translation into minibatches.
         val linesIntArr = lines.map { vocab.getIdxs(it) }.toMutableList()
         for (i in linesIntArr.indices) {
             val temp: MutableList<Int> = linesIntArr[i].toMutableList()
@@ -114,9 +125,9 @@ object NMT {
     fun loadDataNMT(
         batchSize: Int,
         numSteps: Int,
-        numExamples: Int
+        numExamples: Int,
     ): Pair<ArrayDataset, Pair<Vocab, Vocab>> {
-        /* Return the iterator and the vocabularies of the translation dataset. */
+        // Return the iterator and the vocabularies of the translation dataset.
         val text = preprocessNMT(readDataNMT()!!)
         val pair = tokenizeNMT(text, numExamples)
         val source = pair.first
@@ -133,11 +144,12 @@ object NMT {
         val tgtArr = pairArr.first
         val tgtValidLen = pairArr.second
 
-        val dataset = ArrayDataset.Builder()
-            .setData(srcArr, srcValidLen)
-            .optLabels(tgtArr, tgtValidLen)
-            .setSampling(batchSize, true)
-            .build()
+        val dataset =
+            ArrayDataset.Builder()
+                .setData(srcArr, srcValidLen)
+                .optLabels(tgtArr, tgtValidLen)
+                .setSampling(batchSize, true)
+                .build()
 
         return Pair(dataset, Pair(srcVocab, tgtVocab))
     }

@@ -13,18 +13,28 @@ import ai.djl.training.optimizer.Optimizer
 import ai.djl.training.tracker.Tracker
 
 object Training {
-
-    fun linreg(X: NDArray, w: NDArray, b: NDArray): NDArray {
+    fun linreg(
+        X: NDArray,
+        w: NDArray,
+        b: NDArray,
+    ): NDArray {
         return X.dot(w).add(b)
     }
 
-    fun squaredLoss(yHat: NDArray, y: NDArray): NDArray {
+    fun squaredLoss(
+        yHat: NDArray,
+        y: NDArray,
+    ): NDArray {
         return (yHat.sub(y.reshape(yHat.shape)))
             .mul((yHat.sub(y.reshape(yHat.shape))))
             .div(2)
     }
 
-    fun sgd(params: NDList, lr: Float, batchSize: Int) {
+    fun sgd(
+        params: NDList,
+        lr: Float,
+        batchSize: Int,
+    ) {
         val lrt = Tracker.fixed(lr)
         val opt = Optimizer.sgd().setLearningRateTracker(lrt).build()
         for (param in params) {
@@ -45,11 +55,28 @@ object Training {
      * always a great practice but the impact is most notable when there is lot of data on various
      * epochs.
      */
-    fun sgd(params: NDList, lr: Float, batchSize: Int, subManager: NDManager) {
-        sgd(params, lr, batchSize)
+    fun sgd(
+        params: NDList,
+        lr: Float,
+        batchSize: Int,
+        subManager: NDManager,
+    ) {
+        val lrt = Tracker.fixed(lr)
+        val opt = Optimizer.sgd().setLearningRateTracker(lrt).build()
+        for (param in params) {
+            // Update param in place.
+            // param = param - param.gradient * lr / batchSize
+//            val gradient = param.gradient
+//            gradient.attach(subManager)
+//            param.subi(gradient.mul(lr).div(batchSize))
+            opt.update(param.toString(), param, param.gradient.div(batchSize))
+        }
     }
 
-    fun accuracy(yHat: NDArray, y: NDArray): Float {
+    fun accuracy(
+        yHat: NDArray,
+        y: NDArray,
+    ): Float {
         // Check size of 1st dimension greater than 1
         // to see if we have multiple samples
         if (yHat.shape.size(1) > 1) {
@@ -75,7 +102,7 @@ object Training {
         testIter: ArrayDataset,
         numEpochs: Int,
         trainer: Trainer,
-        evaluatorMetrics: MutableMap<String, DoubleArray>
+        evaluatorMetrics: MutableMap<String, DoubleArray>,
     ): Double {
         trainer.metrics = Metrics()
 
@@ -87,19 +114,22 @@ object Training {
             .forEach { evaluator ->
                 evaluatorMetrics.put(
                     "train_epoch_" + evaluator.name,
-                    metrics.getMetric("train_epoch_" + evaluator.name).map { x -> x.value }.toDoubleArray()
+                    metrics.getMetric("train_epoch_" + evaluator.name).map { x -> x.value }.toDoubleArray(),
                 )
                 evaluatorMetrics.put(
                     "validate_epoch_" + evaluator.name,
-                    metrics.getMetric("validate_epoch_" + evaluator.name).map { x -> x.value }.toDoubleArray()
+                    metrics.getMetric("validate_epoch_" + evaluator.name).map { x -> x.value }.toDoubleArray(),
                 )
             }
 
         return metrics.mean("epoch")
     }
 
-    /* Softmax-regression-scratch */
-    fun evaluateAccuracy(net: (NDArray) -> NDArray, dataIterator: Iterable<Batch>): Float {
+    // Softmax-regression-scratch
+    fun evaluateAccuracy(
+        net: (NDArray) -> NDArray,
+        dataIterator: Iterable<Batch>,
+    ): Float {
         val metric = Accumulator(2) // numCorrectedExamples, numExamples
         for (batch in dataIterator) {
             val X = batch.data.head()
@@ -116,7 +146,7 @@ object Training {
     fun evaluateLoss(
         net: (NDArray) -> NDArray,
         dataIterator: Iterable<Batch>,
-        loss: (NDArray, NDArray) -> NDArray
+        loss: (NDArray, NDArray) -> NDArray,
     ): Float {
         val metric = Accumulator(2) // sumLoss, numExamples
 
@@ -124,7 +154,7 @@ object Training {
             val X = batch.data.head()
             val y = batch.labels.head()
             metric.add(
-                floatArrayOf(loss(net(X), y).sum().getFloat(), y.size().toFloat())
+                floatArrayOf(loss(net(X), y).sum().getFloat(), y.size().toFloat()),
             )
             batch.close()
         }

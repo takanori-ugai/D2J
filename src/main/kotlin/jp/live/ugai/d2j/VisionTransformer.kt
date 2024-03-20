@@ -65,17 +65,18 @@ fun main() {
     val batchSize0 = 256
     val lr = 0.001f
     val X0 = manager.ones(Shape(batchSize0.toLong(), 1, imgSize0.toLong(), imgSize0.toLong()))
-    val encoder = ViT(
-        imgSize0,
-        patchSize0,
-        numHiddens0,
-        mlpNumHiddens0,
-        numHeads0,
-        numBlks0,
-        embDropout0,
-        blkDropout0,
-        lr
-    )
+    val encoder =
+        ViT(
+            imgSize0,
+            patchSize0,
+            numHiddens0,
+            mlpNumHiddens0,
+            numHeads0,
+            numBlks0,
+            embDropout0,
+            blkDropout0,
+            lr,
+        )
 //    encoder.initialize(manager, DataType.FLOAT32, X0.shape)
 
     val randomShuffle = true
@@ -83,17 +84,19 @@ fun main() {
 // Get Training and Validation Datasets
 
 // Get Training and Validation Datasets
-    val trainingSet = FashionMnist.builder()
-        .optUsage(Dataset.Usage.TRAIN)
-        .setSampling(batchSize0, randomShuffle)
-        .optLimit(Long.MAX_VALUE)
-        .build()
+    val trainingSet =
+        FashionMnist.builder()
+            .optUsage(Dataset.Usage.TRAIN)
+            .setSampling(batchSize0, randomShuffle)
+            .optLimit(Long.MAX_VALUE)
+            .build()
 
-    val validationSet = FashionMnist.builder()
-        .optUsage(Dataset.Usage.TEST)
-        .setSampling(batchSize0, false)
-        .optLimit(Long.MAX_VALUE)
-        .build()
+    val validationSet =
+        FashionMnist.builder()
+            .optUsage(Dataset.Usage.TEST)
+            .setSampling(batchSize0, false)
+            .optLimit(Long.MAX_VALUE)
+            .build()
     trainingSet.prepare()
     validationSet.prepare()
     val model: Model = Model.newInstance("softmax-regression")
@@ -101,11 +104,13 @@ fun main() {
     val loss: Loss = Loss.softmaxCrossEntropyLoss()
     val lrt: Tracker = Tracker.fixed(lr)
     val adam: Optimizer = Optimizer.adam().optLearningRateTracker(lrt).build()
-    val config: DefaultTrainingConfig = DefaultTrainingConfig(loss)
-        .optOptimizer(adam) // Optimizer (loss function)
-        .optInitializer(XavierInitializer(), "")
-        .addEvaluator(Accuracy()) // Model Accuracy
-        .addTrainingListeners(*TrainingListener.Defaults.logging()); // Logging
+    val config: DefaultTrainingConfig =
+        DefaultTrainingConfig(loss)
+            .optOptimizer(adam) // Optimizer (loss function)
+            .optInitializer(XavierInitializer(), "")
+            .addEvaluator(Accuracy()) // Model Accuracy
+            .addTrainingListeners(*TrainingListener.Defaults.logging())
+    ; // Logging
 
     val trainer: Trainer = model.newTrainer(config)
     trainer.initialize(X0.shape)
@@ -114,36 +119,42 @@ fun main() {
 
     val batch = validationSet.getData(manager).iterator().next()
     val X3 = batch.getData().head()
-    val yHat: IntArray = encoder
-        .forward(ps, NDList(X3), false)
-        .head()
-        .argMax(1)
-        .toType(DataType.INT32, false)
-        .toIntArray()
+    val yHat: IntArray =
+        encoder
+            .forward(ps, NDList(X3), false)
+            .head()
+            .argMax(1)
+            .toType(DataType.INT32, false)
+            .toIntArray()
     println(yHat.toList().subList(0, 20))
     println(batch.getLabels().head().toType(DataType.INT32, false).toIntArray().toList().subList(0, 20))
 }
 
 class PatchEmbedding(imgSize: Int = 96, val patchSize: Int = 16, val numHiddens: Int = 512) : AbstractBlock() {
     val numPatches = (imgSize / patchSize) * (imgSize / patchSize)
-    val conv = Conv2d.builder()
-        .setKernelShape(Shape(patchSize.toLong(), patchSize.toLong()))
-        .optStride(Shape(patchSize.toLong(), patchSize.toLong()))
-        .setFilters(numHiddens)
-        .build()
+    val conv =
+        Conv2d.builder()
+            .setKernelShape(Shape(patchSize.toLong(), patchSize.toLong()))
+            .optStride(Shape(patchSize.toLong(), patchSize.toLong()))
+            .setFilters(numHiddens)
+            .build()
 
     override fun forwardInternal(
         parameterStore: ParameterStore,
         inputs: NDList,
         training: Boolean,
-        params: PairList<String, Any>?
+        params: PairList<String, Any>?,
     ): NDList {
         // Output shape: (batch size, no. of patches, no. of channels)
         val f = conv.forward(parameterStore, inputs, training, params).head()
         return NDList(f.reshape(Shape(f.shape[0], f.shape[1], -1)).transpose(0, 2, 1))
     }
 
-    override fun initializeChildBlocks(manager: NDManager, dataType: DataType, vararg inputShapes: Shape) {
+    override fun initializeChildBlocks(
+        manager: NDManager,
+        dataType: DataType,
+        vararg inputShapes: Shape,
+    ) {
         conv.initialize(manager, dataType, *inputShapes)
     }
 
@@ -158,19 +169,20 @@ class ViTBlock(
     mlpNumHiddens: Int,
     numHeads: Int,
     dropout: Float,
-    useBias: Boolean = false
+    useBias: Boolean = false,
 ) : AbstractBlock() {
     val ln1 = LayerNorm.builder().axis(normShape).build()
     val attention = MultiHeadAttention(numHiddens, numHeads, dropout, useBias)
-    val ret0 = SequentialBlock()
-        .add(LayerNorm.builder().axis(normShape).build())
-        .add(ViTMLP(mlpNumHiddens, numHiddens, dropout))
+    val ret0 =
+        SequentialBlock()
+            .add(LayerNorm.builder().axis(normShape).build())
+            .add(ViTMLP(mlpNumHiddens, numHiddens, dropout))
 
     override fun forwardInternal(
         parameterStore: ParameterStore,
         inputs: NDList,
         training: Boolean,
-        params: PairList<String, Any>?
+        params: PairList<String, Any>?,
     ): NDList {
         var X = inputs[0]
         val validLens = if (inputs.size < 2) null else inputs[1]
@@ -180,7 +192,11 @@ class ViTBlock(
         return ret0.forward(parameterStore, NDList(X), training, params)
     }
 
-    override fun initializeChildBlocks(manager: NDManager, dataType: DataType, vararg inputShapes: Shape) {
+    override fun initializeChildBlocks(
+        manager: NDManager,
+        dataType: DataType,
+        vararg inputShapes: Shape,
+    ) {
         val arr = List<Long>(normShape + 1) { normShape.toLong() }
         ln1.initialize(manager, dataType, Shape(arr))
         val shapes = arrayOf(inputShapes[0], inputShapes[0], inputShapes[0], Shape(inputShapes[0][0]))
@@ -189,7 +205,7 @@ class ViTBlock(
         ret0.initialize(manager, dataType, Shape(arr))
     }
 
-    /* We won't implement this since we won't be using it but it's required as part of an AbstractBlock  */
+    // We won't implement this since we won't be using it but it's required as part of an AbstractBlock
     override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> {
         return inputShapes
     }

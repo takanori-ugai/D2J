@@ -18,15 +18,15 @@ fun main() {
     println(
         maskedSoftmax(
             manager.randomUniform(0f, 1f, Shape(2, 2, 4)),
-            manager.create(floatArrayOf(2f, 3f))
-        )
+            manager.create(floatArrayOf(2f, 3f)),
+        ),
     )
 
     println(
         maskedSoftmax(
             manager.randomUniform(0f, 1f, Shape(2, 2, 4)),
-            manager.create(arrayOf(floatArrayOf(1f, 3f), floatArrayOf(2f, 4f)))
-        )
+            manager.create(arrayOf(floatArrayOf(1f, 3f), floatArrayOf(2f, 4f))),
+        ),
     )
 
     var queries = manager.randomNormal(0f, 1f, Shape(2, 1, 20), DataType.FLOAT32)
@@ -90,7 +90,7 @@ class AdditiveAttention(numHiddens: Int, dropout: Float) : AbstractBlock() {
         ps: ParameterStore,
         inputs: NDList,
         training: Boolean,
-        params: PairList<String, Any>?
+        params: PairList<String, Any>?,
     ): NDList {
         // Shape of the output `queries` and `attentionWeights`:
         // (no. of queries, no. of key-value pairs)
@@ -132,13 +132,18 @@ class AdditiveAttention(numHiddens: Int, dropout: Float) : AbstractBlock() {
      * @param dataType The data type.
      * @param inputShapes The input shapes.
      */
-    public override fun initializeChildBlocks(manager: NDManager, dataType: DataType, vararg inputShapes: Shape) {
+    public override fun initializeChildBlocks(
+        manager: NDManager,
+        dataType: DataType,
+        vararg inputShapes: Shape,
+    ) {
         W_q.initialize(manager, dataType, inputShapes[0])
         W_k.initialize(manager, dataType, inputShapes[1])
-        val outputShapes = arrayOf(
-            W_q.getOutputShapes(arrayOf(inputShapes[0]))[0].shape,
-            W_k.getOutputShapes(arrayOf(inputShapes[1]))[0].shape
-        )
+        val outputShapes =
+            arrayOf(
+                W_q.getOutputShapes(arrayOf(inputShapes[0]))[0].shape,
+                W_k.getOutputShapes(arrayOf(inputShapes[1]))[0].shape,
+            )
         val w = outputShapes.maxOf { it[it.size - 2] }
         val h = outputShapes.maxOf { it[it.size - 1] }
         val shape = longArrayOf(2, 1, w, h)
@@ -149,7 +154,7 @@ class AdditiveAttention(numHiddens: Int, dropout: Float) : AbstractBlock() {
     }
 }
 
-/* Scaled dot product attention. */
+// Scaled dot product attention.
 class DotProductAttention(dropout: Float) : AbstractBlock() {
     private val dropout0: Dropout
     var attentionWeights: NDArray? = null
@@ -164,7 +169,7 @@ class DotProductAttention(dropout: Float) : AbstractBlock() {
         ps: ParameterStore,
         inputs: NDList,
         training: Boolean,
-        params: PairList<String, Any>?
+        params: PairList<String, Any>?,
     ): NDList {
         // Shape of `queries`: (`batchSize`, no. of queries, `d`)
         // Shape of `keys`: (`batchSize`, no. of key-value pairs, `d`)
@@ -185,10 +190,15 @@ class DotProductAttention(dropout: Float) : AbstractBlock() {
         return outputShapes
     }
 
-    override fun initializeChildBlocks(manager: NDManager, dataType: DataType, vararg inputShapes: Shape) {
+    override fun initializeChildBlocks(
+        manager: NDManager,
+        dataType: DataType,
+        vararg inputShapes: Shape,
+    ) {
         manager.newSubManager().use { sub ->
-            val scoresShape = sub.zeros(inputShapes[0], dataType)
-                .batchDot(sub.zeros(inputShapes[1], dataType).swapAxes(1, 2)).shape
+            val scoresShape =
+                sub.zeros(inputShapes[0], dataType)
+                    .batchDot(sub.zeros(inputShapes[1], dataType).swapAxes(1, 2)).shape
             dropout0.initialize(manager, dataType, scoresShape)
             outputShapes = dropout0.getOutputShapes(arrayOf(scoresShape))
         }

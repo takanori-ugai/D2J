@@ -25,7 +25,7 @@ class RNNModel(private val rnnLayer: RecurrentBlock, vocabSize: Int) : AbstractB
         parameterStore: ParameterStore,
         inputs: NDList,
         training: Boolean,
-        params: PairList<String, Any>?
+        params: PairList<String, Any>?,
     ): NDList {
         val X = inputs[0].transpose().oneHot(vocabSize)
         inputs[0] = X
@@ -34,20 +34,25 @@ class RNNModel(private val rnnLayer: RecurrentBlock, vocabSize: Int) : AbstractB
         val Y = result[0]
         val state = result[1]
         val shapeLength = Y.shape.dimension()
-        val output = dense.forward(
-            parameterStore,
-            NDList(Y.reshape(Shape(-1, Y.shape[shapeLength - 1]))),
-            training
-        )
+        val output =
+            dense.forward(
+                parameterStore,
+                NDList(Y.reshape(Shape(-1, Y.shape[shapeLength - 1]))),
+                training,
+            )
         return NDList(output[0], state)
     }
 
-    override fun initializeChildBlocks(manager: NDManager, dataType: DataType, vararg inputShapes: Shape) {
+    override fun initializeChildBlocks(
+        manager: NDManager,
+        dataType: DataType,
+        vararg inputShapes: Shape,
+    ) {
         val shape: Shape = rnnLayer.getOutputShapes(arrayOf(inputShapes[0]))[0]
         dense.initialize(manager, dataType, Shape(vocabSize.toLong(), shape.get(shape.dimension() - 1)))
     }
 
-    /* We won't implement this since we won't be using it but it's required as part of an AbstractBlock  */
+    // We won't implement this since we won't be using it but it's required as part of an AbstractBlock
     override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape?> {
         return arrayOfNulls<Shape>(0)
     }

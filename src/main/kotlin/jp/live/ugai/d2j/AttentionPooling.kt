@@ -46,48 +46,76 @@ fun main() {
     val yTrain = f(xTrain).add(manager.randomNormal(Shape(n.toLong())))
     val xVal = manager.arange(0f, 5f, 5.0f / n)
     val yVal = f(xVal)
-    val nonLinearDataSet = ArrayDataset.Builder()
-        .setData(xTrain)
-        .optLabels(yTrain)
-        .setSampling(batchSize, false)
-        .build()
-    val nonLinearDataSetVar = ArrayDataset.Builder()
-        .setData(xVal)
-        .optLabels(yVal)
-        .setSampling(batchSize, false)
-        .build()
+    val nonLinearDataSet =
+        ArrayDataset.Builder()
+            .setData(xTrain)
+            .optLabels(yTrain)
+            .setSampling(batchSize, false)
+            .build()
+    val nonLinearDataSetVar =
+        ArrayDataset.Builder()
+            .setData(xVal)
+            .optLabels(yVal)
+            .setSampling(batchSize, false)
+            .build()
 
     println(xTrain)
     val yHat = yTrain.mean().reshape(1).repeat(n.toLong())
     println(yHat)
-    var data = mapOf(
-        "x" to xVal.toFloatArray() + xVal.toFloatArray(),
-        "y" to yVal.toFloatArray() + yHat.toFloatArray(),
-        "label" to Array(n) { "True" } + Array(n) { "Pred" }
-    )
+    var data =
+        mapOf(
+            "x" to xVal.toFloatArray() + xVal.toFloatArray(),
+            "y" to yVal.toFloatArray() + yHat.toFloatArray(),
+            "label" to Array(n) { "True" } + Array(n) { "Pred" },
+        )
     var plot = letsPlot(data)
-    plot += geomLine(size = 2) { x = "x" ; y = "y" ; color = "label" }
-    plot += geomPoint(size = 3) { x = xTrain.toFloatArray() ; y = yTrain.toFloatArray() }
+    plot +=
+        geomLine(size = 2) {
+            x = "x"
+            y = "y"
+            color = "label"
+        }
+    plot +=
+        geomPoint(size = 3) {
+            x = xTrain.toFloatArray()
+            y = yTrain.toFloatArray()
+        }
     plot + ggsize(700, 500)
 
-    fun diff(queries: NDArray, keys: NDArray): NDArray {
+    fun diff(
+        queries: NDArray,
+        keys: NDArray,
+    ): NDArray {
         return queries.reshape(-1, 1).sub(keys.reshape(1, -1))
     }
 
-    fun attentionPool(queryKeyDiffs: NDArray, values: NDArray): NDList {
+    fun attentionPool(
+        queryKeyDiffs: NDArray,
+        values: NDArray,
+    ): NDList {
         val attentionWeights = queryKeyDiffs.pow(2).div(2).mul(-1).softmax(1)
         return NDList(attentionWeights.dot(values), attentionWeights)
     }
 
     val aPool = attentionPool(diff(xVal, xTrain), yTrain)
-    data = mapOf(
-        "x" to xVal.toFloatArray() + xVal.toFloatArray(),
-        "y" to yVal.toFloatArray() + aPool[0].toFloatArray(),
-        "label" to Array(n) { "True" } + Array(n) { "Pred" }
-    )
+    data =
+        mapOf(
+            "x" to xVal.toFloatArray() + xVal.toFloatArray(),
+            "y" to yVal.toFloatArray() + aPool[0].toFloatArray(),
+            "label" to Array(n) { "True" } + Array(n) { "Pred" },
+        )
     plot = letsPlot(data)
-    plot += geomLine(size = 2) { x = "x" ; y = "y" ; color = "label" }
-    plot += geomPoint(size = 3) { x = xTrain.toFloatArray() ; y = yTrain.toFloatArray() }
+    plot +=
+        geomLine(size = 2) {
+            x = "x"
+            y = "y"
+            color = "label"
+        }
+    plot +=
+        geomPoint(size = 3) {
+            x = xTrain.toFloatArray()
+            y = yTrain.toFloatArray()
+        }
     plot + ggsize(700, 500)
 
     val matrix = aPool[1]
@@ -104,7 +132,12 @@ fun main() {
     }
     var data0 = mapOf("x" to seriesX, "y" to seriesY)
     plot = letsPlot(data0)
-    plot += geomBin2D(drop = false, binWidth = Pair(1, 1), position = positionIdentity) { x = "x"; y = "y"; weight = seriesW }
+    plot +=
+        geomBin2D(drop = false, binWidth = Pair(1, 1), position = positionIdentity) {
+            x = "x"
+            y = "y"
+            weight = seriesW
+        }
     plot += scaleFillGradient(low = "blue", high = "red")
 // plot += scaleFillContinuous("red", "green")
     plot + ggsize(700, 200)
@@ -120,22 +153,24 @@ fun main() {
     class NWKernelRegression(val keys: NDArray, val values0: NDArray) : AbstractBlock() {
         val wParam: Parameter
         var attention: NDArray? = null
+
         init {
-            wParam = addParameter(
-                Parameter.builder()
-                    .setName("weight")
-                    .setType(Parameter.Type.BIAS)
-                    .optShape(Shape(1))
-                    .optArray(manager.ones(Shape(1)))
-                    .build()
-            )
+            wParam =
+                addParameter(
+                    Parameter.builder()
+                        .setName("weight")
+                        .setType(Parameter.Type.BIAS)
+                        .optShape(Shape(1))
+                        .optArray(manager.ones(Shape(1)))
+                        .build(),
+                )
         }
 
         override fun forwardInternal(
             parameterStore: ParameterStore,
             X: NDList,
             training: Boolean,
-            params: PairList<String, Any>?
+            params: PairList<String, Any>?,
         ): NDList {
             val input = X.head()
             val device: Device = input.getDevice()
@@ -156,12 +191,13 @@ fun main() {
     val l2loss = Loss.l2Loss()
     val sgd = Optimizer.sgd().setLearningRateTracker(lrt).build()
 
-    val config = DefaultTrainingConfig(l2loss)
-        .optOptimizer(sgd) // Optimizer (loss function)
-        .optDevices(Engine.getInstance().getDevices(1)) // single CPU/GPU
-        .addEvaluator(Accuracy()) // Model Accuracy
-        .addEvaluator(l2loss)
-        .addTrainingListeners(*TrainingListener.Defaults.logging()) // Logging
+    val config =
+        DefaultTrainingConfig(l2loss)
+            .optOptimizer(sgd) // Optimizer (loss function)
+            .optDevices(Engine.getInstance().getDevices(1)) // single CPU/GPU
+            .addEvaluator(Accuracy()) // Model Accuracy
+            .addEvaluator(l2loss)
+            .addTrainingListeners(*TrainingListener.Defaults.logging()) // Logging
 
     val model = Model.newInstance("NWKernelRegression")
     val net = NWKernelRegression(xTrain, yTrain)
@@ -173,4 +209,5 @@ fun main() {
     EasyTrain.fit(trainer, numEpochs, nonLinearDataSet, nonLinearDataSetVar)
     println(net.parameters.get(0).value.array)
 }
+
 class AttentionPooling
