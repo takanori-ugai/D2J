@@ -49,10 +49,11 @@ fun main() {
     model.block = block
 
     // Configure training
-    val config = DefaultTrainingConfig(loss)
-        .optOptimizer(sgd) // Optimizer (loss function)
-        .addEvaluator(Accuracy()) // Model Accuracy
-        .addTrainingListeners(*TrainingListener.Defaults.logging()) // Logging
+    val config =
+        DefaultTrainingConfig(loss)
+            .optOptimizer(sgd) // Optimizer (loss function)
+            .addEvaluator(Accuracy()) // Model Accuracy
+            .addTrainingListeners(*TrainingListener.Defaults.logging()) // Logging
 
     // Initialize trainer
     val trainer: Trainer = model.newTrainer(config)
@@ -73,6 +74,7 @@ fun setSystemProperties() {
     System.setProperty("org.slf4j.simpleLogger.log.ai.djl.mxnet", "ERROR")
     System.setProperty("org.slf4j.simpleLogger.log.ai.djl.ndarray.index", "ERROR")
     System.setProperty("org.slf4j.simpleLogger.log.ai.djl.tensorflow", "WARN")
+}
 
 /**
  * Prepares the dataset for training or testing.
@@ -81,7 +83,10 @@ fun setSystemProperties() {
  * @param batchSize The number of samples per batch.
  * @return The prepared FashionMnist dataset.
  */
-fun prepareDataset(usage: Dataset.Usage, batchSize: Int): FashionMnist {
+fun prepareDataset(
+    usage: Dataset.Usage,
+    batchSize: Int,
+): FashionMnist {
     return FashionMnist.builder()
         .optUsage(usage)
         .setSampling(batchSize, true)

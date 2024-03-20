@@ -580,8 +580,9 @@ fun main() {
             device: Device,
             saveAttentionWeights: Boolean,
         ): Pair<String, List<NDArray?>> {
-            val srcTokens = srcVocab.getIdxs(srcSentence.lowercase(Locale.getDefault()).split(" ")) +
-                listOf(srcVocab.getIdx("<eos>"))
+            val srcTokens =
+                srcVocab.getIdxs(srcSentence.lowercase(Locale.getDefault()).split(" ")) +
+                    listOf(srcVocab.getIdx("<eos>"))
             val encValidLen = manager.create(srcTokens.size).reshape(1)
             val truncateSrcTokens = NMT.truncatePad(srcTokens, numSteps, srcVocab.getIdx("<pad>"))
             // Add the batch axis

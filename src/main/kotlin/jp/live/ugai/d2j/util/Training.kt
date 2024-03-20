@@ -139,10 +139,12 @@ object Training {
         }
         return metric.get(0) / metric.get(1)
     }
-    /* End Softmax-regression-scratch */
+    // End Softmax-regression-scratch
 
-    /* MLP */
-    /* Evaluate the loss of a model on the given dataset */
+    /**
+     * MLP
+     * Evaluate the loss of a model on the given dataset
+     */
     fun evaluateLoss(
         net: (NDArray) -> NDArray,
         dataIterator: Iterable<Batch>,
@@ -160,5 +162,5 @@ object Training {
         }
         return metric.get(0) / metric.get(1)
     }
-    /* End MLP */
+    // End MLP
 }
