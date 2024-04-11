@@ -19,7 +19,6 @@ import ai.djl.nn.norm.BatchNorm
 import ai.djl.nn.pooling.Pool
 import ai.djl.training.DefaultTrainingConfig
 import ai.djl.training.ParameterStore
-import ai.djl.training.Trainer
 import ai.djl.training.dataset.Dataset
 import ai.djl.training.evaluator.Accuracy
 import ai.djl.training.listener.TrainingListener
@@ -44,9 +43,9 @@ fun main() {
 
     block.initialize(manager, DataType.FLOAT32, X.shape)
 
-    val parameterStore = ParameterStore(manager, true)
+//    val parameterStore = ParameterStore(manager, true)
 
-    var currentShape = arrayOf<Shape>(X.shape)
+    var currentShape = arrayOf(X.shape)
     for (child in block.children.values()) {
         currentShape = child.getOutputShapes(currentShape)
     }
@@ -133,17 +132,17 @@ fun main() {
     val model = Model.newInstance("cnn")
     model.block = net
 
-    val loss: Loss = Loss.softmaxCrossEntropyLoss()
+    val loss = Loss.softmaxCrossEntropyLoss()
 
-    val lrt: Tracker = Tracker.fixed(lr)
-    val sgd: Optimizer = Optimizer.sgd().setLearningRateTracker(lrt).build()
+    val lrt = Tracker.fixed(lr)
+    val sgd = Optimizer.sgd().setLearningRateTracker(lrt).build()
 
     val config =
         DefaultTrainingConfig(loss).optOptimizer(sgd) // Optimizer (loss function)
             .addEvaluator(Accuracy()) // Model Accuracy
             .addTrainingListeners(*TrainingListener.Defaults.logging()) // Logging
 
-    val trainer: Trainer = model.newTrainer(config)
+    val trainer = model.newTrainer(config)
     trainer.initialize(Shape(1, 1, 96, 96))
 
     val evaluatorMetrics: MutableMap<String, DoubleArray> = mutableMapOf()
