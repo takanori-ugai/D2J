@@ -4,7 +4,6 @@ import ai.djl.Model
 import ai.djl.basicdataset.cv.classification.FashionMnist
 import ai.djl.modality.cv.transform.Resize
 import ai.djl.modality.cv.transform.ToTensor
-import ai.djl.ndarray.NDArray
 import ai.djl.ndarray.NDArrays
 import ai.djl.ndarray.NDList
 import ai.djl.ndarray.NDManager
@@ -214,12 +213,13 @@ class DenseBlock(numConvs: Int, numChannels: Int) : AbstractBlock(VERSION) {
     override fun getOutputShapes(inputs: Array<Shape>): Array<Shape> {
         net.children.values().forEach { block ->
             val shapeY = block.getOutputShapes(inputs)[0]
-            inputs[0] = Shape(
-                inputs[0][0],
-                shapeY[1] + inputs[0][1],
-                inputs[0][2],
-                inputs[0][3]
-            )
+            inputs[0] =
+                Shape(
+                    inputs[0][0],
+                    shapeY[1] + inputs[0][1],
+                    inputs[0][2],
+                    inputs[0][3],
+                )
         }
         return inputs
     }
@@ -260,7 +260,7 @@ class DenseBlock(numConvs: Int, numChannels: Int) : AbstractBlock(VERSION) {
      * @param numChannels The number of output channels for the Conv2d layer.
      * @return A SequentialBlock representing the convolutional block.
      */
-    fun convBlock(numChannels: Int): SequentialBlock? {
+    private fun convBlock(numChannels: Int): SequentialBlock? {
         return SequentialBlock()
             .add(BatchNorm.builder().build())
             .add(Activation::relu)
