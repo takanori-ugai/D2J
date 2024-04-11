@@ -9,11 +9,11 @@ plugins {
     id("com.github.johnrengelman.shadow") version "8.1.1"
     jacoco
     id("org.jetbrains.dokka") version "1.9.20"
-    id("io.gitlab.arturbosch.detekt") version "1.23.5"
+    id("io.gitlab.arturbosch.detekt") version "1.23.6"
     id("com.diffplug.spotless") version "6.25.0"
 //    kotlin("jupyter.api") version "0.10.1-8"
     id("com.github.jk1.dependency-license-report") version "2.6"
-    id("com.github.spotbugs") version "6.0.8"
+    id("com.github.spotbugs") version "6.0.9"
     id("org.jlleitschuh.gradle.ktlint") version "12.1.0"
     application
 }
@@ -21,7 +21,7 @@ plugins {
 group = "jp.live.ugai"
 version = "1.0-SNAPSHOT"
 // val v = "0.19.0-SNAPSHOT"
-val v = "0.27.0-SNAPSHOT"
+val v = "0.28.0-SNAPSHOT"
 
 // val ktlint by configurations.creating
 
@@ -147,7 +147,7 @@ spotbugs {
 }
 
 jacoco {
-    toolVersion = "0.8.10"
+    toolVersion = "0.8.11"
 //    reportsDirectory.set(layout.buildDirectory.dir("customJacocoReportDir"))
 }
 
@@ -163,7 +163,7 @@ spotless {
         removeUnusedImports()
 
         // Choose one of these formatters.
-        googleJavaFormat("1.18.1") // has its own section below
+        googleJavaFormat("1.21.0") // has its own section below
         formatAnnotations() // fixes formatting of type annotations, see below
     }
 }
