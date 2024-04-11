@@ -104,6 +104,10 @@ tasks {
     }
 
     jacocoTestReport {
+        reports {
+            xml.required = true
+            html.required = false
+        }
         dependsOn(test) // tests are required to run before generating the report
     }
 
