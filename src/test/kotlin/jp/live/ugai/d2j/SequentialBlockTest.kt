@@ -14,11 +14,11 @@ class SequentialBlockTest {
         val manager = NDManager.newBaseManager()
         val block = SequentialBlock().add(DenseBlock(2, 10))
 
-        val X = manager.randomUniform(0.0f, 1.0f, Shape(4, 3, 8, 8))
+        val x = manager.randomUniform(0.0f, 1.0f, Shape(4, 3, 8, 8))
 
-        block.initialize(manager, DataType.FLOAT32, X.shape)
+        block.initialize(manager, DataType.FLOAT32, x.shape)
 
-        var currentShape = arrayOf(X.shape)
+        var currentShape = arrayOf(x.shape)
         for (child in block.children.values()) {
             currentShape = child.getOutputShapes(currentShape)
         }
