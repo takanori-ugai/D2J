@@ -76,7 +76,7 @@ fun main() {
             .add { arrays: NDList? -> Activation.relu(arrays) }
             .add(Pool.maxPool2dBlock(Shape(3, 3), Shape(2, 2), Shape(1, 1)))
 
-    var numChannels: Int = 64
+    var numChannels = 64
     val growthRate = 32
 
     val numConvsInDenseBlocks = intArrayOf(4, 4, 4, 4)
@@ -84,14 +84,13 @@ fun main() {
     for (index in numConvsInDenseBlocks.indices) {
         val numConvs = numConvsInDenseBlocks[index]
         net.add(DenseBlock(numConvs, growthRate))
-        numChannels += numConvs * growthRate
+        numChannels = numChannels + numConvs * growthRate
         if (index != numConvsInDenseBlocks.size - 1) {
             numChannels = numChannels / 2
             net.add(transitionBlock(numChannels))
         }
     }
-    net
-        .add(BatchNorm.builder().build())
+    net.add(BatchNorm.builder().build())
         .add(Activation::relu)
         .add(Pool.globalAvgPool2dBlock())
         .add(Linear.builder().setUnits(10).build())
@@ -163,22 +162,15 @@ fun transitionBlock(numChannels: Int): SequentialBlock {
         .add(Pool.avgPool2dBlock(Shape(2, 2), Shape(2, 2)))
 }
 
-fun convBlock(numChannels: Int): SequentialBlock? {
-    return SequentialBlock()
-        .add(BatchNorm.builder().build())
-        .add(Activation::relu)
-        .add(
-            Conv2d.builder()
-                .setFilters(numChannels)
-                .setKernelShape(Shape(3, 3))
-                .optPadding(Shape(1, 1))
-                .optStride(Shape(1, 1))
-                .build(),
-        )
-}
-
+/**
+ * A DenseBlock is a series of convolutional blocks that are densely connected. Each block's input
+ * includes the outputs of all preceding blocks, promoting feature reuse.
+ *
+ * @property numConvs The number of convolutional blocks within this dense block.
+ * @property numChannels The number of output channels for each convolutional block.
+ */
 class DenseBlock(numConvs: Int, numChannels: Int) : AbstractBlock(VERSION) {
-    var net = SequentialBlock()
+    val net = SequentialBlock()
 
     init {
         for (i in 0 until numConvs) {
@@ -186,40 +178,59 @@ class DenseBlock(numConvs: Int, numChannels: Int) : AbstractBlock(VERSION) {
         }
     }
 
+    /**
+     * Returns a string representation of the DenseBlock.
+     */
     override fun toString(): String {
         return "DenseBlock()"
     }
 
+    /**
+     * Performs a forward pass through all convolutional blocks in the DenseBlock.
+     *
+     * @param parameterStore Stores parameters for the model during training.
+     * @param X The input NDList to the block.
+     * @param training A boolean indicating if the model is in training mode.
+     * @param params Additional parameters for the forward pass.
+     * @return The output NDList after processing through the DenseBlock.
+     */
     override fun forwardInternal(
         parameterStore: ParameterStore,
         X: NDList,
         training: Boolean,
         params: PairList<String, Any>?,
     ): NDList {
-        var X = X
-        var Y: NDArray
-        for (block in net.children.values()) {
-            Y = block.forward(parameterStore, X, training).singletonOrThrow()
-            X = NDList(NDArrays.concat(NDList(X.singletonOrThrow(), Y), 1))
+        return net.children.values().fold(X) { acc, block ->
+            NDList(NDArrays.concat(NDList(acc.singletonOrThrow(), block.forward(parameterStore, acc, training).singletonOrThrow()), 1))
         }
-        return X
     }
 
+    /**
+     * Calculates the output shapes given the input shapes to the DenseBlock.
+     *
+     * @param inputs An array of input shapes.
+     * @return An array of output shapes after processing through the DenseBlock.
+     */
     override fun getOutputShapes(inputs: Array<Shape>): Array<Shape> {
-        val shapesX: Array<Shape> = inputs
-        for (block in net.children.values()) {
-            val shapesY: Array<Shape> = block.getOutputShapes(shapesX)
-            shapesX[0] =
-                Shape(
-                    shapesX[0].get(0),
-                    shapesY[0].get(1) + shapesX[0].get(1),
-                    shapesX[0].get(2),
-                    shapesX[0].get(3),
-                )
+        net.children.values().forEach { block ->
+            val shapeY = block.getOutputShapes(inputs)[0]
+            inputs[0] = Shape(
+                inputs[0][0],
+                shapeY[1] + inputs[0][1],
+                inputs[0][2],
+                inputs[0][3]
+            )
         }
-        return shapesX
+        return inputs
     }
 
+    /**
+     * Initializes child blocks with the specified data type and input shapes.
+     *
+     * @param manager The NDManager to manage resources.
+     * @param dataType The data type for the blocks.
+     * @param inputShapes The input shapes to initialize the blocks.
+     */
     override fun initializeChildBlocks(
         manager: NDManager,
         dataType: DataType,
@@ -241,5 +252,25 @@ class DenseBlock(numConvs: Int, numChannels: Int) : AbstractBlock(VERSION) {
 
     companion object {
         private const val VERSION: Byte = 1
+    }
+
+    /**
+     * Creates a convolutional block consisting of BatchNorm, ReLU activation, and Conv2d layers.
+     *
+     * @param numChannels The number of output channels for the Conv2d layer.
+     * @return A SequentialBlock representing the convolutional block.
+     */
+    fun convBlock(numChannels: Int): SequentialBlock? {
+        return SequentialBlock()
+            .add(BatchNorm.builder().build())
+            .add(Activation::relu)
+            .add(
+                Conv2d.builder()
+                    .setFilters(numChannels)
+                    .setKernelShape(Shape(3, 3))
+                    .optPadding(Shape(1, 1))
+                    .optStride(Shape(1, 1))
+                    .build(),
+            )
     }
 }
