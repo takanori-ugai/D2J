@@ -50,7 +50,7 @@ dependencies {
 //    runtimeOnly("ai.djl.pytorch:pytorch-native-cu116:1.12.1:linux-x86_64")
     implementation("org.jetbrains.lets-plot:lets-plot-common:4.6.0")
     implementation("org.jetbrains.lets-plot:lets-plot-kotlin-jvm:4.9.3")
-    runtimeOnly("org.slf4j:slf4j-simple:2.0.16")
+    runtimeOnly("org.slf4j:slf4j-simple:2.0.17")
     implementation("org.apache.commons:commons-math3:3.6.1")
     implementation(kotlin("stdlib"))
     implementation("com.opencsv:opencsv:5.10")
