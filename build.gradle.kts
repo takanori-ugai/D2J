@@ -53,7 +53,7 @@ dependencies {
     runtimeOnly("org.slf4j:slf4j-simple:2.0.17")
     implementation("org.apache.commons:commons-math3:3.6.1")
     implementation(kotlin("stdlib"))
-    implementation("com.opencsv:opencsv:5.11.1")
+    implementation("com.opencsv:opencsv:5.11.2")
     testImplementation(platform("org.junit:junit-bom:5.13.1"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
