@@ -54,7 +54,7 @@ dependencies {
     implementation("org.apache.commons:commons-math3:3.6.1")
     implementation(kotlin("stdlib"))
     implementation("com.opencsv:opencsv:5.11.2")
-    testImplementation(platform("org.junit:junit-bom:5.13.1"))
+    testImplementation(platform("org.junit:junit-bom:5.13.2"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
