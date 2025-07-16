@@ -31,37 +31,36 @@ import java.util.Locale
  */
 object Chap10Utils {
     /**
-     * Performs softmax operation by masking elements on the last axis.
+     * Performs a masked softmax operation along the last axis of the input NDArray.
      *
-     * @param _X The input NDArray.
-     * @param _validLens The valid lengths of the input.
-     * @return The result NDArray after masked softmax operation.
+     * @param input The input NDArray (expected 3D tensor).
+     * @param validLens NDArray containing valid lengths (1D or 2D), or null for no masking.
+     * @return The result NDArray after applying masked softmax.
      */
     fun maskedSoftmax(
-        _X: NDArray,
-        _validLens: NDArray?,
+        input: NDArray,
+        validLens: NDArray?,
     ): NDArray {
-        // Perform softmax operation by masking elements on the last axis.
-        // `X`: 3D tensor, `validLens`: 1D or 2D tensor
-        val shape: Shape = _X.shape
-        var validLens = _validLens
-        if (_validLens == null) {
-            return _X.reshape(Shape(-1, shape.get(shape.dimension() - 1))).softmax(-1).reshape(shape)
+        val shape = input.shape
+        val lastDim = shape[shape.dimension() - 1]
+
+        // If no valid lengths are provided, apply softmax directly
+        if (validLens == null || validLens.shape.dimension() == 0) {
+            return input.reshape(Shape(-1, lastDim)).softmax(-1).reshape(shape)
         }
-        if (validLens!!.shape.dimension() == 0) {
-            return _X.softmax(-1).reshape(shape)
-        }
-        validLens =
+
+        // Prepare valid lengths for masking
+        val expandedValidLens =
             if (validLens.shape.dimension() == 1) {
-                validLens.repeat(shape.get(1))
+                validLens.repeat(shape[1])
             } else {
                 validLens.reshape(-1)
             }
-        // On the last axis, replace masked elements with a very large negative
-        // value, whose exponentiation outputs 0
-        return _X
-            .reshape(Shape(-1, shape.get(shape.dimension() - 1)))
-            .sequenceMask(validLens, -1.0E6F)
+
+        // Mask and apply softmax
+        return input
+            .reshape(Shape(-1, lastDim))
+            .sequenceMask(expandedValidLens, -1.0E6F)
             .softmax(-1)
             .reshape(shape)
     }
@@ -69,31 +68,22 @@ object Chap10Utils {
     /**
      * Transposes the input NDArray for multi-head attention.
      *
-     * @param _X The input NDArray.
+     * Input shape:  (batchSize, numQueriesOrKVs, numHiddens)
+     * Output shape: (batchSize * numHeads, numQueriesOrKVs, numHiddens / numHeads)
+     *
+     * @param input The input NDArray.
      * @param numHeads The number of attention heads.
-     * @return The transposed NDArray.
+     * @return The transposed NDArray suitable for multi-head attention.
      */
     fun transposeQkv(
-        _X: NDArray,
+        input: NDArray,
         numHeads: Int,
     ): NDArray {
-        // Shape of input `X`:
-        // (`batchSize`, no. of queries or key-value pairs, `numHiddens`).
-        // Shape of output `X`:
-        // (`batchSize`, no. of queries or key-value pairs, `numHeads`,
-        // `numHiddens` / `numHeads`)
-        var X = _X
-        X = X.reshape(X.shape[0], X.shape[1], numHeads.toLong(), -1)
-
-        // Shape of output `X`:
-        // (`batchSize`, `numHeads`, no. of queries or key-value pairs,
-        // `numHiddens` / `numHeads`)
-        X = X.transpose(0, 2, 1, 3)
-
-        // Shape of `output`:
-        // (`batchSize` * `numHeads`, no. of queries or key-value pairs,
-        // `numHiddens` / `numHeads`)
-        return X.reshape(-1, X.shape[2], X.shape[3])
+        val batchSize = input.shape[0]
+        val numQueriesOrKVs = input.shape[1]
+        val reshaped = input.reshape(batchSize, numQueriesOrKVs, numHeads.toLong(), -1)
+        val transposed = reshaped.transpose(0, 2, 1, 3)
+        return transposed.reshape(-1, transposed.shape[2], transposed.shape[3])
     }
 
     /**
@@ -187,17 +177,26 @@ object Chap10Utils {
         println("loss: %.3f, %.1f tokens/sec on %s%n".format(lossValue, speed, device.toString()))
     }
 
+    /**
+     * Tokenizes a sentence, appends <eos>, pads/truncates to numSteps, and returns the NDArray and valid length.
+     *
+     * @param sentence The input sentence to tokenize.
+     * @param vocab The vocabulary for tokenization.
+     * @param numSteps The maximum sequence length after padding/truncation.
+     * @return Pair of (tokenized & padded NDArray with batch axis, valid length NDArray).
+     */
     fun tokenizeAndPad(
-        srcSentence: String,
-        srcVocab: Vocab,
+        sentence: String,
+        vocab: Vocab,
         numSteps: Int,
     ): Pair<NDArray, NDArray> {
-        val srcTokens = srcVocab.getIdxs(srcSentence.lowercase(Locale.getDefault()).split(" ")) + listOf(srcVocab.getIdx("<eos>"))
-        val encValidLen = manager.create(srcTokens.size)
-        val truncateSrcTokens = NMT.truncatePad(srcTokens, numSteps, srcVocab.getIdx("<pad>"))
-        // Add the batch axis
-        val encX = manager.create(truncateSrcTokens.toIntArray()).expandDims(0)
-        return Pair(encX, encValidLen)
+        val tokens =
+            vocab.getIdxs(sentence.lowercase(Locale.getDefault()).split(" ")) +
+                listOf(vocab.getIdx("<eos>"))
+        val validLen = manager.create(tokens.size)
+        val paddedTokens = NMT.truncatePad(tokens, numSteps, vocab.getIdx("<pad>"))
+        val tokenArray = manager.create(paddedTokens.toIntArray()).expandDims(0)
+        return Pair(tokenArray, validLen)
     }
 
     /**
@@ -259,36 +258,49 @@ object Chap10Utils {
     /**
      * Calculates the BLEU score for a predicted sequence.
      *
-     * @param predSeq The predicted sequence.
-     * @param labelSeq The ground truth sequence.
-     * @param k The maximum order of n-grams for which matching statistics are computed.
+     * @param predSeq The predicted sequence as a space-separated string.
+     * @param labelSeq The ground truth sequence as a space-separated string.
+     * @param maxOrder The maximum order of n-grams for which matching statistics are computed.
      * @return The BLEU score.
      */
     fun bleu(
         predSeq: String,
         labelSeq: String,
-        k: Int,
+        maxOrder: Int,
     ): Double {
         val predTokens = predSeq.split(" ")
         val labelTokens = labelSeq.split(" ")
-        val lenPred = predTokens.size
-        val lenLabel = labelTokens.size
-        var score = Math.exp(Math.min(0.0, 1.0 - lenLabel / lenPred))
-        for (n in 1..k) {
-            var numMatches = 0
-            val labelSubs = mutableMapOf<String, Int>()
-            for (i in 0 until lenLabel - n + 1) {
-                val key = labelTokens.subList(i, i + n).joinToString(separator = " ")
-                labelSubs.put(key, labelSubs.getOrDefault(key, 0) + 1)
+        val predLen = predTokens.size
+        val labelLen = labelTokens.size
+
+        if (predLen == 0 || labelLen == 0) return 0.0
+
+        // Brevity penalty
+        var score = Math.exp(Math.min(0.0, 1.0 - labelLen.toDouble() / predLen))
+
+        for (n in 1..maxOrder) {
+            var matchCount = 0
+            val labelNgrams = mutableMapOf<String, Int>()
+
+            for (i in 0..labelLen - n) {
+                val ngram = labelTokens.subList(i, i + n).joinToString(" ")
+                labelNgrams[ngram] = labelNgrams.getOrDefault(ngram, 0) + 1
             }
-            for (i in 0 until lenPred - n + 1) {
-                val key = predTokens.subList(i, i + n).joinToString(separator = " ")
-                if (labelSubs.getOrDefault(key, 0) > 0) {
-                    numMatches += 1
-                    labelSubs.put(key, labelSubs.getOrDefault(key, 0) - 1)
+
+            for (i in 0..predLen - n) {
+                val ngram = predTokens.subList(i, i + n).joinToString(" ")
+                val count = labelNgrams.getOrDefault(ngram, 0)
+                if (count > 0) {
+                    matchCount++
+                    labelNgrams[ngram] = count - 1
                 }
             }
-            score *= Math.pow(numMatches.toDouble() / (lenPred - n + 1).toDouble(), Math.pow(0.5, n.toDouble()))
+
+            val possibleMatches = predLen - n + 1
+            // Avoid division by zero for short predictions
+            if (possibleMatches <= 0) return 0.0
+
+            score *= Math.pow(matchCount.toDouble() / possibleMatches, Math.pow(0.5, n.toDouble()))
         }
         return score
     }

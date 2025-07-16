@@ -224,35 +224,51 @@ fun main() {
         return Pair(outputString, attentionWeightSeq.toList())
     }
 
-    // Compute the BLEU.
+    /**
+     * Calculates the BLEU score for a predicted sequence.
+     *
+     * @param predSeq The predicted sequence as a space-separated string.
+     * @param labelSeq The ground truth sequence as a space-separated string.
+     * @param maxOrder The maximum order of n-grams for which matching statistics are computed.
+     * @return The BLEU score.
+     */
     fun bleu(
         predSeq: String,
         labelSeq: String,
-        k: Int,
+        maxOrder: Int,
     ): Double {
         val predTokens = predSeq.split(" ")
         val labelTokens = labelSeq.split(" ")
-        val lenPred = predTokens.size
-        val lenLabel = labelTokens.size
-        var score = Math.exp(Math.min(0.toDouble(), 1.0 - lenLabel / lenPred))
-        for (n in 1 until k + 1) {
-            var numMatches = 0
-            val labelSubs = mutableMapOf<String, Int>()
-            for (i in 0 until lenLabel - n + 1) {
-                val key = labelTokens.subList(i, i + n).joinToString(separator = " ")
-//            println("Key: $key")
-                labelSubs.put(key, labelSubs.getOrDefault(key, 0) + 1)
+        val predLen = predTokens.size
+        val labelLen = labelTokens.size
+
+        if (predLen == 0 || labelLen == 0) return 0.0
+
+        // Brevity penalty
+        var score = Math.exp(Math.min(0.0, 1.0 - labelLen.toDouble() / predLen))
+
+        for (n in 1..maxOrder) {
+            var matchCount = 0
+            val labelNgrams = mutableMapOf<String, Int>()
+
+            for (i in 0..labelLen - n) {
+                val ngram = labelTokens.subList(i, i + n).joinToString(" ")
+                labelNgrams[ngram] = labelNgrams.getOrDefault(ngram, 0) + 1
             }
-            for (i in 0 until lenPred - n + 1) {
-                // val key =predTokens.subList(i, i + n).joinToString(" ")
-                val key = predTokens.subList(i, i + n).joinToString(separator = " ")
-//            println("Key2 : $key")
-                if (labelSubs.getOrDefault(key, 0) > 0) {
-                    numMatches += 1
-                    labelSubs.put(key, labelSubs.getOrDefault(key, 0) - 1)
+
+            for (i in 0..predLen - n) {
+                val ngram = predTokens.subList(i, i + n).joinToString(" ")
+                val count = labelNgrams.getOrDefault(ngram, 0)
+                if (count > 0) {
+                    matchCount++
+                    labelNgrams[ngram] = count - 1
                 }
             }
-            score *= Math.pow(numMatches.toDouble() / (lenPred - n + 1).toDouble(), Math.pow(0.5, n.toDouble()))
+
+            val possibleMatches = predLen - n + 1
+            if (possibleMatches <= 0) return 0.0
+
+            score *= Math.pow(matchCount.toDouble() / possibleMatches, Math.pow(0.5, n.toDouble()))
         }
         return score
     }

@@ -179,12 +179,11 @@ class AdditiveAttention(
 class DotProductAttention(
     dropout: Float,
 ) : AbstractBlock() {
-    private val dropout0: Dropout
+    private val dropout0: Dropout = Dropout.builder().optRate(dropout).build()
     var attentionWeights: NDArray? = null
     private var outputShapes: Array<Shape> = arrayOf<Shape>()
 
     init {
-        this.dropout0 = Dropout.builder().optRate(dropout).build()
         addChildBlock("dropout", this.dropout0)
     }
 
@@ -204,24 +203,45 @@ class DotProductAttention(
         val values = inputs[2]
         val validLens = inputs[3]
 
-        // Swap the last two dimensions of `keys` and perform batchDot
-        this.attentionWeights = maskedSoftmax(queries.batchDot(keys.swapAxes(1, 2)).div(Math.sqrt(2.0)), validLens)
-        return NDList(this.dropout0.forward(ps, NDList(this.attentionWeights), training, params)[0].batchDot(values))
+        // Compute scaled dot-product attention scores
+        val d = queries.shape[queries.shape.dimension() - 1].toDouble()
+        val scores = queries.batchDot(keys.swapAxes(1, 2)).div(Math.sqrt(d))
+
+        // Apply masked softmax to get attention weights
+        attentionWeights = maskedSoftmax(scores, validLens)
+
+        // Apply dropout to attention weights and compute weighted sum with values
+        val dropped = dropout0.forward(ps, NDList(attentionWeights), training, params)[0]
+        return NDList(dropped.batchDot(values))
     }
 
-    override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> = outputShapes
+    /**
+     * Returns the output shapes of this block given the input shapes.
+     *
+     * @param shapes The input shapes.
+     * @return The output shapes as an array of Shape.
+     */
+    override fun getOutputShapes(shapes: Array<Shape>): Array<Shape> = outputShapes
 
+    /**
+     * Initializes child blocks for the DotProductAttention mechanism.
+     *
+     * @param manager The NDManager for resource allocation.
+     * @param dataType The data type for NDArrays.
+     * @param inputShapes The shapes of the input NDArrays.
+     */
     override fun initializeChildBlocks(
         manager: NDManager,
         dataType: DataType,
         vararg inputShapes: Shape,
     ) {
-        manager.newSubManager().use { sub ->
-            val scoresShape =
-                sub
-                    .zeros(inputShapes[0], dataType)
-                    .batchDot(sub.zeros(inputShapes[1], dataType).swapAxes(1, 2))
-                    .shape
+        manager.newSubManager().use { subManager ->
+            val queryShape = inputShapes[0]
+            val keyShape = inputShapes[1]
+            val zerosQuery = subManager.zeros(queryShape, dataType)
+            val zerosKey = subManager.zeros(keyShape, dataType).swapAxes(1, 2)
+            val scoresShape = zerosQuery.batchDot(zerosKey).shape
+
             dropout0.initialize(manager, dataType, scoresShape)
             outputShapes = dropout0.getOutputShapes(arrayOf(scoresShape))
         }

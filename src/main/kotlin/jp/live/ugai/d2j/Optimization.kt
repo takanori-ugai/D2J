@@ -8,17 +8,23 @@ import org.jetbrains.letsPlot.intern.Plot
 import org.jetbrains.letsPlot.letsPlot
 
 fun main() {
-    val f = { x: Float -> x * Math.cos(Math.PI * x).toFloat() }
-    val g = { x: Float -> f(x) + 0.2f * Math.cos(5 * Math.PI * x).toFloat() }
+    // Define the target functions
+    val expectedRisk: (Float) -> Float = { x -> x * Math.cos(Math.PI * x).toFloat() }
+    val empiricalRisk: (Float) -> Float = { x -> expectedRisk(x) + 0.2f * Math.cos(5 * Math.PI * x).toFloat() }
 
     val manager = NDManager.newBaseManager()
-    val X = manager.arange(0.5f, 1.5f, 0.01f)
-    val x = X.toFloatArray()
-    val fx = x.map(f)
-    val gx = x.map(g)
+    val xValues = manager.arange(0.5f, 1.5f, 0.01f).toFloatArray()
+    val expectedRiskValues = xValues.map(expectedRisk)
+    val empiricalRiskValues = xValues.map(empiricalRisk)
 
-    val group1 = List(x.size) { "Expected Risk" }
-    val group2 = List(x.size) { "Empirical Risk" }
+    // If plotting or further processing is needed, use these group labels
+    val expectedGroup = List(xValues.size) { "Expected Risk" }
+    val empiricalGroup = List(xValues.size) { "Empirical Risk" }
+
+    // Example: print first few values for verification
+    println("x: ${xValues.take(5)}")
+    println("Expected Risk: ${expectedRiskValues.take(5)}")
+    println("Empirical Risk: ${empiricalRiskValues.take(5)}")
 }
 
 fun plotGD(
