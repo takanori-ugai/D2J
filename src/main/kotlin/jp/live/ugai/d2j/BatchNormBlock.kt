@@ -38,18 +38,20 @@ fun main() {
     val net =
         SequentialBlock()
             .add(
-                Conv2d.builder()
+                Conv2d
+                    .builder()
                     .setKernelShape(Shape(5, 5))
-                    .setFilters(6).build(),
-            )
-            .add(BatchNormBlock(6, 4))
+                    .setFilters(6)
+                    .build(),
+            ).add(BatchNormBlock(6, 4))
             .add(Pool.maxPool2dBlock(Shape(2, 2), Shape(2, 2)))
             .add(
-                Conv2d.builder()
+                Conv2d
+                    .builder()
                     .setKernelShape(Shape(5, 5))
-                    .setFilters(16).build(),
-            )
-            .add(BatchNormBlock(16, 4))
+                    .setFilters(16)
+                    .build(),
+            ).add(BatchNormBlock(16, 4))
             .add(Activation::sigmoid)
             .add(Pool.maxPool2dBlock(Shape(2, 2), Shape(2, 2)))
             .add(Blocks.batchFlattenBlock())
@@ -73,14 +75,16 @@ fun main() {
     val epochCount = IntArray(numEpochs) { it + 1 }
 
     val trainIter =
-        FashionMnist.builder()
+        FashionMnist
+            .builder()
             .optUsage(Dataset.Usage.TRAIN)
             .setSampling(batchSize, true)
             .optLimit(getLong("DATASET_LIMIT", Long.MAX_VALUE))
             .build()
 
     val testIter =
-        FashionMnist.builder()
+        FashionMnist
+            .builder()
             .optUsage(Dataset.Usage.TEST)
             .setSampling(batchSize, true)
             .optLimit(getLong("DATASET_LIMIT", Long.MAX_VALUE))
@@ -121,12 +125,19 @@ fun main() {
     print("%.1f examples/sec".format(trainIter.size() / (avgTrainTimePerEpoch / Math.pow(10.0, 9.0))))
     println()
 
-    val batchNormFirstParams = net.children.values()[1].parameters.values()
+    val batchNormFirstParams =
+        net.children
+            .values()[1]
+            .parameters
+            .values()
     println("gamma ${batchNormFirstParams[0].array.reshape(-1)}")
     println("beta ${batchNormFirstParams[1].array.reshape(-1)}")
 }
 
-class BatchNormBlock(numFeatures: Int, numDimensions: Int) : AbstractBlock() {
+class BatchNormBlock(
+    numFeatures: Int,
+    numDimensions: Int,
+) : AbstractBlock() {
     private var movingMean: NDArray
     private var movingVar: NDArray
     private var gamma: Parameter
@@ -147,7 +158,8 @@ class BatchNormBlock(numFeatures: Int, numDimensions: Int) : AbstractBlock() {
         // finding and iteration are initialized to 0 and 1 respectively
         gamma =
             addParameter(
-                Parameter.builder()
+                Parameter
+                    .builder()
                     .setName("gamma")
                     .setType(Parameter.Type.GAMMA)
                     .optShape(shape)
@@ -155,7 +167,8 @@ class BatchNormBlock(numFeatures: Int, numDimensions: Int) : AbstractBlock() {
             )
         beta =
             addParameter(
-                Parameter.builder()
+                Parameter
+                    .builder()
                     .setName("beta")
                     .setType(Parameter.Type.BETA)
                     .optShape(shape)
@@ -223,9 +236,7 @@ class BatchNormBlock(numFeatures: Int, numDimensions: Int) : AbstractBlock() {
         }
     }
 
-    override fun toString(): String {
-        return "jp.live.ugai.d2j.BatchNormBlock()"
-    }
+    override fun toString(): String = "jp.live.ugai.d2j.BatchNormBlock()"
 
     override fun forwardInternal(
         parameterStore: ParameterStore,

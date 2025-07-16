@@ -37,7 +37,8 @@ object TrainingChapter11 {
     ): AirfoilRandomAccess {
         // Load data
         val airfoil =
-            AirfoilRandomAccess.builder()
+            AirfoilRandomAccess
+                .builder()
                 .optUsage(Dataset.Usage.TRAIN)
                 .setSampling(batchSize, true)
                 .optNormalize(true)
@@ -194,4 +195,8 @@ object TrainingChapter11 {
     } // End Ch11 Optimization
 }
 
-class LossTime(val epoch: List<Number>, val loss: List<Number>, val time: List<Double>)
+class LossTime(
+    val epoch: List<Number>,
+    val loss: List<Number>,
+    val time: List<Double>,
+)

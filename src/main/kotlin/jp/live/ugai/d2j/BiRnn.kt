@@ -12,7 +12,8 @@ fun main() {
     val numSteps = 35
     val device = manager.device
     val dataset =
-        TimeMachineDataset.Builder()
+        TimeMachineDataset
+            .Builder()
             .setManager(manager)
             .setMaxTokens(10000)
             .setSampling(batchSize, false)
@@ -28,7 +29,8 @@ fun main() {
     val numHiddens = 256
     val numLayers = 2
     val lstmLayer =
-        LSTM0.builder()
+        LSTM0
+            .builder()
             .setNumLayers(numLayers)
             .setStateSize(numHiddens)
             .optReturnState(true)

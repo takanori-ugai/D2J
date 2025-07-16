@@ -12,7 +12,7 @@ import org.jetbrains.letsPlot.geom.geomHistogram
 import org.jetbrains.letsPlot.ggsize
 import org.jetbrains.letsPlot.letsPlot
 import java.io.File
-import java.net.URL
+import java.net.URI
 import java.nio.file.Paths
 
 fun main() {
@@ -20,7 +20,7 @@ fun main() {
 
     fun readPTB(): List<List<String>> {
         val ptbURL = "http://d2l-data.s3-accelerate.amazonaws.com/ptb.zip"
-        val input = URL(ptbURL).openStream()
+        val input = URI(ptbURL).toURL().openStream()
         ZipUtils.unzip(input, Paths.get("./"))
         input.close()
         val lines = mutableListOf<String>()
@@ -183,7 +183,9 @@ fun main() {
     val allContexts = centerContextPair.second
     println("# center-context pairs:${allCenters.size}")
 
-    class RandomGenerator(samplingWeights: List<Double>) {
+    class RandomGenerator(
+        samplingWeights: List<Double>,
+    ) {
         // Draw a random int in [0, n] according to n sampling weights.
 
         private val population: kotlin.collections.List<Int>
@@ -200,7 +202,10 @@ fun main() {
 
             this.pmf = mutableListOf()
             for (i in samplingWeights.indices) {
-                this.pmf.add(org.apache.commons.math3.util.Pair(this.population.get(i), this.samplingWeights.get(i)))
+                this.pmf.add(
+                    org.apache.commons.math3.util
+                        .Pair(this.population.get(i), this.samplingWeights.get(i)),
+                )
             }
         }
 
@@ -329,44 +334,24 @@ fun main() {
     }
 
     fun convertNDArray(
-        data: List<List<Any>>,
+        centers: List<Int>,
+        contexts: List<List<Int>>,
+        negatives: List<List<Int>>,
         manager: NDManager,
     ): NDList {
-        val centers: MutableList<Int> = (data[0] as List<Int>).toMutableList()
-        val contexts: List<MutableList<Int>> = (data[1] as List<List<Int>>).map { it.toMutableList() }
-        val negatives: List<MutableList<Int>> = (data[2] as List<List<Int>>).map { it.toMutableList() }
+        // Helper to pad lists to the same length
+        fun padSequences(sequences: List<List<Int>>): List<List<Int>> {
+            val maxLen = sequences.maxOfOrNull { it.size } ?: 0
+            return sequences.map { seq ->
+                if (seq.size < maxLen) seq + List(maxLen - seq.size) { 0 } else seq
+            }
+        }
+        val paddedContexts = padSequences(contexts)
+        val paddedNegatives = padSequences(negatives)
 
-        // Create centers NDArray
         val centersNDArray = manager.create(centers.toIntArray())
-
-        // Create contexts NDArray
-        var maxLen = 0
-        for (context in contexts) {
-            maxLen = Math.max(maxLen, context.size)
-        }
-        // Fill arrays with 0s to all have same lengths and be able to create NDArray
-        for (context in contexts) {
-            while (context.size != maxLen) {
-                context.add(0)
-            }
-        }
-        val contextsNDArray = manager.create(contexts.map { it.toIntArray() }.toTypedArray())
-
-        // Create negatives NDArray
-        maxLen = 0
-        for (negative in negatives) {
-            maxLen = Math.max(maxLen, negative.size)
-        }
-        // Fill arrays with 0s to all have same lengths and be able to create NDArray
-        for (negative in negatives) {
-            while (negative.size != maxLen) {
-                negative.add(0)
-            }
-        }
-        val negativesNDArray =
-            manager.create(
-                negatives.map { it.toIntArray() }.toTypedArray(),
-            )
+        val contextsNDArray = manager.create(paddedContexts.map { it.toIntArray() }.toTypedArray())
+        val negativesNDArray = manager.create(paddedNegatives.map { it.toIntArray() }.toTypedArray())
 
         return NDList(centersNDArray, contextsNDArray, negativesNDArray)
     }
@@ -388,22 +373,18 @@ fun main() {
         val negatives = getNegatives(pair.second, corpus, numNoiseWords)
 
         val ndArrays =
-            convertNDArray(listOf(pair.first, pair.second, negatives), manager)
+            convertNDArray(pair.first, pair.second, negatives, manager)
         val dataset =
-            ArrayDataset.Builder()
+            ArrayDataset
+                .Builder()
                 .setData(ndArrays.get(0), ndArrays.get(1), ndArrays.get(2))
                 .optDataBatchifier(
                     object : Batchifier {
-                        override fun batchify(ndLists: Array<NDList>): NDList {
-                            return batchifyData(ndLists.toList())
-                        }
+                        override fun batchify(ndLists: Array<NDList>): NDList = batchifyData(ndLists.toList())
 
-                        override fun unbatchify(ndList: NDList): Array<NDList> {
-                            return arrayOf<NDList>()
-                        }
+                        override fun unbatchify(ndList: NDList): Array<NDList> = arrayOf<NDList>()
                     },
-                )
-                .setSampling(batchSize, true)
+                ).setSampling(batchSize, true)
                 .build()
 
         return Pair(dataset, vocab)

@@ -25,24 +25,23 @@ import jp.live.ugai.d2j.util.StopWatch
 import jp.live.ugai.d2j.util.Training.sgd
 import java.io.BufferedReader
 import java.io.InputStreamReader
-import java.net.URL
+import java.net.URI
 
 object TimeMachine {
     /** Split text lines into word or character tokens.  */
     fun tokenize(
         lines: List<String>,
         token: String,
-    ): List<List<String>> {
-        return when (token) {
+    ): List<List<String>> =
+        when (token) {
             "word" -> lines.map { it.split(" ".toRegex()).filter { word -> word.isNotEmpty() } }
             "char" -> lines.map { it.split("".toRegex()).filter { char -> char.isNotEmpty() } }
             else -> throw IllegalArgumentException("ERROR: unknown token type: $token")
         }
-    }
 
     /** Read `The Time Machine` dataset and return an array of the lines  */
     fun readTimeMachine(): List<String> {
-        val url = URL("http://d2l-data.s3-accelerate.amazonaws.com/timemachine.txt")
+        val url = URI("http://d2l-data.s3-accelerate.amazonaws.com/timemachine.txt").toURL()
         return BufferedReader(InputStreamReader(url.openStream())).use { inp ->
             inp.readLines().map { line ->
                 line.replace("[^A-Za-z]+".toRegex(), " ").trim().lowercase(java.util.Locale.getDefault())
@@ -78,7 +77,8 @@ object TimeMachine {
     ): String {
         val outputs = mutableListOf(vocab.getIdx("" + prefix[0]))
         val getInput = {
-            manager.create(outputs[outputs.size - 1])
+            manager
+                .create(outputs[outputs.size - 1])
                 .toDevice(device, false)
                 .reshape(Shape(1, 1))
         }
@@ -93,7 +93,13 @@ object TimeMachine {
                     val pair = net.forward(getInput(), state)
                     val y = pair.first
                     state = pair.second
-                    outputs.add(y.argMax(1).reshape(Shape(1)).getLong(0L).toInt())
+                    outputs.add(
+                        y
+                            .argMax(1)
+                            .reshape(Shape(1))
+                            .getLong(0L)
+                            .toInt(),
+                    )
                 }
             }
 
@@ -117,7 +123,13 @@ object TimeMachine {
                     val pair = net.forward(ps, input.addAll(state), false)
                     val y = pair[0]
                     state = pair.subNDList(1)
-                    outputs.add(y.argMax(1).reshape(Shape(1)).getLong(0L).toInt())
+                    outputs.add(
+                        y
+                            .argMax(1)
+                            .reshape(Shape(1))
+                            .getLong(0L)
+                            .toInt(),
+                    )
                 }
             }
 
@@ -278,7 +290,11 @@ object TimeMachine {
                 params.sumOf { p ->
                     val gradient = p.gradient.stopGradient()
                     gradient.attach(manager)
-                    gradient.pow(2).sum().getFloat().toDouble()
+                    gradient
+                        .pow(2)
+                        .sum()
+                        .getFloat()
+                        .toDouble()
                 },
             )
         if (norm > theta) {

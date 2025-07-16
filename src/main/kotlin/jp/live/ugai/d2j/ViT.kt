@@ -30,14 +30,16 @@ class ViT(
 ) : AbstractBlock() {
     val patchEmbedding = PatchEmbedding(imgSize, patchSize, numHiddens)
     val clsToken =
-        Parameter.builder()
+        Parameter
+            .builder()
             .optRequiresGrad(true)
             .setType(Parameter.Type.BIAS)
             .optShape(Shape(1, 1, numHiddens.toLong()))
             .build()
     val numSteps: Int = patchEmbedding.numPatches + 1
     val posEmbedding =
-        Parameter.builder()
+        Parameter
+            .builder()
             .optRequiresGrad(true)
             .optShape(Shape(1, numSteps.toLong(), numHiddens.toLong()))
 //    torch.randn(1, num_steps, num_hiddens))
@@ -92,7 +94,5 @@ class ViT(
         head.initialize(manager, dataType, Shape(inputShapes[0][0], numHiddens.toLong()))
     }
 
-    override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> {
-        return arrayOf(Shape(inputShapes[0][0], numClasses.toLong()))
-    }
+    override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> = arrayOf(Shape(inputShapes[0][0], numClasses.toLong()))
 }

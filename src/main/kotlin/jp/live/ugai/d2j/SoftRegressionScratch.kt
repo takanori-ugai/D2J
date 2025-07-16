@@ -135,13 +135,20 @@ fun main() {
             // Argmax gets index of maximum args for given axis 1
             // Convert yHat to same dataType as y (int32)
             // Sum up number of true entries
-            yHat.argMax(1).toType(DataType.INT32, false)
+            yHat
+                .argMax(1)
+                .toType(DataType.INT32, false)
                 .eq(y.toType(DataType.INT32, false))
-                .sum().toType(DataType.FLOAT32, false).getFloat()
+                .sum()
+                .toType(DataType.FLOAT32, false)
+                .getFloat()
         } else {
-            yHat.toType(DataType.INT32, false)
+            yHat
+                .toType(DataType.INT32, false)
                 .eq(y.toType(DataType.INT32, false))
-                .sum().toType(DataType.FLOAT32, false).getFloat()
+                .sum()
+                .toType(DataType.FLOAT32, false)
+                .getFloat()
         }
     }
 
@@ -159,13 +166,15 @@ fun main() {
     }
 
     val trainingSet =
-        FashionMnist.builder()
+        FashionMnist
+            .builder()
             .optUsage(Dataset.Usage.TRAIN)
             .setSampling(batchSize, randomShuffle)
             .optLimit(java.lang.Long.getLong("DATASET_LIMIT", Long.MAX_VALUE))
             .build()
     val validationSet =
-        FashionMnist.builder()
+        FashionMnist
+            .builder()
             .optUsage(Dataset.Usage.TEST)
             .setSampling(batchSize, false)
             .optLimit(java.lang.Long.getLong("DATASET_LIMIT", Long.MAX_VALUE))
@@ -252,7 +261,9 @@ fun main() {
     trainCh3(::net, trainingSet, validationSet, ::crossEntropy, numEpochs, ::updater)
 }
 
-class Accumulator(n: Int) {
+class Accumulator(
+    n: Int,
+) {
     var data: FloatArray = FloatArray(n)
 
     // Adds a set of numbers to the array
@@ -268,9 +279,7 @@ class Accumulator(n: Int) {
     }
 
     // Returns the data point at the given index
-    operator fun get(index: Int): Float {
-        return data[index]
-    }
+    operator fun get(index: Int): Float = data[index]
 }
 
 class SoftRegressionScratch

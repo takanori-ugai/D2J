@@ -35,9 +35,7 @@ class RNNModelScratch(
     fun forward(
         X: NDArray,
         state: NDList,
-    ): Pair<NDArray, NDList> {
-        return forwardFn(X.transpose().oneHot(vocabSize), state, params)
-    }
+    ): Pair<NDArray, NDList> = forwardFn(X.transpose().oneHot(vocabSize), state, params)
 
     /**
      * Begins the state of the model.
@@ -49,7 +47,5 @@ class RNNModelScratch(
     fun beginState(
         batchSize: Int,
         device: Device,
-    ): NDList {
-        return initState(batchSize, numHiddens, device)
-    }
+    ): NDList = initState(batchSize, numHiddens, device)
 }

@@ -145,7 +145,8 @@ object NMT {
         val tgtValidLen = pairArr.second
 
         val dataset =
-            ArrayDataset.Builder()
+            ArrayDataset
+                .Builder()
                 .setData(srcArr, srcValidLen)
                 .optLabels(tgtArr, tgtValidLen)
                 .setSampling(batchSize, true)

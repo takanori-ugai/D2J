@@ -77,17 +77,13 @@ fun getParams(
 fun normal(
     shape: Shape,
     device: Device,
-): NDArray {
-    return manager.randomNormal(0f, 0.01f, shape, DataType.FLOAT32, device)
-}
+): NDArray = manager.randomNormal(0f, 0.01f, shape, DataType.FLOAT32, device)
 
 fun initRNNState(
     batchSize: Int,
     numHiddens: Int,
     device: Device,
-): NDList {
-    return NDList(manager.zeros(Shape(batchSize.toLong(), numHiddens.toLong()), DataType.FLOAT32, device))
-}
+): NDList = NDList(manager.zeros(Shape(batchSize.toLong(), numHiddens.toLong()), DataType.FLOAT32, device))
 
 fun rnn(
     inputs: NDArray,
@@ -107,7 +103,12 @@ fun rnn(
     var Y: NDArray
     for (i in 0 until inputs.size(0)) {
         X = inputs[i]
-        H = X.dot(W_xh).add(H.dot(W_hh)).add(b_h).tanh()
+        H =
+            X
+                .dot(W_xh)
+                .add(H.dot(W_hh))
+                .add(b_h)
+                .tanh()
         Y = H.dot(W_hq).add(b_q)
         outputs.add(Y)
     }
@@ -125,7 +126,8 @@ fun predictCh8(
     val outputs: MutableList<Int> = ArrayList()
     outputs.add(vocab.getIdx("" + prefix[0]))
     val getInput = {
-        manager.create(outputs[outputs.size - 1])
+        manager
+            .create(outputs[outputs.size - 1])
             .toDevice(device, false)
             .reshape(Shape(1, 1))
     }
@@ -138,7 +140,13 @@ fun predictCh8(
         val pair = net.forward(getInput(), state)
         y = pair.first
         state = pair.second
-        outputs.add(y.argMax(1).reshape(Shape(1)).getLong(0L).toInt())
+        outputs.add(
+            y
+                .argMax(1)
+                .reshape(Shape(1))
+                .getLong(0L)
+                .toInt(),
+        )
     }
     val output = StringBuilder()
     for (i in outputs) {
@@ -157,7 +165,12 @@ fun gradClipping(
     for (p in net.params) {
         val gradient = p.gradient
         gradient.attach(manager)
-        result += gradient.pow(2).sum().getFloat().toDouble()
+        result +=
+            gradient
+                .pow(2)
+                .sum()
+                .getFloat()
+                .toDouble()
     }
     val norm = Math.sqrt(result)
     if (norm > theta) {

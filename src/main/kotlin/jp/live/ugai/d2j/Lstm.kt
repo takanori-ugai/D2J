@@ -19,7 +19,8 @@ fun main() {
     val numSteps = 35
 
     val dataset =
-        TimeMachineDataset.Builder()
+        TimeMachineDataset
+            .Builder()
             .setManager(manager)
             .setMaxTokens(10000)
             .setSampling(batchSize, false)
@@ -31,21 +32,18 @@ fun main() {
     fun normal(
         shape: Shape,
         device: Device,
-    ): NDArray {
-        return manager.randomNormal(0.0f, 0.01f, shape, DataType.FLOAT32, device)
-    }
+    ): NDArray = manager.randomNormal(0.0f, 0.01f, shape, DataType.FLOAT32, device)
 
     fun three(
         numInputs: Int,
         numHiddens: Int,
         device: Device,
-    ): NDList {
-        return NDList(
+    ): NDList =
+        NDList(
             normal(Shape(numInputs.toLong(), numHiddens.toLong()), device),
             normal(Shape(numHiddens.toLong(), numHiddens.toLong()), device),
             manager.zeros(Shape(numHiddens.toLong()), DataType.FLOAT32, device),
         )
-    }
 
     fun getLSTMParams(
         vocabSize: Int,
@@ -92,12 +90,11 @@ fun main() {
         batchSize: Int,
         numHiddens: Int,
         device: Device,
-    ): NDList {
-        return NDList(
+    ): NDList =
+        NDList(
             manager.zeros(Shape(batchSize.toLong(), numHiddens.toLong()), DataType.FLOAT32, device),
             manager.zeros(Shape(batchSize.toLong(), numHiddens.toLong()), DataType.FLOAT32, device),
         )
-    }
 
     fun lstm(
         inputs: NDArray,
@@ -155,7 +152,8 @@ fun main() {
     trainCh8(model, dataset, vocab, lr, numEpochs, device, false, manager)
 
     val lstmLayer =
-        LSTM.builder()
+        LSTM
+            .builder()
             .setNumLayers(1)
             .setStateSize(numHiddens)
             .optReturnState(true)

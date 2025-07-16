@@ -31,8 +31,12 @@ fun main() {
     println(result[0])
 }
 
-class MultiHeadAttention(numHiddens: Int, private val numHeads: Int, dropout: Float, useBias: Boolean) :
-    AbstractBlock() {
+class MultiHeadAttention(
+    numHiddens: Int,
+    private val numHeads: Int,
+    dropout: Float,
+    useBias: Boolean,
+) : AbstractBlock() {
     var attention: DotProductAttention
     private val W_k: Linear
     private val W_q: Linear
@@ -41,13 +45,33 @@ class MultiHeadAttention(numHiddens: Int, private val numHeads: Int, dropout: Fl
 
     init {
         attention = DotProductAttention(dropout)
-        W_q = Linear.builder().setUnits(numHiddens.toLong()).optBias(useBias).build()
+        W_q =
+            Linear
+                .builder()
+                .setUnits(numHiddens.toLong())
+                .optBias(useBias)
+                .build()
         addChildBlock("W_q", W_q)
-        W_k = Linear.builder().setUnits(numHiddens.toLong()).optBias(useBias).build()
+        W_k =
+            Linear
+                .builder()
+                .setUnits(numHiddens.toLong())
+                .optBias(useBias)
+                .build()
         addChildBlock("W_k", W_k)
-        W_v = Linear.builder().setUnits(numHiddens.toLong()).optBias(useBias).build()
+        W_v =
+            Linear
+                .builder()
+                .setUnits(numHiddens.toLong())
+                .optBias(useBias)
+                .build()
         addChildBlock("W_v", W_v)
-        W_o = Linear.builder().setUnits(numHiddens.toLong()).optBias(useBias).build()
+        W_o =
+            Linear
+                .builder()
+                .setUnits(numHiddens.toLong())
+                .optBias(useBias)
+                .build()
         addChildBlock("W_o", W_o)
         val dropout1 = Dropout.builder().optRate(dropout).build()
         addChildBlock("dropout", dropout1)
@@ -92,9 +116,7 @@ class MultiHeadAttention(numHiddens: Int, private val numHeads: Int, dropout: Fl
         return NDList(W_o.forward(ps, NDList(outputConcat), training, params)[0])
     }
 
-    override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> {
-        return arrayOf(inputShapes[0])
-    }
+    override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> = arrayOf(inputShapes[0])
 
     override fun initializeChildBlocks(
         manager: NDManager,

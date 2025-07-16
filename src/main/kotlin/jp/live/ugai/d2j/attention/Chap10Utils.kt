@@ -59,7 +59,8 @@ object Chap10Utils {
             }
         // On the last axis, replace masked elements with a very large negative
         // value, whose exponentiation outputs 0
-        return _X.reshape(Shape(-1, shape.get(shape.dimension() - 1)))
+        return _X
+            .reshape(Shape(-1, shape.get(shape.dimension() - 1)))
             .sequenceMask(validLens, -1.0E6F)
             .softmax(-1)
             .reshape(shape)
@@ -163,11 +164,12 @@ object Chap10Utils {
                     ) // Teacher forcing
                 Engine.getInstance().newGradientCollector().use { gc ->
                     val yHat: NDArray =
-                        net.forward(
-                            ParameterStore(manager, false),
-                            NDList(X, decInput, lenX),
-                            true,
-                        ).get(0)
+                        net
+                            .forward(
+                                ParameterStore(manager, false),
+                                NDList(X, decInput, lenX),
+                                true,
+                            ).get(0)
                     val l = loss.evaluate(NDList(Y, lenY), NDList(yHat))
                     gc.backward(l)
                     metric.add(floatArrayOf(l.sum().getFloat(), lenY.sum().getLong().toFloat()))

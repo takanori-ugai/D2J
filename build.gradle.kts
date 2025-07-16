@@ -174,3 +174,11 @@ spotless {
         formatAnnotations() // fixes formatting of type annotations, see below
     }
 }
+
+dokka.dokkaSourceSets {
+    configureEach {
+        jdkVersion.set(11)
+        enableJdkDocumentationLink.set(false)
+        enableKotlinStdLibDocumentationLink.set(false)
+    }
+}

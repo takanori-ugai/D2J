@@ -7,7 +7,11 @@ package jp.live.ugai.d2j.timemachine
  * @property minFreq Minimum frequency for a token to be included in the vocabulary.
  * @property reservedTokens List of reserved tokens to be included in the vocabulary regardless of their frequency.
  */
-class Vocab(tokens: List<List<String>>, minFreq: Int, reservedTokens: List<String>) {
+class Vocab(
+    tokens: List<List<String>>,
+    minFreq: Int,
+    reservedTokens: List<String>,
+) {
     /**
      * @property unk Index of the unknown token.
      */

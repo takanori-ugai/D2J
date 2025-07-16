@@ -31,9 +31,7 @@ object Functions {
     /**
      * Return the i'th GPU if it exists, otherwise return the CPU
      */
-    fun tryGpu(i: Int): Device {
-        return if (Engine.getInstance().gpuCount > i) Device.gpu(i) else Device.cpu()
-    }
+    fun tryGpu(i: Int): Device = if (Engine.getInstance().gpuCount > i) Device.gpu(i) else Device.cpu()
 
     /**
      * Helper function to later be able to use lambda. Accepts three types for parameters and one
@@ -72,7 +70,7 @@ object Functions {
      * Helper function to later be able to use lambda. Accepts one types for parameters and uses
      * void for return.
      */
-    fun interface voidFunction<T> {
+    fun interface VoidFunction<T> {
         fun apply(t: T)
     }
 
@@ -80,7 +78,7 @@ object Functions {
      * Helper function to later be able to use lambda. Accepts two types for parameters and uses
      * void for return.
      */
-    fun interface voidTwoFunction<T, U> {
+    fun interface VoidTwoFunction<T, U> {
         fun apply(
             t: T,
             u: U,

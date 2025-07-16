@@ -61,14 +61,14 @@ fun main() {
     val net = SequentialBlock()
     net
         .add(
-            Conv2d.builder()
+            Conv2d
+                .builder()
                 .setKernelShape(Shape(7, 7))
                 .optStride(Shape(2, 2))
                 .optPadding(Shape(3, 3))
                 .setFilters(64)
                 .build(),
-        )
-        .add(BatchNorm.builder().build())
+        ).add(BatchNorm.builder().build())
         .add(Activation::relu)
         .add(
             Pool.maxPool2dBlock(Shape(3, 3), Shape(2, 2), Shape(1, 1)),
@@ -87,7 +87,11 @@ fun main() {
     var currentShape = X.shape
 
     for (i in 0 until net.children.size()) {
-        X = net.children[i].value.forward(parameterStore, NDList(X), false).singletonOrThrow()
+        X =
+            net.children[i]
+                .value
+                .forward(parameterStore, NDList(X), false)
+                .singletonOrThrow()
         currentShape = X.shape
         println(net.children[i].key + " layer output : " + currentShape)
     }
@@ -99,7 +103,8 @@ fun main() {
     val epochCount = IntArray(numEpochs) { it + 1 }
 
     val trainIter =
-        FashionMnist.builder()
+        FashionMnist
+            .builder()
             .addTransform(Resize(96))
             .addTransform(ToTensor())
             .optUsage(Dataset.Usage.TRAIN)
@@ -108,7 +113,8 @@ fun main() {
             .build()
 
     val testIter =
-        FashionMnist.builder()
+        FashionMnist
+            .builder()
             .addTransform(Resize(96))
             .addTransform(ToTensor())
             .optUsage(Dataset.Usage.TEST)
@@ -128,7 +134,8 @@ fun main() {
     val sgd: Optimizer = Optimizer.sgd().setLearningRateTracker(lrt).build()
 
     val config =
-        DefaultTrainingConfig(loss).optOptimizer(sgd) // Optimizer (loss function)
+        DefaultTrainingConfig(loss)
+            .optOptimizer(sgd) // Optimizer (loss function)
             .addEvaluator(Accuracy()) // Model Accuracy
             .addTrainingListeners(*TrainingListener.Defaults.logging()) // Logging
 
@@ -163,36 +170,41 @@ fun resnetBlock(
     return blk
 }
 
-class Residual(numChannels: Int, use1x1Conv: Boolean, strideShape: Shape) :
-    AbstractBlock(VERSION) {
+class Residual(
+    numChannels: Int,
+    use1x1Conv: Boolean,
+    strideShape: Shape,
+) : AbstractBlock(VERSION) {
     var block: ParallelBlock
 
     init {
         val b1: Block
         val conv1x1: Block
         b1 = SequentialBlock()
-        b1.add(
-            Conv2d.builder()
-                .setFilters(numChannels)
-                .setKernelShape(Shape(3, 3))
-                .optPadding(Shape(1, 1))
-                .optStride(strideShape)
-                .build(),
-        )
-            .add(BatchNorm.builder().build())
+        b1
+            .add(
+                Conv2d
+                    .builder()
+                    .setFilters(numChannels)
+                    .setKernelShape(Shape(3, 3))
+                    .optPadding(Shape(1, 1))
+                    .optStride(strideShape)
+                    .build(),
+            ).add(BatchNorm.builder().build())
             .add(Activation::relu)
             .add(
-                Conv2d.builder()
+                Conv2d
+                    .builder()
                     .setFilters(numChannels)
                     .setKernelShape(Shape(3, 3))
                     .optPadding(Shape(1, 1))
                     .build(),
-            )
-            .add(BatchNorm.builder().build())
+            ).add(BatchNorm.builder().build())
         if (use1x1Conv) {
             conv1x1 = SequentialBlock()
             conv1x1.add(
-                Conv2d.builder()
+                Conv2d
+                    .builder()
                     .setFilters(numChannels)
                     .setKernelShape(Shape(1, 1))
                     .optStride(strideShape)
@@ -210,7 +222,8 @@ class Residual(numChannels: Int, use1x1Conv: Boolean, strideShape: Shape) :
                         val unit = list[0]
                         val parallel = list[1]
                         NDList(
-                            unit.singletonOrThrow()
+                            unit
+                                .singletonOrThrow()
                                 .add(parallel.singletonOrThrow())
                                 .ndArrayInternal
                                 .relu(),
@@ -221,18 +234,14 @@ class Residual(numChannels: Int, use1x1Conv: Boolean, strideShape: Shape) :
             )
     }
 
-    override fun toString(): String {
-        return "Residual()"
-    }
+    override fun toString(): String = "Residual()"
 
     override fun forwardInternal(
         parameterStore: ParameterStore,
         inputs: NDList,
         training: Boolean,
         params: PairList<String, Any>?,
-    ): NDList {
-        return block.forward(parameterStore, inputs, training)
-    }
+    ): NDList = block.forward(parameterStore, inputs, training)
 
     override fun getOutputShapes(inputs: Array<Shape>): Array<Shape> {
         var current: Array<Shape> = inputs

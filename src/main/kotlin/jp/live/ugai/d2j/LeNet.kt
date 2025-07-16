@@ -38,21 +38,22 @@ fun main() {
     val block = SequentialBlock()
     block
         .add(
-            Conv2d.builder()
+            Conv2d
+                .builder()
                 .setKernelShape(Shape(5, 5))
                 .optPadding(Shape(2, 2))
                 .optBias(false)
                 .setFilters(6)
                 .build(),
-        )
-        .add(Activation::sigmoid)
+        ).add(Activation::sigmoid)
         .add(Pool.avgPool2dBlock(Shape(5, 5), Shape(2, 2), Shape(2, 2)))
         .add(
-            Conv2d.builder()
+            Conv2d
+                .builder()
                 .setKernelShape(Shape(5, 5))
-                .setFilters(16).build(),
-        )
-        .add(Activation::sigmoid)
+                .setFilters(16)
+                .build(),
+        ).add(Activation::sigmoid)
         .add(Pool.avgPool2dBlock(Shape(5, 5), Shape(2, 2), Shape(2, 2)))
         // Blocks.batchFlattenBlock() will transform the input of the shape (batch size, channel,
         // height, width) into the input of the shape (batch size,
@@ -63,15 +64,13 @@ fun main() {
                 .builder()
                 .setUnits(120)
                 .build(),
-        )
-        .add(Activation::sigmoid)
+        ).add(Activation::sigmoid)
         .add(
             Linear
                 .builder()
                 .setUnits(84)
                 .build(),
-        )
-        .add(Activation::sigmoid)
+        ).add(Activation::sigmoid)
         .add(
             Linear
                 .builder()
@@ -89,7 +88,8 @@ fun main() {
     val sgd = Optimizer.sgd().setLearningRateTracker(lrt).build()
 
     val config =
-        DefaultTrainingConfig(loss).optOptimizer(sgd) // Optimizer (loss function)
+        DefaultTrainingConfig(loss)
+            .optOptimizer(sgd) // Optimizer (loss function)
             .optDevices(Engine.getInstance().getDevices(1)) // Single GPU
             .addEvaluator(Accuracy()) // Model Accuracy
             .addTrainingListeners(*TrainingListener.Defaults.basic())
@@ -102,7 +102,11 @@ fun main() {
     var currentShape = X.shape
 
     for (i in 0 until block.children.size()) {
-        val newShape = block.children.get(i).value.getOutputShapes(arrayOf<Shape>(currentShape))
+        val newShape =
+            block.children
+                .get(i)
+                .value
+                .getOutputShapes(arrayOf<Shape>(currentShape))
         currentShape = newShape[0]
         println(block.children.get(i).key + " layer output : " + currentShape)
     }
@@ -112,14 +116,16 @@ fun main() {
 //    val epochCount = DoubleArray(numEpochs) { it.toDouble() + 1f }
 
     val trainIter =
-        FashionMnist.builder()
+        FashionMnist
+            .builder()
             .optUsage(Dataset.Usage.TRAIN)
             .setSampling(batchSize, true)
             .optLimit(Long.MAX_VALUE)
             .build()
 
     val testIter =
-        FashionMnist.builder()
+        FashionMnist
+            .builder()
             .optUsage(Dataset.Usage.TEST)
             .setSampling(batchSize, true)
             .optLimit(Long.MAX_VALUE)
@@ -148,7 +154,8 @@ fun main() {
 
         val metrics = trainer.metrics
 
-        trainer.evaluators.stream()
+        trainer.evaluators
+            .stream()
             .forEach { evaluator ->
                 evaluatorMetrics.put(
                     "train_epoch_" + evaluator.name,

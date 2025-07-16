@@ -64,14 +64,14 @@ fun main() {
     val net =
         SequentialBlock()
             .add(
-                Conv2d.builder()
+                Conv2d
+                    .builder()
                     .setFilters(64)
                     .setKernelShape(Shape(7, 7))
                     .optStride(Shape(2, 2))
                     .optPadding(Shape(3, 3))
                     .build(),
-            )
-            .add(BatchNorm.builder().build())
+            ).add(BatchNorm.builder().build())
             .add { arrays: NDList? -> Activation.relu(arrays) }
             .add(Pool.maxPool2dBlock(Shape(3, 3), Shape(2, 2), Shape(1, 1)))
 
@@ -89,7 +89,8 @@ fun main() {
             net.add(transitionBlock(numChannels))
         }
     }
-    net.add(BatchNorm.builder().build())
+    net
+        .add(BatchNorm.builder().build())
         .add(Activation::relu)
         .add(Pool.globalAvgPool2dBlock())
         .add(Linear.builder().setUnits(10).build())
@@ -107,7 +108,8 @@ fun main() {
     val epochCount = IntArray(numEpochs) { it + 1 }
 
     val trainIter =
-        FashionMnist.builder()
+        FashionMnist
+            .builder()
             .addTransform(Resize(96))
             .addTransform(ToTensor())
             .optUsage(Dataset.Usage.TRAIN)
@@ -116,7 +118,8 @@ fun main() {
             .build()
 
     val testIter =
-        FashionMnist.builder()
+        FashionMnist
+            .builder()
             .addTransform(Resize(96))
             .addTransform(ToTensor())
             .optUsage(Dataset.Usage.TEST)
@@ -136,7 +139,8 @@ fun main() {
     val sgd = Optimizer.sgd().setLearningRateTracker(lrt).build()
 
     val config =
-        DefaultTrainingConfig(loss).optOptimizer(sgd) // Optimizer (loss function)
+        DefaultTrainingConfig(loss)
+            .optOptimizer(sgd) // Optimizer (loss function)
             .addEvaluator(Accuracy()) // Model Accuracy
             .addTrainingListeners(*TrainingListener.Defaults.logging()) // Logging
 
@@ -147,19 +151,18 @@ fun main() {
     val avgTrainTimePerEpoch = trainingChapter6(trainIter, testIter, numEpochs, trainer, evaluatorMetrics)
 }
 
-fun transitionBlock(numChannels: Int): SequentialBlock {
-    return SequentialBlock()
+fun transitionBlock(numChannels: Int): SequentialBlock =
+    SequentialBlock()
         .add(BatchNorm.builder().build())
         .add { arrays: NDList -> Activation.relu(arrays) }
         .add(
-            Conv2d.builder()
+            Conv2d
+                .builder()
                 .setFilters(numChannels)
                 .setKernelShape(Shape(1, 1))
                 .optStride(Shape(1, 1))
                 .build(),
-        )
-        .add(Pool.avgPool2dBlock(Shape(2, 2), Shape(2, 2)))
-}
+        ).add(Pool.avgPool2dBlock(Shape(2, 2), Shape(2, 2)))
 
 /**
  * A DenseBlock is a series of convolutional blocks that are densely connected. Each block's input
@@ -168,7 +171,10 @@ fun transitionBlock(numChannels: Int): SequentialBlock {
  * @property numConvs The number of convolutional blocks within this dense block.
  * @property numChannels The number of output channels for each convolutional block.
  */
-class DenseBlock(numConvs: Int, numChannels: Int) : AbstractBlock(VERSION) {
+class DenseBlock(
+    numConvs: Int,
+    numChannels: Int,
+) : AbstractBlock(VERSION) {
     val net = SequentialBlock()
 
     init {
@@ -180,9 +186,7 @@ class DenseBlock(numConvs: Int, numChannels: Int) : AbstractBlock(VERSION) {
     /**
      * Returns a string representation of the DenseBlock.
      */
-    override fun toString(): String {
-        return "DenseBlock()"
-    }
+    override fun toString(): String = "DenseBlock()"
 
     /**
      * Performs a forward pass through all convolutional blocks in the DenseBlock.
@@ -198,11 +202,10 @@ class DenseBlock(numConvs: Int, numChannels: Int) : AbstractBlock(VERSION) {
         X: NDList,
         training: Boolean,
         params: PairList<String, Any>?,
-    ): NDList {
-        return net.children.values().fold(X) { acc, block ->
+    ): NDList =
+        net.children.values().fold(X) { acc, block ->
             NDList(NDArrays.concat(NDList(acc.singletonOrThrow(), block.forward(parameterStore, acc, training).singletonOrThrow()), 1))
         }
-    }
 
     /**
      * Calculates the output shapes given the input shapes to the DenseBlock.
@@ -260,17 +263,17 @@ class DenseBlock(numConvs: Int, numChannels: Int) : AbstractBlock(VERSION) {
      * @param numChannels The number of output channels for the Conv2d layer.
      * @return A SequentialBlock representing the convolutional block.
      */
-    private fun convBlock(numChannels: Int): SequentialBlock? {
-        return SequentialBlock()
+    private fun convBlock(numChannels: Int): SequentialBlock? =
+        SequentialBlock()
             .add(BatchNorm.builder().build())
             .add(Activation::relu)
             .add(
-                Conv2d.builder()
+                Conv2d
+                    .builder()
                     .setFilters(numChannels)
                     .setKernelShape(Shape(3, 3))
                     .optPadding(Shape(1, 1))
                     .optStride(Shape(1, 1))
                     .build(),
             )
-    }
 }

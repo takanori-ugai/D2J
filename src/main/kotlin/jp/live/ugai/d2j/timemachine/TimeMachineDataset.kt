@@ -13,7 +13,9 @@ import ai.djl.util.Progress
 import jp.live.ugai.d2j.timemachine.TimeMachine.loadCorpusTimeMachine
 import kotlin.random.Random
 
-class TimeMachineDataset(builder: Builder) : RandomAccessDataset(builder) {
+class TimeMachineDataset(
+    builder: Builder,
+) : RandomAccessDataset(builder) {
     var vocab: Vocab? = null
     private var data: NDArray
     private var labels: NDArray
@@ -42,9 +44,7 @@ class TimeMachineDataset(builder: Builder) : RandomAccessDataset(builder) {
         return Record(NDList(X), NDList(Y))
     }
 
-    override fun availableSize(): Long {
-        return data.shape[0]
-    }
+    override fun availableSize(): Long = data.shape[0]
 
     override fun prepare(progress: Progress?) {
         if (prepared) return
@@ -58,11 +58,12 @@ class TimeMachineDataset(builder: Builder) : RandomAccessDataset(builder) {
         val numTokens = ((corpus.size - offset - 1) / batchSize) * batchSize
         var Xs = manager!!.create(corpus.subList(offset, offset + numTokens).toIntArray()).reshape(Shape(batchSize.toLong(), -1))
         var Ys =
-            manager.create(
-                corpus.subList(offset + 1, offset + 1 + numTokens).toIntArray(),
-            ).reshape(
-                Shape(batchSize.toLong(), -1),
-            )
+            manager
+                .create(
+                    corpus.subList(offset + 1, offset + 1 + numTokens).toIntArray(),
+                ).reshape(
+                    Shape(batchSize.toLong(), -1),
+                )
         val numBatches = Xs.shape[1].toInt() / numSteps
         val xNDList = NDList()
         val yNDList = NDList()

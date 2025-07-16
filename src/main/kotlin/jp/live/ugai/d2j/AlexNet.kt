@@ -39,23 +39,25 @@ fun main() {
 // Here, the number of output channels is much larger than that in LeNet
     block
         .add(
-            Conv2d.builder()
+            Conv2d
+                .builder()
                 .setKernelShape(Shape(11, 11))
                 .optStride(Shape(4, 4))
-                .setFilters(96).build(),
-        )
-        .add(Activation::relu)
+                .setFilters(96)
+                .build(),
+        ).add(Activation::relu)
         .add(Pool.maxPool2dBlock(Shape(3, 3), Shape(2, 2)))
         // Make the convolution window smaller, set padding to 2 for consistent
         // height and width across the input and output, and increase the
         // number of output channels
         .add(
-            Conv2d.builder()
+            Conv2d
+                .builder()
                 .setKernelShape(Shape(5, 5))
                 .optPadding(Shape(2, 2))
-                .setFilters(256).build(),
-        )
-        .add(Activation::relu)
+                .setFilters(256)
+                .build(),
+        ).add(Activation::relu)
         .add(Pool.maxPool2dBlock(Shape(3, 3), Shape(2, 2)))
         // Use three successive convolutional layers and a smaller convolution
         // window. Except for the final convolutional layer, the number of
@@ -63,26 +65,29 @@ fun main() {
         // reduce the height and width of input after the first two
         // convolutional layers
         .add(
-            Conv2d.builder()
+            Conv2d
+                .builder()
                 .setKernelShape(Shape(3, 3))
                 .optPadding(Shape(1, 1))
-                .setFilters(384).build(),
-        )
-        .add(Activation::relu)
+                .setFilters(384)
+                .build(),
+        ).add(Activation::relu)
         .add(
-            Conv2d.builder()
+            Conv2d
+                .builder()
                 .setKernelShape(Shape(3, 3))
                 .optPadding(Shape(1, 1))
-                .setFilters(384).build(),
-        )
-        .add(Activation::relu)
+                .setFilters(384)
+                .build(),
+        ).add(Activation::relu)
         .add(
-            Conv2d.builder()
+            Conv2d
+                .builder()
                 .setKernelShape(Shape(3, 3))
                 .optPadding(Shape(1, 1))
-                .setFilters(256).build(),
-        )
-        .add(Activation::relu)
+                .setFilters(256)
+                .build(),
+        ).add(Activation::relu)
         .add(Pool.maxPool2dBlock(Shape(3, 3), Shape(2, 2)))
         // Here, the number of outputs of the fully connected layer is several
         // times larger than that in LeNet. Use the dropout layer to mitigate
@@ -93,21 +98,18 @@ fun main() {
                 .builder()
                 .setUnits(4096)
                 .build(),
-        )
-        .add(Activation::relu)
+        ).add(Activation::relu)
         .add(
             Dropout
                 .builder()
                 .optRate(0.5f)
                 .build(),
-        )
-        .add(
+        ).add(
             Linear
                 .builder()
                 .setUnits(4096)
                 .build(),
-        )
-        .add(Activation::relu)
+        ).add(Activation::relu)
         .add(
             Dropout
                 .builder()
@@ -129,7 +131,8 @@ fun main() {
     val sgd = Optimizer.sgd().setLearningRateTracker(lrt).build()
 
     val config =
-        DefaultTrainingConfig(loss).optOptimizer(sgd) // Optimizer (loss function)
+        DefaultTrainingConfig(loss)
+            .optOptimizer(sgd) // Optimizer (loss function)
             .addEvaluator(Accuracy()) // Model Accuracy
             .addTrainingListeners(*TrainingListener.Defaults.logging()) // Logging
 
@@ -141,7 +144,11 @@ fun main() {
     var currentShape = X.shape
 
     for (i in 0 until block.children.size()) {
-        val newShape = block.children.get(i).value.getOutputShapes(arrayOf<Shape>(currentShape))
+        val newShape =
+            block.children
+                .get(i)
+                .value
+                .getOutputShapes(arrayOf<Shape>(currentShape))
         currentShape = newShape[0]
         println(block.children.get(i).key + " layer output : " + currentShape)
     }
@@ -161,7 +168,8 @@ fun main() {
 // }
 
     val trainIter =
-        FashionMnist.builder()
+        FashionMnist
+            .builder()
             .addTransform(Resize(224))
             .addTransform(ToTensor())
             .optUsage(Dataset.Usage.TRAIN)
@@ -170,7 +178,8 @@ fun main() {
             .build()
 
     val testIter =
-        FashionMnist.builder()
+        FashionMnist
+            .builder()
             .addTransform(Resize(224))
             .addTransform(ToTensor())
             .optUsage(Dataset.Usage.TEST)

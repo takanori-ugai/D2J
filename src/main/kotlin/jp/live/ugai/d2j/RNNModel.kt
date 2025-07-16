@@ -10,7 +10,10 @@ import ai.djl.nn.recurrent.RecurrentBlock
 import ai.djl.training.ParameterStore
 import ai.djl.util.PairList
 
-class RNNModel(private val rnnLayer: RecurrentBlock, vocabSize: Int) : AbstractBlock() {
+class RNNModel(
+    private val rnnLayer: RecurrentBlock,
+    vocabSize: Int,
+) : AbstractBlock() {
     private val dense: Linear
     private val vocabSize: Int
 
@@ -53,7 +56,5 @@ class RNNModel(private val rnnLayer: RecurrentBlock, vocabSize: Int) : AbstractB
     }
 
     // We won't implement this since we won't be using it but it's required as part of an AbstractBlock
-    override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape?> {
-        return arrayOfNulls<Shape>(0)
-    }
+    override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape?> = arrayOfNulls<Shape>(0)
 }

@@ -169,7 +169,8 @@ fun main() {
         val tgtArr: NDArray = pairArr.first
         val tgtValidLen: NDArray = pairArr.second
         val dataset =
-            ArrayDataset.Builder()
+            ArrayDataset
+                .Builder()
                 .setData(srcArr, srcValidLen)
                 .optLabels(tgtArr, tgtValidLen)
                 .setSampling(batchSize, true)

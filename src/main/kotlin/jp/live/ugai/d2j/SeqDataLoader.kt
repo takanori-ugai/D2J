@@ -10,7 +10,12 @@ import jp.live.ugai.d2j.timemachine.TimeMachine.loadCorpusTimeMachine
 import jp.live.ugai.d2j.timemachine.Vocab
 import java.util.Random
 
-class SeqDataLoader(batchSize: Int, numSteps: Int, useRandomIter: Boolean, maxTokens: Int) : Iterable<NDList> {
+class SeqDataLoader(
+    batchSize: Int,
+    numSteps: Int,
+    useRandomIter: Boolean,
+    maxTokens: Int,
+) : Iterable<NDList> {
     var dataIter: List<NDList>
     var corpus: List<Int>
     var vocab: Vocab
@@ -34,9 +39,7 @@ class SeqDataLoader(batchSize: Int, numSteps: Int, useRandomIter: Boolean, maxTo
         }
     }
 
-    override fun iterator(): Iterator<NDList> {
-        return dataIter.iterator()
-    }
+    override fun iterator(): Iterator<NDList> = dataIter.iterator()
 
     /**
      * Generate a minibatch of subsequences using random sampling.

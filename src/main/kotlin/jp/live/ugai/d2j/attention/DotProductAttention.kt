@@ -56,7 +56,10 @@ fun main() {
  * @property numHiddens The number of hidden units.
  * @property dropout The dropout rate.
  */
-class AdditiveAttention(numHiddens: Int, dropout: Float) : AbstractBlock() {
+class AdditiveAttention(
+    numHiddens: Int,
+    dropout: Float,
+) : AbstractBlock() {
     private val W_k: Linear
     private val W_q: Linear
     private val W_v: Linear
@@ -67,11 +70,26 @@ class AdditiveAttention(numHiddens: Int, dropout: Float) : AbstractBlock() {
      * Initializes the Additive Attention mechanism.
      */
     init {
-        W_k = Linear.builder().setUnits(numHiddens.toLong()).optBias(false).build()
+        W_k =
+            Linear
+                .builder()
+                .setUnits(numHiddens.toLong())
+                .optBias(false)
+                .build()
         addChildBlock("W_k", W_k)
-        W_q = Linear.builder().setUnits(numHiddens.toLong()).optBias(false).build()
+        W_q =
+            Linear
+                .builder()
+                .setUnits(numHiddens.toLong())
+                .optBias(false)
+                .build()
         addChildBlock("W_q", W_q)
-        W_v = Linear.builder().setUnits(1).optBias(false).build()
+        W_v =
+            Linear
+                .builder()
+                .setUnits(1)
+                .optBias(false)
+                .build()
         addChildBlock("W_v", W_v)
         this.dropout = Dropout.builder().optRate(dropout).build()
         addChildBlock("dropout", this.dropout)
@@ -110,7 +128,12 @@ class AdditiveAttention(numHiddens: Int, dropout: Float) : AbstractBlock() {
 
         attentionWeights = maskedSoftmax(scores, validLens)
         // Shape of `values`: (`batchSize`, no. of key-value pairs, value dimension)
-        return NDList(this.dropout.forward(ps, NDList(attentionWeights), training, params).head().batchDot(values))
+        return NDList(
+            this.dropout
+                .forward(ps, NDList(attentionWeights), training, params)
+                .head()
+                .batchDot(values),
+        )
     }
 
     /**
@@ -119,9 +142,7 @@ class AdditiveAttention(numHiddens: Int, dropout: Float) : AbstractBlock() {
      * @param inputShapes The input shapes.
      * @return The output shapes.
      */
-    override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> {
-        return arrayOf(Shape(outputArrays))
-    }
+    override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> = arrayOf(Shape(outputArrays))
 
     private var outputArrays: List<Long> = listOf()
 
@@ -155,7 +176,9 @@ class AdditiveAttention(numHiddens: Int, dropout: Float) : AbstractBlock() {
 }
 
 // Scaled dot product attention.
-class DotProductAttention(dropout: Float) : AbstractBlock() {
+class DotProductAttention(
+    dropout: Float,
+) : AbstractBlock() {
     private val dropout0: Dropout
     var attentionWeights: NDArray? = null
     private var outputShapes: Array<Shape> = arrayOf<Shape>()
@@ -186,9 +209,7 @@ class DotProductAttention(dropout: Float) : AbstractBlock() {
         return NDList(this.dropout0.forward(ps, NDList(this.attentionWeights), training, params)[0].batchDot(values))
     }
 
-    override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> {
-        return outputShapes
-    }
+    override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> = outputShapes
 
     override fun initializeChildBlocks(
         manager: NDManager,
@@ -197,8 +218,10 @@ class DotProductAttention(dropout: Float) : AbstractBlock() {
     ) {
         manager.newSubManager().use { sub ->
             val scoresShape =
-                sub.zeros(inputShapes[0], dataType)
-                    .batchDot(sub.zeros(inputShapes[1], dataType).swapAxes(1, 2)).shape
+                sub
+                    .zeros(inputShapes[0], dataType)
+                    .batchDot(sub.zeros(inputShapes[1], dataType).swapAxes(1, 2))
+                    .shape
             dropout0.initialize(manager, dataType, scoresShape)
             outputShapes = dropout0.getOutputShapes(arrayOf(scoresShape))
         }

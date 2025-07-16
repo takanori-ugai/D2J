@@ -17,18 +17,15 @@ object Training {
         X: NDArray,
         w: NDArray,
         b: NDArray,
-    ): NDArray {
-        return X.dot(w).add(b)
-    }
+    ): NDArray = X.dot(w).add(b)
 
     fun squaredLoss(
         yHat: NDArray,
         y: NDArray,
-    ): NDArray {
-        return (yHat.sub(y.reshape(yHat.shape)))
+    ): NDArray =
+        (yHat.sub(y.reshape(yHat.shape)))
             .mul((yHat.sub(y.reshape(yHat.shape))))
             .div(2)
-    }
 
     fun sgd(
         params: NDList,
@@ -83,14 +80,16 @@ object Training {
             // Argmax gets index of maximum args for given axis 1
             // Convert yHat to same dataType as y (int32)
             // Sum up number of true entries
-            return yHat.argMax(1)
+            return yHat
+                .argMax(1)
                 .toType(DataType.INT32, false)
                 .eq(y.toType(DataType.INT32, false))
                 .sum()
                 .toType(DataType.FLOAT32, false)
                 .getFloat()
         }
-        return yHat.toType(DataType.INT32, false)
+        return yHat
+            .toType(DataType.INT32, false)
             .eq(y.toType(DataType.INT32, false))
             .sum()
             .toType(DataType.FLOAT32, false)

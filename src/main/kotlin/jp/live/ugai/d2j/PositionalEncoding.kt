@@ -11,7 +11,12 @@ import ai.djl.nn.norm.Dropout
 import ai.djl.training.ParameterStore
 import ai.djl.util.PairList
 
-class PositionalEncoding(numHiddens: Int, dropout: Float, maxLen: Int, manager: NDManager) : AbstractBlock() {
+class PositionalEncoding(
+    numHiddens: Int,
+    dropout: Float,
+    maxLen: Int,
+    manager: NDManager,
+) : AbstractBlock() {
     private val dropout: Dropout
     var P: NDArray
 
@@ -22,10 +27,12 @@ class PositionalEncoding(numHiddens: Int, dropout: Float, maxLen: Int, manager: 
         // Create a long enough `P`
         P = manager.zeros(Shape(1, maxLen.toLong(), numHiddens.toLong()))
         val X =
-            manager.arange(maxLen)
+            manager
+                .arange(maxLen)
                 .reshape(-1, 1)
                 .div(
-                    manager.create(10000)
+                    manager
+                        .create(10000)
                         .pow(manager.arange(0, numHiddens, 2).div(numHiddens)),
                 )
         P[NDIndex(":, :, {}::{}", 0, 2)] = X.sin()
@@ -43,9 +50,7 @@ class PositionalEncoding(numHiddens: Int, dropout: Float, maxLen: Int, manager: 
         return NDList(dropout.forward(parameterStore, NDList(X), training, params)[0])
     }
 
-    override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> {
-        throw UnsupportedOperationException("Not implemented")
-    }
+    override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> = throw UnsupportedOperationException("Not implemented")
 
     public override fun initializeChildBlocks(
         manager: NDManager,

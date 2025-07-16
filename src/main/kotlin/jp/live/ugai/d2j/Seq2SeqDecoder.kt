@@ -15,7 +15,13 @@ import ai.djl.training.ParameterStore
 import ai.djl.util.PairList
 import jp.live.ugai.d2j.lstm.Decoder
 
-class Seq2SeqDecoder(vocabSize: Int, embedSize: Int, numHiddens: Int, numLayers: Int, dropout: Float) : Decoder() {
+class Seq2SeqDecoder(
+    vocabSize: Int,
+    embedSize: Int,
+    numHiddens: Int,
+    numLayers: Int,
+    dropout: Float,
+) : Decoder() {
     private val embedding: TrainableWordEmbedding
     private val rnn: GRU
     private val dense: Linear
@@ -25,14 +31,16 @@ class Seq2SeqDecoder(vocabSize: Int, embedSize: Int, numHiddens: Int, numLayers:
         val list: List<String> = (0 until vocabSize).map { it.toString() }
         val vocab: Vocabulary = DefaultVocabulary(list)
         embedding =
-            TrainableWordEmbedding.builder()
+            TrainableWordEmbedding
+                .builder()
                 .optNumEmbeddings(vocabSize)
                 .setEmbeddingSize(embedSize)
                 .setVocabulary(vocab)
                 .build()
         addChildBlock("embedding", embedding)
         rnn =
-            GRU.builder()
+            GRU
+                .builder()
                 .setNumLayers(numLayers)
                 .setStateSize(numHiddens)
                 .optReturnState(true)
@@ -72,9 +80,7 @@ class Seq2SeqDecoder(vocabSize: Int, embedSize: Int, numHiddens: Int, numLayers:
         }
     }
 
-    override fun initState(encOutputs: NDList): NDList {
-        return NDList(encOutputs[1])
-    }
+    override fun initState(encOutputs: NDList): NDList = NDList(encOutputs[1])
 
     override fun forwardInternal(
         parameterStore: ParameterStore?,
@@ -104,7 +110,8 @@ class Seq2SeqDecoder(vocabSize: Int, embedSize: Int, numHiddens: Int, numLayers:
         var output = rnnOutput.head()
         state = rnnOutput[1]
         output =
-            dense.forward(parameterStore, NDList(output), training)
+            dense
+                .forward(parameterStore, NDList(output), training)
                 .head()
                 .swapAxes(0, 1)
         return NDList(output, state)

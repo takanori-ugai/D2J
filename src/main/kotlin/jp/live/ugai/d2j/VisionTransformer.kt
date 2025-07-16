@@ -85,14 +85,16 @@ fun main() {
 
 // Get Training and Validation Datasets
     val trainingSet =
-        FashionMnist.builder()
+        FashionMnist
+            .builder()
             .optUsage(Dataset.Usage.TRAIN)
             .setSampling(batchSize0, randomShuffle)
             .optLimit(Long.MAX_VALUE)
             .build()
 
     val validationSet =
-        FashionMnist.builder()
+        FashionMnist
+            .builder()
             .optUsage(Dataset.Usage.TEST)
             .setSampling(batchSize0, false)
             .optLimit(Long.MAX_VALUE)
@@ -127,13 +129,26 @@ fun main() {
             .toType(DataType.INT32, false)
             .toIntArray()
     println(yHat.toList().subList(0, 20))
-    println(batch.getLabels().head().toType(DataType.INT32, false).toIntArray().toList().subList(0, 20))
+    println(
+        batch
+            .getLabels()
+            .head()
+            .toType(DataType.INT32, false)
+            .toIntArray()
+            .toList()
+            .subList(0, 20),
+    )
 }
 
-class PatchEmbedding(imgSize: Int = 96, val patchSize: Int = 16, val numHiddens: Int = 512) : AbstractBlock() {
+class PatchEmbedding(
+    imgSize: Int = 96,
+    val patchSize: Int = 16,
+    val numHiddens: Int = 512,
+) : AbstractBlock() {
     val numPatches = (imgSize / patchSize) * (imgSize / patchSize)
     val conv =
-        Conv2d.builder()
+        Conv2d
+            .builder()
             .setKernelShape(Shape(patchSize.toLong(), patchSize.toLong()))
             .optStride(Shape(patchSize.toLong(), patchSize.toLong()))
             .setFilters(numHiddens)
@@ -158,9 +173,8 @@ class PatchEmbedding(imgSize: Int = 96, val patchSize: Int = 16, val numHiddens:
         conv.initialize(manager, dataType, *inputShapes)
     }
 
-    override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> {
-        return arrayOf(Shape(inputShapes[0][0], numPatches.toLong(), numHiddens.toLong()))
-    }
+    override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> =
+        arrayOf(Shape(inputShapes[0][0], numPatches.toLong(), numHiddens.toLong()))
 }
 
 class ViTBlock(
@@ -206,12 +220,14 @@ class ViTBlock(
     }
 
     // We won't implement this since we won't be using it but it's required as part of an AbstractBlock
-    override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> {
-        return inputShapes
-    }
+    override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> = inputShapes
 }
 
-class ViTMLP(mlpNumHiddens: Int, mlpNumOutputs: Int, dropout: Float = 0.5f) : SequentialBlock() {
+class ViTMLP(
+    mlpNumHiddens: Int,
+    mlpNumOutputs: Int,
+    dropout: Float = 0.5f,
+) : SequentialBlock() {
     init {
         add(Linear.builder().setUnits(mlpNumHiddens.toLong()).build())
         add(Activation::relu)

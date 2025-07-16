@@ -44,7 +44,8 @@ fun main() {
     val manager = NDManager.newBaseManager()
 
     val dataset: TimeMachineDataset =
-        TimeMachineDataset.Builder()
+        TimeMachineDataset
+            .Builder()
             .setManager(manager)
             .setMaxTokens(10000)
             .setSampling(batchSize, false)
@@ -54,7 +55,8 @@ fun main() {
     val vocab = dataset.vocab
     val numHiddens = 256
     val rnnLayer =
-        RNN.builder()
+        RNN
+            .builder()
             .setNumLayers(1)
             .setStateSize(numHiddens)
             .optReturnState(true)
@@ -90,9 +92,7 @@ fun beginState(
     batchSize: Int,
     numLayers: Int,
     numHiddens: Int,
-): NDList {
-    return NDList(manager.zeros(Shape(numLayers.toLong(), batchSize.toLong(), numHiddens.toLong())))
-}
+): NDList = NDList(manager.zeros(Shape(numLayers.toLong(), batchSize.toLong(), numHiddens.toLong())))
 
 fun predictCh8(
     prefix: String,
@@ -105,7 +105,8 @@ fun predictCh8(
     val outputs: MutableList<Int> = ArrayList()
     outputs.add(vocab.getIdx("" + prefix[0]))
     val getInput = {
-        manager.create(outputs[outputs.size - 1])
+        manager
+            .create(outputs[outputs.size - 1])
             .toDevice(device, false)
             .reshape(Shape(1, 1))
     }
@@ -121,7 +122,13 @@ fun predictCh8(
             val pair = castedNet.forward(getInput(), state)
             y = pair.first
             state = pair.second
-            outputs.add(y.argMax(1).reshape(Shape(1)).getLong(0L).toInt())
+            outputs.add(
+                y
+                    .argMax(1)
+                    .reshape(Shape(1))
+                    .getLong(0L)
+                    .toInt(),
+            )
         }
     } else {
         val castedNet = net as AbstractBlock
@@ -135,16 +142,14 @@ fun predictCh8(
                             ParameterStore(manager, false),
                             NDList(getInput()),
                             false,
-                        )
-                        .subNDList(1)
+                        ).subNDList(1)
                 } else {
                     castedNet
                         .forward(
                             ParameterStore(manager, false),
                             NDList(getInput()).addAll(state),
                             false,
-                        )
-                        .subNDList(1)
+                        ).subNDList(1)
                 }
             outputs.add(vocab.getIdx("" + c))
         }
@@ -158,7 +163,13 @@ fun predictCh8(
                 )
             y = pair[0]
             state = pair.subNDList(1)
-            outputs.add(y.argMax(1).reshape(Shape(1)).getLong(0L).toInt())
+            outputs.add(
+                y
+                    .argMax(1)
+                    .reshape(Shape(1))
+                    .getLong(0L)
+                    .toInt(),
+            )
         }
     }
     val output = StringBuilder()

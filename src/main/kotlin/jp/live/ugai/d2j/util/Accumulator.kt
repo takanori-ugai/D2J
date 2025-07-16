@@ -1,6 +1,8 @@
 package jp.live.ugai.d2j.util
 
-class Accumulator(n: Int) {
+class Accumulator(
+    n: Int,
+) {
     val data = FloatArray(n) { 0f }
 
     // Adds a set of numbers to the array
@@ -16,7 +18,5 @@ class Accumulator(n: Int) {
     }
 
     // Returns the data point at the given index
-    fun get(index: Int): Float {
-        return data[index]
-    }
+    fun get(index: Int): Float = data[index]
 }

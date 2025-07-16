@@ -76,7 +76,9 @@ fun main() {
     print("BatchNorm: ")
     println(bn0.forward(ps, NDList(X0), false)[0])
 
-    class AddNorm(rate: Float) : AbstractBlock() {
+    class AddNorm(
+        rate: Float,
+    ) : AbstractBlock() {
         val dropout = Dropout.builder().optRate(rate).build()
         val ln = LayerNorm.builder().build()
 
@@ -98,9 +100,7 @@ fun main() {
             return result
         }
 
-        override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> {
-            return inputShapes
-        }
+        override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> = inputShapes
 
         override fun initializeChildBlocks(
             manager: NDManager,
@@ -115,11 +115,13 @@ fun main() {
     val addNorm = AddNorm(0.5f)
     addNorm.initialize(manager, DataType.FLOAT32, Shape(2, 3, 4))
     println(
-        addNorm.forward(
-            ps,
-            NDList(manager.ones(Shape(2, 3, 4)), manager.ones(Shape(2, 3, 4))),
-            false,
-        )[0].shapeEquals(manager.ones(Shape(2, 3, 4))),
+        addNorm
+            .forward(
+                ps,
+                NDList(manager.ones(Shape(2, 3, 4)), manager.ones(Shape(2, 3, 4))),
+                false,
+            )[0]
+            .shapeEquals(manager.ones(Shape(2, 3, 4))),
     )
 
     class TransformerEncoderBlock(
@@ -166,9 +168,7 @@ fun main() {
             return ret
         }
 
-        override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> {
-            return arrayOf<Shape>()
-        }
+        override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> = arrayOf<Shape>()
 
         override fun initializeChildBlocks(
             manager: NDManager,
@@ -209,7 +209,8 @@ fun main() {
             val vocab: Vocabulary = DefaultVocabulary(list)
             // Embedding layer
             embedding =
-                TrainableWordEmbedding.builder()
+                TrainableWordEmbedding
+                    .builder()
                     .optNumEmbeddings(vocabSize)
                     .setEmbeddingSize(numHiddens)
                     .setVocabulary(vocab)
@@ -367,9 +368,7 @@ fun main() {
             )
         }
 
-        override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> {
-            return arrayOf<Shape>()
-        }
+        override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> = arrayOf<Shape>()
     }
 
     val decoderBlk = TransformerDecoderBlock(24, 48, 8, 0.5f, 0)
@@ -391,7 +390,8 @@ fun main() {
         val list: List<String> = (0 until vocabSize).map { it.toString() }
         val vocab: Vocabulary = DefaultVocabulary(list)
         val embedding =
-            TrainableWordEmbedding.builder()
+            TrainableWordEmbedding
+                .builder()
                 .optNumEmbeddings(vocabSize)
                 .setEmbeddingSize(numHiddens)
                 .setVocabulary(vocab)
@@ -419,10 +419,9 @@ fun main() {
             }
         }
 
-        override fun initState(input: NDList): NDList {
-            val encOutputs = input[0]
-            val encValidLens = input[1]
-            return NDList(encOutputs, encValidLens, null)
+        override fun initState(encOutputs: NDList): NDList {
+            val (encOutputsValue, encValidLens) = encOutputs
+            return NDList(encOutputsValue, encValidLens, null)
         }
 
         override fun forwardInternal(
@@ -545,12 +544,12 @@ fun main() {
                         ) // Teacher forcing
                     Engine.getInstance().newGradientCollector().use { gc ->
                         val yHat: NDArray =
-                            net.forward(
-                                ParameterStore(manager, false),
-                                NDList(X, decInput, lenX),
-                                true,
-                            )
-                                .get(0)
+                            net
+                                .forward(
+                                    ParameterStore(manager, false),
+                                    NDList(X, decInput, lenX),
+                                    true,
+                                ).get(0)
                         val l = loss.evaluate(NDList(Y, lenY), NDList(yHat))
                         gc.backward(l)
                         metric.add(floatArrayOf(l.sum().getFloat(), lenY.sum().getLong().toFloat()))
@@ -616,7 +615,12 @@ fun main() {
 //                decX = Y.argMax(2)
 //                println("DECX: ${decX.squeeze(0)}")
 //                val pred = decX.squeeze(0).getLong().toInt()
-                val pred = Y.get(NDIndex("0,2")).argMax(0).getLong().toInt()
+                val pred =
+                    Y
+                        .get(NDIndex("0,2"))
+                        .argMax(0)
+                        .getLong()
+                        .toInt()
                 // Save attention weights (to be covered later)
                 if (saveAttentionWeights) {
                     attentionWeightSeq.add(net.decoder.attentionWeights)

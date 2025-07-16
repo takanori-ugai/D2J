@@ -20,7 +20,12 @@ object TrainingChapter9 {
         for (p in params) {
             val gradient = p.gradient.stopGradient()
             gradient.attach(manager)
-            result += gradient.pow(2.0).sum().getFloat().toDouble()
+            result +=
+                gradient
+                    .pow(2.0)
+                    .sum()
+                    .getFloat()
+                    .toDouble()
         }
         val norm = Math.sqrt(result)
         if (norm > theta) {

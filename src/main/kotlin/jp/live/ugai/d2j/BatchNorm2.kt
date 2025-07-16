@@ -86,27 +86,37 @@ fun setSystemProperties() {
 fun prepareDataset(
     usage: Dataset.Usage,
     batchSize: Int,
-): FashionMnist {
-    return FashionMnist.builder()
+): FashionMnist =
+    FashionMnist
+        .builder()
         .optUsage(usage)
         .setSampling(batchSize, true)
         .optLimit(getLong("DATASET_LIMIT", Long.MAX_VALUE))
         .build()
         .apply { prepare() }
-}
 
 /**
  * Prepares the model block for the neural network.
  *
  * @return The prepared SequentialBlock.
  */
-fun prepareModelBlock(): SequentialBlock {
-    return SequentialBlock()
-        .add(Conv2d.builder().setKernelShape(Shape(5, 5)).setFilters(6).build())
-        .add(BatchNorm.builder().build())
+fun prepareModelBlock(): SequentialBlock =
+    SequentialBlock()
+        .add(
+            Conv2d
+                .builder()
+                .setKernelShape(Shape(5, 5))
+                .setFilters(6)
+                .build(),
+        ).add(BatchNorm.builder().build())
         .add(Pool.maxPool2dBlock(Shape(2, 2), Shape(2, 2)))
-        .add(Conv2d.builder().setKernelShape(Shape(5, 5)).setFilters(16).build())
-        .add(BatchNorm.builder().build())
+        .add(
+            Conv2d
+                .builder()
+                .setKernelShape(Shape(5, 5))
+                .setFilters(16)
+                .build(),
+        ).add(BatchNorm.builder().build())
         .add(Activation::sigmoid)
         .add(Pool.maxPool2dBlock(Shape(2, 2), Shape(2, 2)))
         .add(Blocks.batchFlattenBlock())
@@ -118,6 +128,5 @@ fun prepareModelBlock(): SequentialBlock {
         .add(BatchNorm.builder().build())
         .add(Activation::sigmoid)
         .add(Linear.builder().setUnits(10).build())
-}
 
 class BatchNorm2

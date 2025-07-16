@@ -20,9 +20,7 @@ class StopWatch {
     }
 
     // Return average time
-    fun avg(): Double {
-        return sum() / times.size
-    }
+    fun avg(): Double = sum() / times.size
 
     // Return the sum of time
     fun sum(): Double {
@@ -45,7 +43,5 @@ class StopWatch {
     }
 
     // Convert nano seconds to seconds
-    private fun nanoToSec(nanosec: Long): Double {
-        return nanosec.toDouble() / 1E9
-    }
+    private fun nanoToSec(nanosec: Long): Double = nanosec.toDouble() / 1E9
 }

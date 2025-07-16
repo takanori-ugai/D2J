@@ -144,12 +144,12 @@ fun train() {
                     ) // Teacher forcing
                 Engine.getInstance().newGradientCollector().use { gc ->
                     val yHat: NDArray =
-                        net.forward(
-                            ParameterStore(manager, false),
-                            NDList(X, decInput, lenX),
-                            true,
-                        )
-                            .get(0)
+                        net
+                            .forward(
+                                ParameterStore(manager, false),
+                                NDList(X, decInput, lenX),
+                                true,
+                            ).get(0)
                     val l = loss.evaluate(NDList(Y, lenY), NDList(yHat))
                     gc.backward(l)
                     metric.add(floatArrayOf(l.sum().getFloat(), lenY.sum().getLong().toFloat()))
@@ -264,11 +264,14 @@ fun train() {
     val pair = predictSeq2Seq(net, engs.last(), srcVocab, tgtVocab, numSteps, device, true)
     val attentions = pair.second
     val matrix =
-        manager.create(attentions[0].last().first).reshape(attentions[0].last().second)
+        manager
+            .create(attentions[0].last().first)
+            .reshape(attentions[0].last().second)
             .concat(manager.create(attentions[1].last().first).reshape(attentions[1].last().second))
             .concat(manager.create(attentions[2].last().first).reshape(attentions[2].last().second))
             .concat(manager.create(attentions[3].last().first).reshape(attentions[3].last().second))
-            .concat(manager.create(attentions[4].last().first).reshape(attentions[4].last().second)).reshape(5, 10)
+            .concat(manager.create(attentions[4].last().first).reshape(attentions[4].last().second))
+            .reshape(5, 10)
     println(matrix)
     val seriesX = mutableListOf<Long>()
     val seriesY = mutableListOf<Long>()
@@ -304,7 +307,8 @@ class Seq2SeqAttentionDecoder(
     val attention = AdditiveAttention(numHiddens, dropout)
     val embedding: TrainableWordEmbedding
     val rnn =
-        GRU.builder()
+        GRU
+            .builder()
             .setNumLayers(numLayers)
             .setStateSize(numHiddens)
             .optReturnState(true)
@@ -318,7 +322,8 @@ class Seq2SeqAttentionDecoder(
         val vocab: Vocabulary = DefaultVocabulary(list)
         // Embedding layer
         embedding =
-            TrainableWordEmbedding.builder()
+            TrainableWordEmbedding
+                .builder()
                 .optNumEmbeddings(vocabSize.toInt())
                 .setEmbeddingSize(embedSize)
                 .setVocabulary(vocab)

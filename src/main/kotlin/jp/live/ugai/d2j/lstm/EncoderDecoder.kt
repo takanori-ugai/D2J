@@ -14,7 +14,10 @@ import ai.djl.util.PairList
  * @property encoder The encoder part of the architecture.
  * @property decoder The decoder part of the architecture.
  */
-class EncoderDecoder(var encoder: Encoder, var decoder: Decoder) : AbstractBlock() {
+class EncoderDecoder(
+    var encoder: Encoder,
+    var decoder: Decoder,
+) : AbstractBlock() {
     /**
      * Initializes the Encoder-Decoder architecture.
      */
@@ -63,7 +66,5 @@ class EncoderDecoder(var encoder: Encoder, var decoder: Decoder) : AbstractBlock
      * @return The output shapes.
      * @throws UnsupportedOperationException If the method is not implemented.
      */
-    override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> {
-        throw UnsupportedOperationException("Not implemented")
-    }
+    override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> = throw UnsupportedOperationException("Not implemented")
 }

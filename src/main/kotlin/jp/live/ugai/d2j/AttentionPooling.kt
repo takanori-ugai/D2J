@@ -47,13 +47,15 @@ fun main() {
     val xVal = manager.arange(0f, 5f, 5.0f / n)
     val yVal = f(xVal)
     val nonLinearDataSet =
-        ArrayDataset.Builder()
+        ArrayDataset
+            .Builder()
             .setData(xTrain)
             .optLabels(yTrain)
             .setSampling(batchSize, false)
             .build()
     val nonLinearDataSetVar =
-        ArrayDataset.Builder()
+        ArrayDataset
+            .Builder()
             .setData(xVal)
             .optLabels(yVal)
             .setSampling(batchSize, false)
@@ -85,15 +87,18 @@ fun main() {
     fun diff(
         queries: NDArray,
         keys: NDArray,
-    ): NDArray {
-        return queries.reshape(-1, 1).sub(keys.reshape(1, -1))
-    }
+    ): NDArray = queries.reshape(-1, 1).sub(keys.reshape(1, -1))
 
     fun attentionPool(
         queryKeyDiffs: NDArray,
         values: NDArray,
     ): NDList {
-        val attentionWeights = queryKeyDiffs.pow(2).div(2).mul(-1).softmax(1)
+        val attentionWeights =
+            queryKeyDiffs
+                .pow(2)
+                .div(2)
+                .mul(-1)
+                .softmax(1)
         return NDList(attentionWeights.dot(values), attentionWeights)
     }
 
@@ -150,14 +155,18 @@ fun main() {
     val values = manager.arange(20.0f).reshape(Shape(2, 10))
     println(weights.expandDims(1).matMul(values.expandDims(-1)))
 
-    class NWKernelRegression(val keys: NDArray, val values0: NDArray) : AbstractBlock() {
+    class NWKernelRegression(
+        val keys: NDArray,
+        val values0: NDArray,
+    ) : AbstractBlock() {
         val wParam: Parameter
         var attention: NDArray? = null
 
         init {
             wParam =
                 addParameter(
-                    Parameter.builder()
+                    Parameter
+                        .builder()
                         .setName("weight")
                         .setType(Parameter.Type.BIAS)
                         .optShape(Shape(1))
@@ -180,9 +189,7 @@ fun main() {
             return NDList(ret[0])
         }
 
-        override fun getOutputShapes(inputs: Array<Shape>): Array<Shape> {
-            return inputs
-        }
+        override fun getOutputShapes(inputs: Array<Shape>): Array<Shape> = inputs
     }
 
     val lr = 1f
@@ -207,7 +214,11 @@ fun main() {
     trainer.setMetrics(Metrics())
     val numEpochs = 10
     EasyTrain.fit(trainer, numEpochs, nonLinearDataSet, nonLinearDataSetVar)
-    println(net.parameters.get(0).value.array)
+    println(
+        net.parameters
+            .get(0)
+            .value.array,
+    )
 }
 
 class AttentionPooling

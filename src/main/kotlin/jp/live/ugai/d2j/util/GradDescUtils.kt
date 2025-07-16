@@ -182,4 +182,7 @@ object GradDescUtils {
     }
 }
 
-class Weights(var x1: Float, var x2: Float)
+class Weights(
+    var x1: Float,
+    var x2: Float,
+)

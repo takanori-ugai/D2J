@@ -49,7 +49,8 @@ fun main() {
 // Only the first `nTrain` examples are used for training
 // Only the first `nTrain` examples are used for training
     val trainIter =
-        ArrayDataset.Builder()
+        ArrayDataset
+            .Builder()
             .setData(features[NDIndex(":{}", nTrain)])
             .optLabels(labels[NDIndex(":{}", nTrain)])
             .setSampling(batchSize, true)

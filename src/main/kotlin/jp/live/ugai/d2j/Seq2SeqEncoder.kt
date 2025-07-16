@@ -125,12 +125,12 @@ fun main() {
                         ) // Teacher forcing
                     Engine.getInstance().newGradientCollector().use { gc ->
                         val yHat: NDArray =
-                            net.forward(
-                                ParameterStore(manager, false),
-                                NDList(X, decInput, lenX),
-                                true,
-                            )
-                                .get(0)
+                            net
+                                .forward(
+                                    ParameterStore(manager, false),
+                                    NDList(X, decInput, lenX),
+                                    true,
+                                ).get(0)
                         val l = loss.evaluate(NDList(Y, lenY), NDList(yHat))
                         gc.backward(l)
                         metric.add(floatArrayOf(l.sum().getFloat(), lenY.sum().getLong().toFloat()))
@@ -266,7 +266,13 @@ fun main() {
     }
 }
 
-class Seq2SeqEncoder(vocabSize: Int, embedSize: Int, numHiddens: Int, numLayers: Int, dropout: Float) : Encoder() {
+class Seq2SeqEncoder(
+    vocabSize: Int,
+    embedSize: Int,
+    numHiddens: Int,
+    numLayers: Int,
+    dropout: Float,
+) : Encoder() {
     private val embedding: TrainableWordEmbedding
     private val rnn: GRU
 
@@ -276,14 +282,16 @@ class Seq2SeqEncoder(vocabSize: Int, embedSize: Int, numHiddens: Int, numLayers:
         val vocab: Vocabulary = DefaultVocabulary(list)
         // Embedding layer
         embedding =
-            TrainableWordEmbedding.builder()
+            TrainableWordEmbedding
+                .builder()
                 .optNumEmbeddings(vocabSize)
                 .setEmbeddingSize(embedSize)
                 .setVocabulary(vocab)
                 .build()
         addChildBlock("embedding", embedding)
         rnn =
-            GRU.builder()
+            GRU
+                .builder()
                 .setNumLayers(numLayers)
                 .setStateSize(numHiddens)
                 .optReturnState(true)
@@ -329,7 +337,12 @@ class MaskedSoftmaxCELoss : SoftmaxCrossEntropyLoss() {
         labels: NDList,
         predictions: NDList,
     ): NDArray {
-        val weights = labels.head().onesLike().expandDims(-1).sequenceMask(labels[1])
+        val weights =
+            labels
+                .head()
+                .onesLike()
+                .expandDims(-1)
+                .sequenceMask(labels[1])
         // Remove the states from the labels NDList because otherwise, it will throw an error as SoftmaxCrossEntropyLoss
         // expects only one NDArray for label and one NDArray for prediction
         labels.removeAt(1)
