@@ -11,10 +11,10 @@ plugins {
     jacoco
     id("org.jetbrains.dokka") version "2.0.0"
     id("io.gitlab.arturbosch.detekt") version "1.23.8"
-    id("com.diffplug.spotless") version "7.1.0"
+    id("com.diffplug.spotless") version "7.2.1"
 //    kotlin("jupyter.api") version "0.10.1-8"
     id("com.github.jk1.dependency-license-report") version "2.9"
-    id("com.github.spotbugs") version "6.2.2"
+    id("com.github.spotbugs") version "6.2.3"
     id("org.jlleitschuh.gradle.ktlint") version "13.0.0"
     application
 }
@@ -48,13 +48,13 @@ dependencies {
 //    runtimeOnly("ai.djl.pytorch:pytorch-native-cpu:1.12.1")
     //    implementation("ai.djl.pytorch:pytorch-native-cpu:1.12.1:linux-x86_64")
 //    runtimeOnly("ai.djl.pytorch:pytorch-native-cu116:1.12.1:linux-x86_64")
-    implementation("org.jetbrains.lets-plot:lets-plot-common:4.6.2")
-    implementation("org.jetbrains.lets-plot:lets-plot-kotlin-jvm:4.10.0")
+    implementation("org.jetbrains.lets-plot:lets-plot-kotlin-jvm:4.11.0")
+    implementation("org.jetbrains.lets-plot:lets-plot-common:4.7.0")
     runtimeOnly("org.slf4j:slf4j-simple:2.0.17")
     implementation("org.apache.commons:commons-math3:3.6.1")
     implementation(kotlin("stdlib"))
-    implementation("com.opencsv:opencsv:5.11.2")
-    testImplementation(platform("org.junit:junit-bom:5.13.3"))
+    implementation("com.opencsv:opencsv:5.12.0")
+    testImplementation(platform("org.junit:junit-bom:5.13.4"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
