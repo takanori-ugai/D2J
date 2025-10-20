@@ -8,7 +8,7 @@ plugins {
     java
     id("com.gradleup.shadow") version "9.2.2"
     jacoco
-    id("org.jetbrains.dokka") version "2.0.0"
+    id("org.jetbrains.dokka") version "2.1.0"
     id("io.gitlab.arturbosch.detekt") version "1.23.8"
     id("com.diffplug.spotless") version "7.2.1"
 //    kotlin("jupyter.api") version "0.10.1-8"
