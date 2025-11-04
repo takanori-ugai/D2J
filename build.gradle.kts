@@ -4,16 +4,16 @@ import org.jlleitschuh.gradle.ktlint.reporter.ReporterType
 
 plugins {
     kotlin("jvm") version "2.2.20"
-    kotlin("plugin.serialization") version "2.2.20"
+    kotlin("plugin.serialization") version "2.2.21"
     java
     id("com.gradleup.shadow") version "9.2.2"
     jacoco
-    id("org.jetbrains.dokka") version "2.0.0"
+    id("org.jetbrains.dokka") version "2.1.0"
     id("io.gitlab.arturbosch.detekt") version "1.23.8"
     id("com.diffplug.spotless") version "7.2.1"
 //    kotlin("jupyter.api") version "0.10.1-8"
     id("com.github.jk1.dependency-license-report") version "2.9"
-    id("com.github.spotbugs") version "6.3.0"
+    id("com.github.spotbugs") version "6.4.4"
     id("org.jlleitschuh.gradle.ktlint") version "13.1.0"
     application
 }
@@ -21,7 +21,7 @@ plugins {
 group = "jp.live.ugai"
 version = "1.0-SNAPSHOT"
 // val v = "0.19.0-SNAPSHOT"
-val v = "0.34.0"
+val v = "0.35.0"
 
 // val ktlint by configurations.creating
 
