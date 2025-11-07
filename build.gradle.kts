@@ -4,7 +4,7 @@ import org.jlleitschuh.gradle.ktlint.reporter.ReporterType
 
 plugins {
     kotlin("jvm") version "2.2.20"
-    kotlin("plugin.serialization") version "2.2.20"
+    kotlin("plugin.serialization") version "2.2.21"
     java
     id("com.gradleup.shadow") version "9.2.2"
     jacoco
@@ -21,7 +21,7 @@ plugins {
 group = "jp.live.ugai"
 version = "1.0-SNAPSHOT"
 // val v = "0.19.0-SNAPSHOT"
-val v = "0.34.0"
+val v = "0.35.0"
 
 // val ktlint by configurations.creating
 
@@ -53,30 +53,30 @@ dependencies {
     implementation("org.apache.commons:commons-math3:3.6.1")
     implementation(kotlin("stdlib"))
     implementation("com.opencsv:opencsv:5.12.0")
-    testImplementation(platform("org.junit:junit-bom:5.13.4"))
+    testImplementation(platform("org.junit:junit-bom:6.0.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
 tasks {
     compileKotlin {
-        compilerOptions.jvmTarget.set(JvmTarget.JVM_1_8)
+        compilerOptions.jvmTarget.set(JvmTarget.JVM_17)
     }
 
     compileTestKotlin {
-        compilerOptions.jvmTarget.set(JvmTarget.JVM_1_8)
+        compilerOptions.jvmTarget.set(JvmTarget.JVM_17)
     }
 
     compileJava {
         options.encoding = "UTF-8"
-        sourceCompatibility = "1.8"
-        targetCompatibility = "1.8"
+        sourceCompatibility = "17"
+        targetCompatibility = "17"
     }
 
     compileTestJava {
         options.encoding = "UTF-8"
-        sourceCompatibility = "1.8"
-        targetCompatibility = "1.8"
+        sourceCompatibility = "17"
+        targetCompatibility = "17"
     }
 
     test {
@@ -86,7 +86,7 @@ tasks {
 
     withType<Detekt>().configureEach {
         // Target version of the generated JVM bytecode. It is used for type resolution.
-        jvmTarget = "1.8"
+        jvmTarget = "17"
         reports {
             // observe findings in your browser with structure and code snippets
             html.required.set(true)
@@ -170,7 +170,7 @@ spotless {
 
 dokka.dokkaSourceSets {
     configureEach {
-        jdkVersion.set(11)
+        jdkVersion.set(17)
         enableJdkDocumentationLink.set(false)
         enableKotlinStdLibDocumentationLink.set(false)
     }
