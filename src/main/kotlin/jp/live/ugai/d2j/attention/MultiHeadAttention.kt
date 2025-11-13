@@ -42,6 +42,7 @@ class MultiHeadAttention(
     private val W_q: Linear
     private val W_v: Linear
     private val W_o: Linear
+    private val dropout: Dropout
 
     init {
         attention = DotProductAttention(dropout)
@@ -73,8 +74,8 @@ class MultiHeadAttention(
                 .optBias(useBias)
                 .build()
         addChildBlock("W_o", W_o)
-        val dropout1 = Dropout.builder().optRate(dropout).build()
-        addChildBlock("dropout", dropout1)
+        this.dropout = Dropout.builder().optRate(dropout).build()
+        addChildBlock("dropout", this.dropout)
     }
 
     override fun forwardInternal(
@@ -113,7 +114,7 @@ class MultiHeadAttention(
         // Shape of `outputConcat`:
         // (`batchSize`, no. of queries, `numHiddens`)
         val outputConcat: NDArray = Chap10Utils.transposeOutput(output, numHeads)
-        return NDList(W_o.forward(ps, NDList(outputConcat), training, params)[0])
+        return dropout.forward(ps, NDList(W_o.forward(ps, NDList(outputConcat), training, params)[0]), training, params)
     }
 
     override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> = arrayOf(inputShapes[0])
