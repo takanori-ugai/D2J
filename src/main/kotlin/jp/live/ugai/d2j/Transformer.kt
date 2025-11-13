@@ -96,7 +96,7 @@ fun main() {
     val state = encoderBlock.forward(ps, NDList(X, validLens, validLens), false)
     println(decoderBlk.forward(ps, NDList(X, state.head(), validLens, null), false))
 
-    run()
+    run {}
 }
 
 fun positionWiseFFN(

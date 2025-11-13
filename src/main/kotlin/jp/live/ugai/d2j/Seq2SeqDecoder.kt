@@ -3,6 +3,7 @@ package jp.live.ugai.d2j
 import ai.djl.modality.nlp.DefaultVocabulary
 import ai.djl.modality.nlp.Vocabulary
 import ai.djl.modality.nlp.embedding.TrainableWordEmbedding
+import ai.djl.ndarray.NDArray
 import ai.djl.ndarray.NDArrays
 import ai.djl.ndarray.NDList
 import ai.djl.ndarray.NDManager
@@ -25,8 +26,8 @@ class Seq2SeqDecoder(
     private val embedding: TrainableWordEmbedding
     private val rnn: GRU
     private val dense: Linear
+    public override var attentionWeights: NDArray? = null
 
-    // The RNN decoder for sequence to sequence learning.
     init {
         val list: List<String> = (0 until vocabSize).map { it.toString() }
         val vocab: Vocabulary = DefaultVocabulary(list)
@@ -48,7 +49,11 @@ class Seq2SeqDecoder(
                 .optDropRate(dropout)
                 .build()
         addChildBlock("rnn", rnn)
-        dense = Linear.builder().setUnits(vocabSize.toLong()).build()
+        dense =
+            Linear
+                .builder()
+                .setUnits(vocabSize.toLong())
+                .build()
         addChildBlock("dense", dense)
     }
 
@@ -60,7 +65,7 @@ class Seq2SeqDecoder(
     ) {
         embedding.initialize(manager, dataType, inputShapes[0])
         manager.newSubManager().use { sub ->
-            var shape: Shape = embedding.getOutputShapes(arrayOf(inputShapes[0]))[0]
+            val shape: Shape = embedding.getOutputShapes(arrayOf(inputShapes[0]))[0]
             val nd = sub.zeros(shape, dataType).swapAxes(0, 1)
             val state = sub.zeros(inputShapes[1], dataType)
             var context = state[NDIndex(-1)]
@@ -75,15 +80,15 @@ class Seq2SeqDecoder(
             // Broadcast `context` so it has the same `numSteps` as `X`
             val xAndContext = NDArrays.concat(NDList(nd, context), 2)
             rnn.initialize(manager, dataType, xAndContext.shape)
-            shape = rnn.getOutputShapes(arrayOf(xAndContext.shape))[0]
-            dense.initialize(manager, dataType, shape)
+            val rnnOutputShape: Shape = rnn.getOutputShapes(arrayOf(xAndContext.shape))[0]
+            dense.initialize(manager, dataType, rnnOutputShape)
         }
     }
 
     override fun initState(encOutputs: NDList): NDList = NDList(encOutputs[1])
 
     override fun forwardInternal(
-        parameterStore: ParameterStore?,
+        parameterStore: ParameterStore,
         inputs: NDList,
         training: Boolean,
         params: PairList<String, Any>?,
@@ -106,7 +111,8 @@ class Seq2SeqDecoder(
                 ),
             )
         val xAndContext = NDArrays.concat(NDList(X, context), 2)
-        val rnnOutput = rnn.forward(parameterStore, NDList(xAndContext, state), training)
+        val rnnOutput =
+            rnn.forward(parameterStore, NDList(xAndContext, state), training)
         var output = rnnOutput.head()
         state = rnnOutput[1]
         output =

@@ -76,16 +76,17 @@ fun main() {
     println(ff[0].shape) // (batch_size, num_steps, vocab_size) (4, 7, 10)
     println(ff[1].shape) // (batch_size, num_steps, num_hiddens) (4, 7, 16)
     println(ff[2][0].shape) // (batch_size, num_hiddens) (4, 16)
-    run()
+    runAttention()
 }
 
-fun run() {
+private fun runAttention() {
     val embedSize = 32
     val numHiddens = 32
     val numLayers = 2
     val batchSize = 64
     val numSteps = 10
     val numEpochs = Integer.getInteger("MAX_EPOCH", 3)
+    val manager = NDManager.newBaseManager()
 
     val dropout = 0.2f
     val lr = 0.001f
@@ -337,6 +338,7 @@ class Seq2SeqAttentionDecoder(
     override fun initState(encOutputs: NDList): NDList {
         val outputs = encOutputs[0]
         val hiddenState = encOutputs[1]
+        val manager = encOutputs[0].manager
         val encValidLens = if (encOutputs.size >= 3) encOutputs[2] else manager.create(0)
         return NDList(outputs.swapAxes(0, 1), hiddenState, encValidLens)
     }
