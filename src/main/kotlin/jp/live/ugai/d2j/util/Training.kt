@@ -12,6 +12,14 @@ import ai.djl.training.dataset.Batch
 import ai.djl.training.optimizer.Optimizer
 import ai.djl.training.tracker.Tracker
 
+fun getLong(
+    nm: String,
+    n: Long,
+): Long {
+    val name = System.getProperty(nm)
+    return if (null == name) n.toLong() else name.toLong()
+}
+
 object Training {
     fun linreg(
         X: NDArray,
