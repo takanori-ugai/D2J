@@ -41,28 +41,21 @@ object Chap10Utils {
         input: NDArray,
         validLens: NDArray?,
     ): NDArray {
+        // If no valid lengths are provided, apply softmax directly
+        if (validLens == null || validLens.isEmpty) {
+            return input.softmax(-1)
+        }
+
         val shape = input.shape
         val lastDim = shape[shape.dimension() - 1]
 
-        // If no valid lengths are provided, apply softmax directly
-        if (validLens == null || validLens.shape.dimension() == 0) {
-            return input.reshape(Shape(-1, lastDim)).softmax(-1).reshape(shape)
-        }
-
-        // Prepare valid lengths for masking
-        val expandedValidLens =
-            if (validLens.shape.dimension() == 1) {
-                validLens.repeat(shape[1])
-            } else {
-                validLens.reshape(-1)
-            }
-
         // Mask and apply softmax
-        return input
-            .reshape(Shape(-1, lastDim))
-            .sequenceMask(expandedValidLens, -1.0E6F)
-            .softmax(-1)
-            .reshape(shape)
+        val reshapedInput = input.reshape(Shape(-1, lastDim))
+        val reshapedValidLens = validLens.reshape(-1)
+
+        val masked = reshapedInput.sequenceMask(reshapedValidLens, -1.0E6F)
+        val softmax = masked.softmax(-1)
+        return softmax.reshape(shape)
     }
 
     /**
@@ -268,40 +261,48 @@ object Chap10Utils {
         labelSeq: String,
         maxOrder: Int,
     ): Double {
-        val predTokens = predSeq.split(" ")
-        val labelTokens = labelSeq.split(" ")
+        val predTokens = predSeq.split(" ").filter { it.isNotEmpty() }
+        val labelTokens = labelSeq.split(" ").filter { it.isNotEmpty() }
         val predLen = predTokens.size
         val labelLen = labelTokens.size
 
-        if (predLen == 0 || labelLen == 0) return 0.0
+        if (predLen == 0 || labelLen == 0) {
+            return 0.0
+        }
 
-        // Brevity penalty
-        var score = Math.exp(Math.min(0.0, 1.0 - labelLen.toDouble() / predLen))
+        val score = Math.exp(Math.min(0.0, 1.0 - labelLen.toDouble() / predLen))
 
+        val precisions = DoubleArray(maxOrder)
         for (n in 1..maxOrder) {
-            var matchCount = 0
-            val labelNgrams = mutableMapOf<String, Int>()
+            val predNgrams = mutableMapOf<String, Int>()
+            for (i in 0..predLen - n) {
+                val ngram = predTokens.subList(i, i + n).joinToString(" ")
+                predNgrams[ngram] = predNgrams.getOrDefault(ngram, 0) + 1
+            }
 
+            val labelNgrams = mutableMapOf<String, Int>()
             for (i in 0..labelLen - n) {
                 val ngram = labelTokens.subList(i, i + n).joinToString(" ")
                 labelNgrams[ngram] = labelNgrams.getOrDefault(ngram, 0) + 1
             }
 
-            for (i in 0..predLen - n) {
-                val ngram = predTokens.subList(i, i + n).joinToString(" ")
-                val count = labelNgrams.getOrDefault(ngram, 0)
-                if (count > 0) {
-                    matchCount++
-                    labelNgrams[ngram] = count - 1
-                }
+            var clippedCount = 0
+            for ((ngram, count) in predNgrams) {
+                clippedCount += minOf(count, labelNgrams.getOrDefault(ngram, 0))
             }
 
-            val possibleMatches = predLen - n + 1
-            // Avoid division by zero for short predictions
-            if (possibleMatches <= 0) return 0.0
-
-            score *= Math.pow(matchCount.toDouble() / possibleMatches, Math.pow(0.5, n.toDouble()))
+            val totalCount = predLen - n + 1
+            precisions[n - 1] = if (totalCount > 0) clippedCount.toDouble() / totalCount else 0.0
         }
-        return score
+
+        val geometricMean =
+            if (precisions.minOrNull()!! == 0.0) {
+                0.0
+            } else {
+                val sumOfLogs = precisions.map { Math.log(it) }.sum()
+                Math.exp(sumOfLogs / maxOrder)
+            }
+
+        return score * geometricMean
     }
 }
