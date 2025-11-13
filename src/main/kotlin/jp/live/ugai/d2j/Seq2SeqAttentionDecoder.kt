@@ -76,10 +76,10 @@ fun main() {
     println(ff[0].shape) // (batch_size, num_steps, vocab_size) (4, 7, 10)
     println(ff[1].shape) // (batch_size, num_steps, num_hiddens) (4, 7, 16)
     println(ff[2][0].shape) // (batch_size, num_hiddens) (4, 16)
-    train()
+    run()
 }
 
-fun train() {
+fun run() {
     val embedSize = 32
     val numHiddens = 32
     val numLayers = 2
