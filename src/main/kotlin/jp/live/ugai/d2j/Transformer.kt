@@ -468,7 +468,7 @@ fun train() {
 
     val encoder =
         TransformerEncoder(
-            srcVocab.vocab.size(),
+            srcVocab.length(),
             numHiddens,
             ffnNumHiddens.toLong(),
             numHeads.toLong(),
@@ -478,7 +478,7 @@ fun train() {
         )
     encoder.initialize(manager, DataType.FLOAT32, Shape(2, 35), Shape(2))
 
-    val decoder = TransformerDecoder(tgtVocab.vocab.size(), numHiddens, ffnNumHiddens, numHeads, numBlks, dropout, manager)
+    val decoder = TransformerDecoder(tgtVocab.length(), numHiddens, ffnNumHiddens, numHeads, numBlks, dropout, manager)
     decoder.initialize(manager, DataType.FLOAT32, Shape(2, 35, 256), Shape(2))
 
     val net = EncoderDecoder(encoder, decoder)

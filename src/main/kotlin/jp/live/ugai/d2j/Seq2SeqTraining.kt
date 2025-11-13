@@ -79,7 +79,7 @@ fun main() {
     val numLayers = 2
     val batchSize = 64
     val numSteps = 10
-    val numEpochs = Integer.getInteger("MAX_EPOCH", 30)
+    val numEpochs = Integer.getInteger("MAX_EPOCH", 100)
 
     val dropout = 0.1f
     val lr = 0.005f
@@ -109,7 +109,7 @@ fun main() {
 /**
  * Train a sequence-to-sequence model.
  */
-private fun trainSeq2Seq(
+private fun trainSeq2Seq2(
     net: EncoderDecoder,
     dataset: ArrayDataset,
     lr: Float,
@@ -240,7 +240,7 @@ private fun predictSeq2Seq(
  * @param maxOrder The maximum order of n-grams for which matching statistics are computed.
  * @return The BLEU score.
  */
-private fun bleu(
+private fun bleu2(
     predSeq: String,
     labelSeq: String,
     maxOrder: Int,
