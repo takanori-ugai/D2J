@@ -19,6 +19,7 @@ import ai.djl.training.loss.Loss
 import ai.djl.training.optimizer.Optimizer
 import ai.djl.training.tracker.Tracker
 import jp.live.ugai.d2j.util.Training
+import jp.live.ugai.d2j.util.getLong
 
 /**
  * The main function where the execution of code starts.
