@@ -124,7 +124,7 @@ tasks {
                 project.property("mainClass") as String
             } else {
                 "com.fujitsu.labs.virtualhome.MainKt"
-            }
+            },
         )
     }
 }
