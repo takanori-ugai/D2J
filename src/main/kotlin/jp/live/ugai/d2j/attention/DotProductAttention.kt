@@ -13,46 +13,41 @@ import ai.djl.util.PairList
 import jp.live.ugai.d2j.attention.Chap10Utils.maskedSoftmax
 
 /**
- * This class represents the Additive Attention mechanism.
+ * Implements the Additive Attention mechanism.
  *
- * @property numHiddens The number of hidden units.
- * @property dropout The dropout rate.
+ * @property numHiddens Number of hidden units for projections.
+ * @property dropout Dropout rate for attention weights.
  */
 class AdditiveAttention(
     numHiddens: Int,
     dropout: Float,
 ) : AbstractBlock() {
-    private val W_k: Linear
-    private val W_q: Linear
-    private val W_v: Linear
-    private val dropout: Dropout
+    private val wK =
+        Linear
+            .builder()
+            .setUnits(numHiddens.toLong())
+            .optBias(false)
+            .build()
+    private val wQ =
+        Linear
+            .builder()
+            .setUnits(numHiddens.toLong())
+            .optBias(false)
+            .build()
+    private val wV =
+        Linear
+            .builder()
+            .setUnits(1)
+            .optBias(false)
+            .build()
+    private val dropoutLayer: Dropout = Dropout.builder().optRate(dropout).build()
     var attentionWeights: NDArray? = null
 
     init {
-        W_k =
-            Linear
-                .builder()
-                .setUnits(numHiddens.toLong())
-                .optBias(false)
-                .build()
-        W_q =
-            Linear
-                .builder()
-                .setUnits(numHiddens.toLong())
-                .optBias(false)
-                .build()
-        W_v =
-            Linear
-                .builder()
-                .setUnits(1)
-                .optBias(false)
-                .build()
-        this.dropout = Dropout.builder().optRate(dropout).build()
-
-        addChildBlock("W_k", W_k)
-        addChildBlock("W_q", W_q)
-        addChildBlock("W_v", W_v)
-        addChildBlock("dropout", this.dropout)
+        addChildBlock("W_k", wK)
+        addChildBlock("W_q", wQ)
+        addChildBlock("W_v", wV)
+        addChildBlock("dropout", dropoutLayer)
     }
 
     override fun forwardInternal(
@@ -61,16 +56,16 @@ class AdditiveAttention(
         training: Boolean,
         params: PairList<String, Any>?,
     ): NDList {
-        val queries = W_q.forward(ps, NDList(inputs[0]), training, params).head()
-        val keys = W_k.forward(ps, NDList(inputs[1]), training, params).head()
+        val queries = wQ.forward(ps, NDList(inputs[0]), training, params).head()
+        val keys = wK.forward(ps, NDList(inputs[1]), training, params).head()
         val values = inputs[2]
         val validLens = inputs[3]
 
         val features = queries.expandDims(2).add(keys.expandDims(1)).tanh()
-        val scores = W_v.forward(ps, NDList(features), training, params).head().squeeze(-1)
+        val scores = wV.forward(ps, NDList(features), training, params).head().squeeze(-1)
 
         attentionWeights = maskedSoftmax(scores, validLens)
-        val droppedAttention = dropout.forward(ps, NDList(attentionWeights), training, params).head()
+        val droppedAttention = dropoutLayer.forward(ps, NDList(attentionWeights), training, params).head()
         return NDList(droppedAttention.matMul(values))
     }
 
@@ -80,32 +75,34 @@ class AdditiveAttention(
         return arrayOf(Shape(queriesShape[0], queriesShape[1], valuesShape[2]))
     }
 
-    public override fun initializeChildBlocks(
+    override fun initializeChildBlocks(
         manager: NDManager,
         dataType: DataType,
         vararg inputShapes: Shape,
     ) {
-        W_q.initialize(manager, dataType, inputShapes[0])
-        W_k.initialize(manager, dataType, inputShapes[1])
+        wQ.initialize(manager, dataType, inputShapes[0])
+        wK.initialize(manager, dataType, inputShapes[1])
 
-        // Determine the shape for W_v based on the outputs of W_q
-        val qShape = W_q.getOutputShapes(arrayOf(inputShapes[0]))[0]
+        // Determine the shape for wV based on the outputs of wQ
+        val qShape = wQ.getOutputShapes(arrayOf(inputShapes[0]))[0]
         val vFeatureSize = qShape[qShape.dimension() - 1]
-        W_v.initialize(manager, dataType, Shape(1, vFeatureSize))
+        wV.initialize(manager, dataType, Shape(1, vFeatureSize))
 
         // Initialize dropout with a representative shape
         val scoresShape = Shape(inputShapes[0][0], inputShapes[0][1], inputShapes[1][1])
-        dropout.initialize(manager, dataType, scoresShape)
+        dropoutLayer.initialize(manager, dataType, scoresShape)
     }
 }
 
 /**
- * Scaled dot product attention.
+ * Implements scaled dot product attention.
+ *
+ * @property dropout Dropout rate for attention weights.
  */
 class DotProductAttention(
     dropout: Float,
 ) : AbstractBlock() {
-    private val dropoutLayer = Dropout.builder().optRate(dropout).build()
+    private val dropoutLayer: Dropout = Dropout.builder().optRate(dropout).build()
     var attentionWeights: NDArray? = null
 
     init {
@@ -123,7 +120,7 @@ class DotProductAttention(
         val values = inputs[2]
         val validLens = inputs[3]
 
-        val d = queries.shape.get(queries.shape.dimension() - 1).toDouble()
+        val d = queries.shape[queries.shape.dimension() - 1].toDouble()
         val scores = queries.matMul(keys.swapAxes(1, 2)).div(Math.sqrt(d))
 
         attentionWeights = maskedSoftmax(scores, validLens)
