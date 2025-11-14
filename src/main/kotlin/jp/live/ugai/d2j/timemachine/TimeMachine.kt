@@ -20,9 +20,9 @@ import ai.djl.training.loss.SoftmaxCrossEntropyLoss
 import ai.djl.training.optimizer.Optimizer
 import ai.djl.training.tracker.Tracker
 import jp.live.ugai.d2j.util.Accumulator
-import jp.live.ugai.d2j.util.Functions
 import jp.live.ugai.d2j.util.StopWatch
 import jp.live.ugai.d2j.util.Training.sgd
+import jp.live.ugai.d2j.util.tryGpu
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.net.URI
@@ -216,9 +216,9 @@ object TimeMachine {
         manager.newSubManager().use { childManager ->
             var state: NDList? = null
             for (batch in dataset.getData(manager)) {
-                var X = batch.data.head().toDevice(Functions.tryGpu(0), true)
+                var X = batch.data.head().toDevice(tryGpu(0), true)
                 X.attach(childManager)
-                val Y = batch.labels.head().toDevice(Functions.tryGpu(0), true)
+                val Y = batch.labels.head().toDevice(tryGpu(0), true)
                 Y.attach(childManager)
                 if (state == null || useRandomIter) {
                     // Initialize `state` when either it is the first iteration or
