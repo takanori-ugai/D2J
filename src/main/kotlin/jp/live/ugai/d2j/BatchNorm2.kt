@@ -11,7 +11,6 @@ import ai.djl.nn.core.Linear
 import ai.djl.nn.norm.BatchNorm
 import ai.djl.nn.pooling.Pool
 import ai.djl.training.DefaultTrainingConfig
-import ai.djl.training.Trainer
 import ai.djl.training.dataset.Dataset
 import ai.djl.training.evaluator.Accuracy
 import ai.djl.training.listener.TrainingListener
