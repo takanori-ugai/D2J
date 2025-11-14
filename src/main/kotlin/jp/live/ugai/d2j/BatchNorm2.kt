@@ -22,112 +22,111 @@ import jp.live.ugai.d2j.util.Training
 import jp.live.ugai.d2j.util.getLong
 
 /**
- * The main function where the execution of code starts.
+ * Demonstrates training a convolutional neural network with batch normalization on the
+ * FashionMNIST dataset using DJL.
  */
-fun main() {
-    // Set system properties
-    setSystemProperties()
+class BatchNorm2 {
+    companion object {
+        private const val BATCH_SIZE = 256 // Number of samples per training batch
+        private const val NUM_EPOCHS = 10 // Number of training epochs
+        private const val LEARNING_RATE = 0.1f // Learning rate for optimizer
 
-    val batchSize = 256
-    val numEpochs = 10
+        /**
+         * Main entry point for training and evaluating the batch normalization model.
+         *
+         * Sets up system properties, prepares datasets, configures the model and trainer,
+         * and runs the training loop.
+         */
+        @JvmStatic
+        fun main(args: Array<String>) {
+            setSystemProperties()
 
-    // Prepare training and testing datasets
-    val trainIter = prepareDataset(Dataset.Usage.TRAIN, batchSize)
-    val testIter = prepareDataset(Dataset.Usage.TEST, batchSize)
+            val trainIter = prepareDataset(Dataset.Usage.TRAIN, BATCH_SIZE)
+            val testIter = prepareDataset(Dataset.Usage.TEST, BATCH_SIZE)
 
-    trainIter.prepare()
-    testIter.prepare()
+            val loss = Loss.softmaxCrossEntropyLoss()
+            val tracker = Tracker.fixed(LEARNING_RATE)
+            val optimizer = Optimizer.sgd().setLearningRateTracker(tracker).build()
 
-    // Prepare model block
-    val block = prepareModelBlock()
+            val model: Model = Model.newInstance("batch-norm")
+            model.block = prepareModelBlock()
 
-    val loss: Loss = Loss.softmaxCrossEntropyLoss()
-    val lrt: Tracker = Tracker.fixed(1.0f)
-    val sgd: Optimizer = Optimizer.sgd().setLearningRateTracker(lrt).build()
+            val config =
+                DefaultTrainingConfig(loss)
+                    .optOptimizer(optimizer)
+                    .addEvaluator(Accuracy())
+                    .addTrainingListeners(*TrainingListener.Defaults.logging())
 
-    // Initialize model
-    val model: Model = Model.newInstance("batch-norm")
-    model.block = block
+            val trainer = model.newTrainer(config)
+            trainer.initialize(Shape(1, 1, 28, 28))
 
-    // Configure training
-    val config =
-        DefaultTrainingConfig(loss)
-            .optOptimizer(sgd) // Optimizer (loss function)
-            .addEvaluator(Accuracy()) // Model Accuracy
-            .addTrainingListeners(*TrainingListener.Defaults.logging()) // Logging
+            val evaluatorMetrics: MutableMap<String, DoubleArray> = mutableMapOf()
+            Training.trainingChapter6(trainIter, testIter, NUM_EPOCHS, trainer, evaluatorMetrics)
+        }
 
-    // Initialize trainer
-    val trainer: Trainer = model.newTrainer(config)
-    trainer.initialize(Shape(1, 1, 28, 28))
+        /**
+         * Sets system properties for logging configuration.
+         */
+        private fun setSystemProperties() {
+            System.setProperty("org.slf4j.simpleLogger.showThreadName", "false")
+            System.setProperty("org.slf4j.simpleLogger.showLogName", "true")
+            System.setProperty("org.slf4j.simpleLogger.log.ai.djl.pytorch", "WARN")
+            System.setProperty("org.slf4j.simpleLogger.log.ai.djl.mxnet", "ERROR")
+            System.setProperty("org.slf4j.simpleLogger.log.ai.djl.ndarray.index", "ERROR")
+            System.setProperty("org.slf4j.simpleLogger.log.ai.djl.tensorflow", "WARN")
+        }
 
-    // Train the model
-    val evaluatorMetrics: MutableMap<String, DoubleArray> = mutableMapOf()
-    val avgTrainTimePerEpoch = Training.trainingChapter6(trainIter, testIter, numEpochs, trainer, evaluatorMetrics)
-}
-
-/**
- * Sets the system properties for logging.
- */
-fun setSystemProperties() {
-    System.setProperty("org.slf4j.simpleLogger.showThreadName", "false")
-    System.setProperty("org.slf4j.simpleLogger.showLogName", "true")
-    System.setProperty("org.slf4j.simpleLogger.log.ai.djl.pytorch", "WARN")
-    System.setProperty("org.slf4j.simpleLogger.log.ai.djl.mxnet", "ERROR")
-    System.setProperty("org.slf4j.simpleLogger.log.ai.djl.ndarray.index", "ERROR")
-    System.setProperty("org.slf4j.simpleLogger.log.ai.djl.tensorflow", "WARN")
-}
-
-/**
- * Prepares the dataset for training or testing.
- *
- * @param usage Dataset usage (TRAIN or TEST).
- * @param batchSize The number of samples per batch.
- * @return The prepared FashionMnist dataset.
- */
-fun prepareDataset(
-    usage: Dataset.Usage,
-    batchSize: Int,
-): FashionMnist =
-    FashionMnist
-        .builder()
-        .optUsage(usage)
-        .setSampling(batchSize, true)
-        .optLimit(getLong("DATASET_LIMIT", Long.MAX_VALUE))
-        .build()
-        .apply { prepare() }
-
-/**
- * Prepares the model block for the neural network.
- *
- * @return The prepared SequentialBlock.
- */
-fun prepareModelBlock(): SequentialBlock =
-    SequentialBlock()
-        .add(
-            Conv2d
+        /**
+         * Prepares the FashionMNIST dataset for the given usage and batch size.
+         *
+         * @param usage The dataset usage type (TRAIN or TEST).
+         * @param batchSize The number of samples per batch.
+         * @return The prepared FashionMnist dataset.
+         */
+        private fun prepareDataset(
+            usage: Dataset.Usage,
+            batchSize: Int,
+        ): FashionMnist =
+            FashionMnist
                 .builder()
-                .setKernelShape(Shape(5, 5))
-                .setFilters(6)
-                .build(),
-        ).add(BatchNorm.builder().build())
-        .add(Pool.maxPool2dBlock(Shape(2, 2), Shape(2, 2)))
-        .add(
-            Conv2d
-                .builder()
-                .setKernelShape(Shape(5, 5))
-                .setFilters(16)
-                .build(),
-        ).add(BatchNorm.builder().build())
-        .add(Activation::sigmoid)
-        .add(Pool.maxPool2dBlock(Shape(2, 2), Shape(2, 2)))
-        .add(Blocks.batchFlattenBlock())
-        .add(Linear.builder().setUnits(120).build())
-        .add(BatchNorm.builder().build())
-        .add(Activation::sigmoid)
-        .add(Blocks.batchFlattenBlock())
-        .add(Linear.builder().setUnits(84).build())
-        .add(BatchNorm.builder().build())
-        .add(Activation::sigmoid)
-        .add(Linear.builder().setUnits(10).build())
+                .optUsage(usage)
+                .setSampling(batchSize, true)
+                .optLimit(getLong("DATASET_LIMIT", Long.MAX_VALUE))
+                .build()
 
-class BatchNorm2
+        /**
+         * Builds the model block with convolutional, batch normalization, activation,
+         * pooling, and linear layers.
+         *
+         * @return The constructed SequentialBlock for the model.
+         */
+        private fun prepareModelBlock() =
+            SequentialBlock()
+                .add(
+                    Conv2d
+                        .builder()
+                        .setKernelShape(Shape(5, 5))
+                        .setFilters(6)
+                        .build(),
+                ).add(BatchNorm.builder().build())
+                .add(Activation::relu)
+                .add(Pool.maxPool2dBlock(Shape(2, 2), Shape(2, 2)))
+                .add(
+                    Conv2d
+                        .builder()
+                        .setKernelShape(Shape(5, 5))
+                        .setFilters(16)
+                        .build(),
+                ).add(BatchNorm.builder().build())
+                .add(Activation::relu)
+                .add(Pool.maxPool2dBlock(Shape(2, 2), Shape(2, 2)))
+                .add(Blocks.batchFlattenBlock())
+                .add(Linear.builder().setUnits(120).build())
+                .add(BatchNorm.builder().build())
+                .add(Activation::relu)
+                .add(Linear.builder().setUnits(84).build())
+                .add(BatchNorm.builder().build())
+                .add(Activation::relu)
+                .add(Linear.builder().setUnits(10).build())
+    }
+}
