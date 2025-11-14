@@ -11,6 +11,7 @@ import ai.djl.ndarray.types.Shape
 import ai.djl.nn.AbstractBlock
 import ai.djl.nn.Parameter
 import ai.djl.nn.recurrent.RNN
+import ai.djl.nn.recurrent.RNN.Activation
 import ai.djl.training.DefaultTrainingConfig
 import ai.djl.training.ParameterStore
 import ai.djl.training.Trainer
@@ -59,6 +60,7 @@ fun main() {
             .builder()
             .setNumLayers(1)
             .setStateSize(numHiddens)
+            .setActivation(Activation.RELU)
             .optReturnState(true)
             .optBatchFirst(false)
             .build()
