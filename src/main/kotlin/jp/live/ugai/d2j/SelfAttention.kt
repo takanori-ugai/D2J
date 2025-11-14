@@ -2,54 +2,81 @@ package jp.live.ugai.d2j
 
 import ai.djl.ndarray.NDList
 import ai.djl.ndarray.NDManager
-import ai.djl.ndarray.index.NDIndex
 import ai.djl.ndarray.types.DataType
 import ai.djl.ndarray.types.Shape
+import ai.djl.nn.AbstractBlock
 import ai.djl.training.ParameterStore
+import ai.djl.util.PairList
 import jp.live.ugai.d2j.attention.MultiHeadAttention
+
+/**
+ * Self-attention block that uses MultiHeadAttention.
+ * The query, key, and value are all the same input.
+ */
+class SelfAttention(
+    numHiddens: Int,
+    numHeads: Int,
+    dropout: Float,
+) : AbstractBlock() {
+    private val attention: MultiHeadAttention
+
+    init {
+        attention = MultiHeadAttention(numHiddens, numHeads, dropout, false)
+        addChildBlock("attention", attention)
+    }
+
+    override fun forwardInternal(
+        parameterStore: ParameterStore,
+        inputs: NDList,
+        training: Boolean,
+        params: PairList<String, Any>?,
+    ): NDList {
+        val x = inputs[0]
+        val validLens = if (inputs.size > 1) inputs[1] else null
+        val attentionInputs = NDList(x, x, x)
+        if (validLens != null) {
+            attentionInputs.add(validLens)
+        }
+        return attention.forward(parameterStore, attentionInputs, training, params)
+    }
+
+    override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> {
+        // The output shape is the same as the input shape.
+        return arrayOf(inputShapes[0])
+    }
+
+    override fun initializeChildBlocks(
+        manager: NDManager,
+        dataType: DataType,
+        vararg inputShapes: Shape,
+    ) {
+        val shape = inputShapes[0]
+        if (inputShapes.size > 1) {
+            attention.initialize(manager, dataType, shape, shape, shape, inputShapes[1])
+        } else {
+            attention.initialize(manager, dataType, shape, shape, shape)
+        }
+    }
+}
 
 fun main() {
     val manager = NDManager.newBaseManager()
 
+    // --- Test SelfAttention ---
     val numHiddens = 100
     val numHeads = 5
-    val attention = MultiHeadAttention(numHiddens, numHeads, 0.5f, false)
+    val selfAttention = SelfAttention(numHiddens, numHeads, 0.5f)
 
     val batchSize = 2
-    val numQueries = 4
+    val numSteps = 4 // Also known as number of queries/keys/values
     val validLens = manager.create(floatArrayOf(3.0f, 2.0f))
-    var X = manager.ones(Shape(batchSize.toLong(), numQueries.toLong(), numHiddens.toLong()))
+    val x = manager.ones(Shape(batchSize.toLong(), numSteps.toLong(), numHiddens.toLong()))
+
     val ps = ParameterStore(manager, false)
-    var input = NDList(X, X, X, validLens)
-    attention.initialize(manager, DataType.FLOAT32, *input.shapes)
-    val result = attention.forward(ps, input, false)
-    println(result.get(0).shape)
+    val inputs = NDList(x, validLens)
+    selfAttention.initialize(manager, DataType.FLOAT32, *inputs.shapes)
 
-    val encodingDim = 32
-    val numSteps = 60
-    val posEncoding = PositionalEncoding(encodingDim, 0f, 1000, manager)
-    input = NDList(manager.zeros(Shape(1, numSteps.toLong(), encodingDim.toLong())))
-    X = posEncoding.forward(ps, input, false)[0]
-    val P = posEncoding.P[NDIndex(":, :{}, :", X.shape[1])]
-    println(P)
-
-    val plotSize = 4
-    val plotX = mutableListOf<FloatArray>()
-    val plotY = mutableListOf<FloatArray>()
-    for (i in 0..3) {
-        if (i == 0) {
-            plotX.add(manager.arange(numSteps).toType(DataType.FLOAT32, false).toFloatArray())
-        } else {
-            plotX.add(plotX[i - 1])
-        }
-        plotY.add(P[NDIndex("0, :, {},", i + 6)].toFloatArray())
-    }
-    println(plotX[0].toList())
-    println(plotY[0].toList())
-
-    for (i in 0..7) {
-        println(i.toString() + " in binary is " + Integer.toBinaryString(i))
-    }
+    val result = selfAttention.forward(ps, inputs, false)
+    println("SelfAttention output shape: ${result[0].shape}")
+    println("The output shape should be the same as the input shape: ${x.shape}")
 }
-
-class SelfAttention
