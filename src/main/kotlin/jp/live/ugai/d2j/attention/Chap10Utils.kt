@@ -41,7 +41,6 @@ object Chap10Utils {
         input: NDArray,
         validLens: NDArray?,
     ): NDArray {
-        // If no valid lengths are provided, apply softmax directly
         if (validLens == null || validLens.isEmpty) {
             return input.softmax(-1)
         }
@@ -49,13 +48,19 @@ object Chap10Utils {
         val shape = input.shape
         val lastDim = shape[shape.dimension() - 1]
 
-        // Mask and apply softmax
-        val reshapedInput = input.reshape(Shape(-1, lastDim))
-        val reshapedValidLens = validLens.reshape(-1)
+        // Create a mask based on validLens
+        val mask =
+            manager
+                .arange(lastDim.toFloat())
+                .expandDims(0)
+                .lt(validLens.reshape(-1, 1))
+                .reshape(shape)
 
-        val masked = reshapedInput.sequenceMask(reshapedValidLens, -1.0E6F)
-        val softmax = masked.softmax(-1)
-        return softmax.reshape(shape)
+        // Apply the mask
+        val maskedInput = input.duplicate() // Don't modify the original input
+        maskedInput.set(mask.logicalNot(), -1.0E6F)
+
+        return maskedInput.softmax(-1)
     }
 
     /**
