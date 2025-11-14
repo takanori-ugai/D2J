@@ -4,84 +4,65 @@ import ai.djl.Device
 import ai.djl.engine.Engine
 import java.util.function.Function
 
+/**
+ * Utility object providing functional helpers and device selection utilities.
+ */
 object Functions {
-    // Applies the function `func` to `x` element-wise
-    // Returns a new float array with the result
+
+    /**
+     * Applies the given function [func] to each element of [x] and returns a new FloatArray.
+     */
     fun callFunc(
         x: FloatArray,
         func: Function<Float?, Float>,
-    ): FloatArray {
-        val y = FloatArray(x.size)
-        for (i in x.indices) {
-            y[i] = func.apply(x[i])
-        }
-        return y
-    }
-
-    // ScatterTrace.builder() does not support float[],
-    // so we must convert to a double array first
-    fun floatToDoubleArray(x: FloatArray): DoubleArray {
-        val ret = DoubleArray(x.size)
-        for (i in x.indices) {
-            ret[i] = x[i].toDouble()
-        }
-        return ret
-    }
+    ): FloatArray = FloatArray(x.size) { i -> func.apply(x[i]) }
 
     /**
-     * Return the i'th GPU if it exists, otherwise return the CPU
+     * Converts a FloatArray to a DoubleArray.
+     * Useful when APIs require double precision arrays.
      */
-    fun tryGpu(i: Int): Device = if (Engine.getInstance().gpuCount > i) Device.gpu(i) else Device.cpu()
+    fun floatToDoubleArray(x: FloatArray): DoubleArray = DoubleArray(x.size) { i -> x[i].toDouble() }
 
     /**
-     * Helper function to later be able to use lambda. Accepts three types for parameters and one
-     * for output.
+     * Returns the i'th GPU [Device] if available, otherwise returns the CPU [Device].
+     */
+    fun tryGpu(i: Int): Device =
+        if (Engine.getInstance().gpuCount > i) Device.gpu(i) else Device.cpu()
+
+    // --- Functional interfaces for lambda support ---
+
+    /**
+     * Functional interface for a function with three parameters and a return value.
      */
     fun interface TriFunction<T, U, V, W> {
-        fun apply(
-            t: T,
-            u: U,
-            v: V,
-        ): W
+        fun apply(t: T, u: U, v: V): W
     }
 
     /**
-     * Helper function to later be able to use lambda. Accepts 4 types for parameters and one for
-     * output.
+     * Functional interface for a function with four parameters and a return value.
      */
     fun interface QuadFunction<T, U, V, W, R> {
-        fun apply(
-            t: T,
-            u: U,
-            v: V,
-            w: W,
-        ): R
+        fun apply(t: T, u: U, v: V, w: W): R
     }
 
     /**
-     * Helper function to later be able to use lambda. Doesn't have any type for parameters and has
-     * one type for output.
+     * Functional interface for a function with no parameters and a return value.
      */
     fun interface SimpleFunction<T> {
         fun apply(): T
     }
 
     /**
-     * Helper function to later be able to use lambda. Accepts one types for parameters and uses
-     * void for return.
+     * Functional interface for a function with one parameter and no return value.
      */
     fun interface VoidFunction<T> {
         fun apply(t: T)
     }
 
     /**
-     * Helper function to later be able to use lambda. Accepts two types for parameters and uses
-     * void for return.
+     * Functional interface for a function with two parameters and no return value.
      */
     fun interface VoidTwoFunction<T, U> {
-        fun apply(
-            t: T,
-            u: U,
-        )
+        fun apply(t: T, u: U)
     }
 }
