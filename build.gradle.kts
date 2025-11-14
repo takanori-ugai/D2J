@@ -116,7 +116,16 @@ tasks {
         manifest {
             attributes["Main-Class"] = "com.fujitsu.labs.virtualhome.MainKt"
         }
-        minimize()
+    }
+
+    register<JavaExec>("execute") {
+        mainClass.set(
+            if (project.hasProperty("mainClass")) {
+                project.property("mainClass") as String
+            } else {
+                "com.fujitsu.labs.virtualhome.MainKt"
+            }
+        )
     }
 }
 
