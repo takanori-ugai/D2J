@@ -47,17 +47,29 @@ object Chap10Utils {
 
         val shape = input.shape
         val lastDim = shape[shape.dimension() - 1]
+        // Create a tensor of indices [0, 1, ..., lastDim-1] and reshape for broadcasting
+        val arange = manager.arange(lastDim.toFloat()).reshape(1, 1, -1)
 
-        // Create a mask based on validLens
+        // Create the mask using broadcasting
         val mask =
-            manager
-                .arange(lastDim.toFloat())
-                .expandDims(0)
-                .lt(validLens.reshape(-1, 1))
-                .reshape(shape)
+            if (validLens.shape.dimension() == 1) {
+                // Case 1: validLens is 1D (batch_size,)
+                // Reshape validLens to (batch_size, 1, 1) for broadcasting
+                val preparedLens = validLens.reshape(-1, 1, 1)
+                // Broadcast arange(1,1,D) with preparedLens(B,1,1) -> mask(B,1,D)
+                val mask2d = arange.lt(preparedLens)
+                // Repeat the mask along the query dimension to get (B, N, D)
+                mask2d.repeat(1, shape[1])
+            } else {
+                // Case 2: validLens is 2D (batch_size, num_queries)
+                // Reshape validLens to (B, N, 1) for broadcasting
+                val preparedLens = validLens.expandDims(validLens.shape.dimension())
+                // Broadcast arange(1,1,D) with preparedLens(B,N,1) -> mask(B,N,D)
+                arange.lt(preparedLens)
+            }
 
         // Apply the mask
-        val maskedInput = input.duplicate() // Don't modify the original input
+        val maskedInput = input.duplicate()
         maskedInput.set(mask.logicalNot(), -1.0E6F)
 
         return maskedInput.softmax(-1)

@@ -34,11 +34,20 @@ class Chap10UtilsTest {
     @Test
     fun testMaskedSoftmax() {
         val manager = NDManager.newBaseManager()
-        val input = manager.create(floatArrayOf(1f, 2f, 3f, 4f, 5f, 6f), Shape(2, 3))
-        val validLens = manager.create(intArrayOf(1, 2))
+        // Input shape: (batch_size=1, num_queries=2, num_keys=3)
+        val input = manager.create(floatArrayOf(1f, 2f, 3f, 4f, 5f, 6f), Shape(1, 2, 3))
+        // Valid lengths shape: (batch_size=1, num_queries=2)
+        // For the first query, 1 key is valid. For the second, 3 keys are valid.
+        val validLens = manager.create(arrayOf(intArrayOf(1, 3)))
         val result = Chap10Utils.maskedSoftmax(input, validLens)
 
-        val expected = manager.create(floatArrayOf(1.0f, -1.0E6f, -1.0E6f, 4f, 5f, -1.0E6f), Shape(2, 3)).softmax(-1)
+        // Expected result after masking (before softmax)
+        // Query 1: [1, -inf, -inf]
+        // Query 2: [4, 5, 6]
+        val expectedInput = manager.create(floatArrayOf(1f, -1.0E6f, -1.0E6f, 4f, 5f, 6f), Shape(1, 2, 3))
+        val expected = expectedInput.softmax(-1)
+
+        // Compare the results
         assertEquals(expected.toFloatArray().joinToString(), result.toFloatArray().joinToString())
     }
 
