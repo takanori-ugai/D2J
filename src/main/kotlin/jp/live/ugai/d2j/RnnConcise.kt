@@ -342,4 +342,3 @@ fun gradClipping(
     }
 }
 
-class RnnConcise
