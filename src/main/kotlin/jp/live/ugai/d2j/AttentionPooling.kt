@@ -99,7 +99,6 @@ fun main() {
                 .mul(-1)
                 .softmax(1)
         return NDList(attentionWeights.matMul(values), attentionWeights)
-//        return NDList(attentionWeights.matMul(values.reshape(-1, 1)).flatten(), attentionWeights)
     }
 
     val aPool = attentionPool(diff(xVal, xTrain), yTrain)
