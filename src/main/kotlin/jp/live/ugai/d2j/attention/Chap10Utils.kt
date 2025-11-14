@@ -7,6 +7,7 @@ import ai.djl.ndarray.NDArray
 import ai.djl.ndarray.NDArrays
 import ai.djl.ndarray.NDList
 import ai.djl.ndarray.index.NDIndex
+import ai.djl.ndarray.types.DataType
 import ai.djl.ndarray.types.Shape
 import ai.djl.training.DefaultTrainingConfig
 import ai.djl.training.ParameterStore
@@ -50,12 +51,15 @@ object Chap10Utils {
         // Create a tensor of indices [0, 1, ..., lastDim-1] and reshape for broadcasting
         val arange = manager.arange(lastDim.toFloat()).reshape(1, 1, -1)
 
+        // Ensure validLens is float32 for comparison
+        val floatValidLens = validLens.toType(DataType.FLOAT32, false)
+
         // Create the mask using broadcasting
         val mask =
-            if (validLens.shape.dimension() == 1) {
+            if (floatValidLens.shape.dimension() == 1) {
                 // Case 1: validLens is 1D (batch_size,)
                 // Reshape validLens to (batch_size, 1, 1) for broadcasting
-                val preparedLens = validLens.reshape(-1, 1, 1)
+                val preparedLens = floatValidLens.reshape(-1, 1, 1)
                 // Broadcast arange(1,1,D) with preparedLens(B,1,1) -> mask(B,1,D)
                 val mask2d = arange.lt(preparedLens)
                 // Repeat the mask along the query dimension to get (B, N, D)
@@ -63,7 +67,7 @@ object Chap10Utils {
             } else {
                 // Case 2: validLens is 2D (batch_size, num_queries)
                 // Reshape validLens to (B, N, 1) for broadcasting
-                val preparedLens = validLens.expandDims(validLens.shape.dimension())
+                val preparedLens = floatValidLens.expandDims(floatValidLens.shape.dimension())
                 // Broadcast arange(1,1,D) with preparedLens(B,N,1) -> mask(B,N,D)
                 arange.lt(preparedLens)
             }

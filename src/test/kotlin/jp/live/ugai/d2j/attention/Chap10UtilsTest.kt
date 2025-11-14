@@ -3,12 +3,10 @@ package jp.live.ugai.d2j.attention
 import ai.djl.ndarray.NDManager
 import ai.djl.ndarray.types.Shape
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import kotlin.math.exp
 import kotlin.math.pow
 
-@Disabled
 class Chap10UtilsTest {
     @Test
     fun testBleu() {
