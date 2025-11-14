@@ -14,7 +14,6 @@ import ai.djl.training.DefaultTrainingConfig
 import ai.djl.training.EasyTrain
 import ai.djl.training.ParameterStore
 import ai.djl.training.dataset.ArrayDataset
-import ai.djl.training.evaluator.Accuracy
 import ai.djl.training.listener.TrainingListener
 import ai.djl.training.loss.Loss
 import ai.djl.training.optimizer.Optimizer
@@ -99,7 +98,8 @@ fun main() {
                 .div(2)
                 .mul(-1)
                 .softmax(1)
-        return NDList(attentionWeights.dot(values), attentionWeights)
+        return NDList(attentionWeights.matMul(values), attentionWeights)
+//        return NDList(attentionWeights.matMul(values.reshape(-1, 1)).flatten(), attentionWeights)
     }
 
     val aPool = attentionPool(diff(xVal, xTrain), yTrain)
@@ -201,9 +201,7 @@ fun main() {
     val config =
         DefaultTrainingConfig(l2loss)
             .optOptimizer(sgd) // Optimizer (loss function)
-            .optDevices(Engine.getInstance().getDevices(1)) // single CPU/GPU
-            .addEvaluator(Accuracy()) // Model Accuracy
-            .addEvaluator(l2loss)
+            .optDevices(Engine.getInstance().getDevices(1)) // single CPU/GPU // Add MAE for regression
             .addTrainingListeners(*TrainingListener.Defaults.logging()) // Logging
 
     val model = Model.newInstance("NWKernelRegression")

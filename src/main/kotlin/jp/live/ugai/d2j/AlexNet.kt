@@ -24,13 +24,11 @@ import jp.live.ugai.d2j.util.Training
 import jp.live.ugai.d2j.util.getLong
 
 fun main() {
-    val alexNet = AlexNet()
     val manager = NDManager.newBaseManager()
-    val block = alexNet.block
     val lr = 0.01f
 
     val model = Model.newInstance("cnn")
-    model.block = block
+    model.block = AlexNet()
 
     val loss = Loss.softmaxCrossEntropyLoss()
 
@@ -50,14 +48,18 @@ fun main() {
 
     var currentShape = X.shape
 
-    for (i in 0 until block.children.size()) {
+    for (i in 0 until model.block.children.size()) {
         val newShape =
-            block.children
+            model.block.children
                 .get(i)
                 .value
                 .getOutputShapes(arrayOf<Shape>(currentShape))
         currentShape = newShape[0]
-        println(block.children.get(i).key + " layer output : " + currentShape)
+        println(
+            model.block.children
+                .get(i)
+                .key + " layer output : " + currentShape,
+        )
     }
 
     val batchSize = 128
@@ -101,19 +103,16 @@ fun main() {
     val avgTrainTimePerEpoch = Training.trainingChapter6(trainIter, testIter, numEpochs, trainer, evaluatorMetrics)
 }
 
-class AlexNet {
-    var block = SequentialBlock()
-
+class AlexNet : SequentialBlock() {
     init {
-        block
-            .add(
-                Conv2d
-                    .builder()
-                    .setKernelShape(Shape(11, 11))
-                    .optStride(Shape(4, 4))
-                    .setFilters(96)
-                    .build(),
-            ).add(Activation::relu)
+        add(
+            Conv2d
+                .builder()
+                .setKernelShape(Shape(11, 11))
+                .optStride(Shape(4, 4))
+                .setFilters(96)
+                .build(),
+        ).add(Activation::relu)
             .add(Pool.maxPool2dBlock(Shape(3, 3), Shape(2, 2)))
             // Make the convolution window smaller, set padding to 2 for consistent
             // height and width across the input and output, and increase the
