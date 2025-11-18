@@ -119,6 +119,7 @@ tasks {
     }
 
     register<JavaExec>("execute") {
+        classpath = sourceSets["main"].runtimeClasspath
         mainClass.set(
             if (project.hasProperty("mainClass")) {
                 project.property("mainClass") as String

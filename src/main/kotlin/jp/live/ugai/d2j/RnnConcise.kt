@@ -343,5 +343,3 @@ fun gradClipping(
         }
     }
 }
-
-class RnnConcise
