@@ -12,13 +12,13 @@ import ai.djl.training.dataset.Batch
 import ai.djl.training.optimizer.Optimizer
 import ai.djl.training.tracker.Tracker
 
+/**
+ * Retrieves a system property as a Long value, returning a default if not set or invalid.
+ */
 fun getLong(
-    nm: String,
-    n: Long,
-): Long {
-    val name = System.getProperty(nm)
-    return if (null == name) n.toLong() else name.toLong()
-}
+    propertyName: String,
+    defaultValue: Long,
+): Long = System.getProperty(propertyName)?.toLongOrNull() ?: defaultValue
 
 object Training {
     fun linreg(

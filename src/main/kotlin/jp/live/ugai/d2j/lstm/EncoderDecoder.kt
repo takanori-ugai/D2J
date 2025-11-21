@@ -18,9 +18,6 @@ class EncoderDecoder(
     var encoder: Encoder,
     var decoder: Decoder,
 ) : AbstractBlock() {
-    /**
-     * Initializes the Encoder-Decoder architecture.
-     */
     init {
         addChildBlock("encoder", encoder)
         addChildBlock("decoder", decoder)

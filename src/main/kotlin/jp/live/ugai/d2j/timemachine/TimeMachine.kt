@@ -133,7 +133,9 @@ object TimeMachine {
                 }
             }
 
-            else -> throw IllegalArgumentException("Unsupported network type: ${net::class.simpleName}")
+            else -> {
+                throw IllegalArgumentException("Unsupported network type: ${net::class.simpleName}")
+            }
         }
 
         return outputs.joinToString("") { vocab.idxToToken[it] }

@@ -22,9 +22,6 @@ class SeqDataLoader(
     var batchSize: Int
     var numSteps: Int
 
-    /**
-     * An iterator to load sequence data.
-     */
     init {
         val manager = NDManager.newBaseManager()
         val corpusVocabPair = loadCorpusTimeMachine(maxTokens)
