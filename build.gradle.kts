@@ -47,7 +47,7 @@ dependencies {
 //    runtimeOnly("ai.djl.pytorch:pytorch-native-cpu:1.12.1")
     //    implementation("ai.djl.pytorch:pytorch-native-cpu:1.12.1:linux-x86_64")
 //    runtimeOnly("ai.djl.pytorch:pytorch-native-cu116:1.12.1:linux-x86_64")
-    implementation("org.jetbrains.lets-plot:lets-plot-kotlin-jvm:4.11.2")
+    implementation("org.jetbrains.lets-plot:lets-plot-kotlin-jvm:4.12.0")
     implementation("org.jetbrains.lets-plot:lets-plot-common:4.8.1")
     runtimeOnly("org.slf4j:slf4j-simple:2.0.17")
     implementation("org.apache.commons:commons-math3:3.6.1")
