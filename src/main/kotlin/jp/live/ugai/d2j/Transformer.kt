@@ -372,6 +372,27 @@ class TransformerEncoder(
             blk.initialize(manager, dataType, modelShape, inputShapes[1])
         }
     }
+
+    /**
+     * Returns encoder output and valid-length shapes for decoder initialization.
+     */
+    override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> {
+        require(inputShapes.isNotEmpty()) { "TransformerEncoder expects token shapes." }
+        val tokenShape = inputShapes[0]
+        val modelShape =
+            if (tokenShape.dimension() == 3) {
+                tokenShape
+            } else {
+                tokenShape.add(numHiddens.toLong())
+            }
+        val validLensShape =
+            if (inputShapes.size > 1) {
+                inputShapes[1]
+            } else {
+                Shape(modelShape[0])
+            }
+        return arrayOf(modelShape, validLensShape)
+    }
 }
 
 /**

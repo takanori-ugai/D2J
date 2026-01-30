@@ -364,6 +364,8 @@ class Seq2SeqAttentionDecoder(
         var hiddenState: NDArray = inputs[2]
         val encValidLens = inputs[3]
         var input = inputs[0]
+        // Embedding expects integer indices (int32/int64), not floats.
+        input = input.toType(DataType.INT64, false)
 //        # Shape of enc_outputs: (batch_size, num_steps, num_hiddens).
 //        # Shape of hidden_state: (num_layers, batch_size, num_hiddens)
 //        enc_outputs, hidden_state, enc_valid_lens = state

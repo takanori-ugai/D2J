@@ -54,14 +54,23 @@ fun main() {
     println(state.head().shape)
 
     val sampleMaskInput = manager.create(arrayOf(intArrayOf(1, 2, 3), intArrayOf(4, 5, 6)))
-    println(sampleMaskInput.sequenceMask(manager.create(intArrayOf(1, 2))))
+    println(sequenceMask(sampleMaskInput, manager.create(intArrayOf(1, 2))))
 
     val sampleMaskTensor = manager.ones(Shape(2, 3, 4))
-    println(sampleMaskTensor.sequenceMask(manager.create(intArrayOf(1, 2)), -1f))
+    println(sequenceMask(sampleMaskTensor, manager.create(intArrayOf(1, 2)), -1f))
 
     val loss: Loss = MaskedSoftmaxCELoss()
-    val labels = NDList(manager.ones(Shape(3, 4)))
-    labels.add(manager.create(intArrayOf(4, 2, 0)))
+    val labels =
+        NDList(
+            manager.create(
+                arrayOf(
+                    intArrayOf(1, 2, 3, 4),
+                    intArrayOf(2, 3, 4, 0),
+                    intArrayOf(3, 4, 0, 0),
+                ),
+            ),
+        )
+    labels.add(manager.create(intArrayOf(4, 2, 2)))
     val predictions = NDList(manager.ones(Shape(3, 4, 10)))
     println(loss.evaluate(labels, predictions))
 

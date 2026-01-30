@@ -7,6 +7,9 @@ import ai.djl.ndarray.types.Shape
 import ai.djl.nn.AbstractBlock
 import ai.djl.training.ParameterStore
 import ai.djl.util.PairList
+import jp.live.ugai.d2j.Seq2SeqAttentionDecoder
+import jp.live.ugai.d2j.Seq2SeqDecoder
+import jp.live.ugai.d2j.TransformerDecoder
 
 /**
  * This class represents the base Encoder-Decoder architecture.
@@ -57,11 +60,6 @@ class EncoderDecoder(
             else -> throw IllegalArgumentException("Unsupported encoder input shape count: ${encShapes.size}")
         }
 
-        if (inputShapes.size > 2) {
-            decoder.initialize(manager, dataType, inputShapes[1], inputShapes[2])
-            return
-        }
-
         val encOutShapes =
             try {
                 encoder.getOutputShapes(encShapes)
@@ -77,7 +75,37 @@ class EncoderDecoder(
             "Cannot infer decoder state shape from encoder outputs. " +
                 "Initialize encoder and decoder separately or provide an explicit state shape."
         }
-        decoder.initialize(manager, dataType, inputShapes[1], encOutShapes[1])
+        val decInputShape = inputShapes[1]
+        val validLenShape = if (inputShapes.size > 2) inputShapes[2] else null
+        when (decoder) {
+            is Seq2SeqDecoder -> {
+                decoder.initialize(manager, dataType, decInputShape, encOutShapes[1])
+            }
+            is Seq2SeqAttentionDecoder -> {
+                val timeMajor = encOutShapes[0]
+                val batchFirst =
+                    if (timeMajor.dimension() >= 2) {
+                        Shape(timeMajor[1], timeMajor[0], timeMajor[2])
+                    } else {
+                        timeMajor
+                    }
+                decoder.initialize(manager, dataType, decInputShape, batchFirst)
+            }
+            is TransformerDecoder -> {
+                if (validLenShape == null) {
+                    decoder.initialize(manager, dataType, decInputShape, encOutShapes[0])
+                } else {
+                    decoder.initialize(manager, dataType, decInputShape, encOutShapes[0], validLenShape)
+                }
+            }
+            else -> {
+                if (validLenShape == null) {
+                    decoder.initialize(manager, dataType, decInputShape, encOutShapes[0])
+                } else {
+                    decoder.initialize(manager, dataType, decInputShape, encOutShapes[0], validLenShape)
+                }
+            }
+        }
     }
 
     /**
