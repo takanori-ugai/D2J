@@ -16,63 +16,65 @@ import jp.live.ugai.d2j.util.StopWatch
 import jp.live.ugai.d2j.util.Training.sgd
 
 /**
- * The manager.
- */
-val manager = NDManager.newBaseManager()
-
-/**
  * Executes main.
  */
 fun main() {
-    val batchSize = 32
-    val numSteps = 35
-    val timeMachine: Pair<List<NDList>, Vocab> =
-        SeqDataLoader.loadDataTimeMachine(batchSize, numSteps, false, 10000)
-    val trainIter: List<NDList> = timeMachine.first
-    val vocab: Vocab = timeMachine.second
+    NDManager.newBaseManager().use { manager ->
+        val batchSize = 32
+        val numSteps = 35
+        val timeMachine: Pair<List<NDList>, Vocab> =
+            SeqDataLoader.loadDataTimeMachine(batchSize, numSteps, false, 10000)
+        val trainIter: List<NDList> = timeMachine.first
+        val vocab: Vocab = timeMachine.second
 
-    println(vocab.length())
-    println(manager.create(intArrayOf(0, 2)).oneHot(vocab.length()))
-    var sampleData = manager.arange(10).reshape(Shape(2, 5))
-    println(sampleData.transpose().oneHot(28).shape)
+        println(vocab.length())
+        println(manager.create(intArrayOf(0, 2)).oneHot(vocab.length()))
+        var sampleData = manager.arange(10).reshape(Shape(2, 5))
+        println(sampleData.transpose().oneHot(28).shape)
 
-    val numHiddens = 512
-    val getParamsFn = ::getParams
-    val initRNNStateFn = ::initRNNState
-    val rnnFn = ::rnn
+        val numHiddens = 512
+        val getParamsFn = { vocabSize: Int, hiddenSize: Int, device: Device ->
+            getParams(manager, vocabSize, hiddenSize, device)
+        }
+        val initRNNStateFn = { batchSizeValue: Int, hiddenSize: Int, device: Device ->
+            initRNNState(manager, batchSizeValue, hiddenSize, device)
+        }
+        val rnnFn = ::rnn
 
-    sampleData = manager.arange(10).reshape(Shape(2, 5))
-    val device = manager.device
-    val net = RNNModelScratch(vocab.length(), numHiddens, device, getParamsFn, initRNNStateFn, rnnFn)
-    val state = net.beginState(sampleData.shape.shape[0].toInt(), device)
-    val pairResult: Pair<NDArray, NDList> = net.forward(sampleData.toDevice(device, false), state)
-    val output: NDArray = pairResult.first
-    val newState: NDList = pairResult.second
-    println(output.shape)
-    println(newState[0].shape)
+        sampleData = manager.arange(10).reshape(Shape(2, 5))
+        val device = manager.device
+        val net = RNNModelScratch(vocab.length(), numHiddens, device, getParamsFn, initRNNStateFn, rnnFn)
+        val state = net.beginState(sampleData.shape.shape[0].toInt(), device)
+        val pairResult: Pair<NDArray, NDList> = net.forward(sampleData.toDevice(device, false), state)
+        val output: NDArray = pairResult.first
+        val newState: NDList = pairResult.second
+        println(output.shape)
+        println(newState[0].shape)
 
-    println(predictCh8("time traveller ", 10, net, vocab, manager.device))
+        println(predictCh8(manager, "time traveller ", 10, net, vocab, manager.device))
 
-    val numEpochs = Integer.getInteger("MAX_EPOCH", 500)
+        val numEpochs = Integer.getInteger("MAX_EPOCH", 500)
 
-    val lr = 1
-    trainCh8(net, trainIter, vocab, lr, numEpochs, manager.device, false)
+        val lr = 1
+        trainCh8(manager, net, trainIter, vocab, lr, numEpochs, manager.device, false)
+    }
 }
 
 /**
  * Executes getParams.
  */
 fun getParams(
+    manager: NDManager,
     vocabSize: Int,
     numHiddens: Int,
     device: Device,
 ): NDList {
     // Hidden layer parameters
-    val weightXh: NDArray = normal(Shape(vocabSize.toLong(), numHiddens.toLong()), device)
-    val weightHh: NDArray = normal(Shape(numHiddens.toLong(), numHiddens.toLong()), device)
+    val weightXh: NDArray = normal(manager, Shape(vocabSize.toLong(), numHiddens.toLong()), device)
+    val weightHh: NDArray = normal(manager, Shape(numHiddens.toLong(), numHiddens.toLong()), device)
     val biasH: NDArray = manager.zeros(Shape(numHiddens.toLong()), DataType.FLOAT32, device)
     // Output layer parameters
-    val weightHq: NDArray = normal(Shape(numHiddens.toLong(), vocabSize.toLong()), device)
+    val weightHq: NDArray = normal(manager, Shape(numHiddens.toLong(), vocabSize.toLong()), device)
     val biasQ: NDArray = manager.zeros(Shape(vocabSize.toLong()), DataType.FLOAT32, device)
 
     // Attach gradients
@@ -87,6 +89,7 @@ fun getParams(
  * Executes normal.
  */
 fun normal(
+    manager: NDManager,
     shape: Shape,
     device: Device,
 ): NDArray = manager.randomNormal(0f, 0.01f, shape, DataType.FLOAT32, device)
@@ -95,6 +98,7 @@ fun normal(
  * Executes initRNNState.
  */
 fun initRNNState(
+    manager: NDManager,
     batchSize: Int,
     numHiddens: Int,
     device: Device,
@@ -137,6 +141,7 @@ fun rnn(
  * Executes predictCh8.
  */
 fun predictCh8(
+    manager: NDManager,
     prefix: String,
     numPreds: Int,
     net: RNNModelScratch,
@@ -208,6 +213,7 @@ fun gradClipping(
  * Executes trainEpochCh8.
  */
 fun trainEpochCh8(
+    manager: NDManager,
     net: RNNModelScratch,
     trainIter: List<NDList>,
     loss: Loss,
@@ -257,6 +263,7 @@ fun trainEpochCh8(
  * Executes trainCh8.
  */
 fun trainCh8(
+    manager: NDManager,
     net: RNNModelScratch,
     trainIter: List<NDList>,
     vocab: Vocab,
@@ -271,12 +278,12 @@ fun trainCh8(
     val updater = { batchSize: Int, subManager: NDManager ->
         sgd(net.params, lr.toFloat(), batchSize, subManager)
     }
-    val predict = { prefix: String -> predictCh8(prefix, 50, net, vocab, device) }
+    val predict = { prefix: String -> predictCh8(manager, prefix, 50, net, vocab, device) }
     // Train and predict
     var ppl = 0.0
     var speed = 0.0
     for (epoch in 0 until numEpochs) {
-        val pair = trainEpochCh8(net, trainIter, loss, updater, device, useRandomIter)
+        val pair = trainEpochCh8(manager, net, trainIter, loss, updater, device, useRandomIter)
         ppl = pair.first
         speed = pair.second
         if ((epoch + 1) % 10 == 0) {

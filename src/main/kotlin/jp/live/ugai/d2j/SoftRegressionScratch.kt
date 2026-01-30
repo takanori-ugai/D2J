@@ -250,8 +250,8 @@ fun main() {
     ) {
         val animator = Animator()
         for (i in 1..numEpochs) {
-            val trainMetrics = trainEpochCh3(net, trainDataset.getData(jp.live.ugai.d2j.manager), loss, updater)
-            val accuracy = evaluateAccuracy(net, testDataset.getData(jp.live.ugai.d2j.manager))
+            val trainMetrics = trainEpochCh3(net, trainDataset.getData(manager), loss, updater)
+            val accuracy = evaluateAccuracy(net, testDataset.getData(manager))
             val trainAccuracy = trainMetrics[1]
             val trainLoss = trainMetrics[0]
             animator.add(i, accuracy, trainAccuracy, trainLoss)
@@ -281,6 +281,7 @@ class Accumulator(
      * Executes add.
      */
     fun add(args: FloatArray) {
+        require(args.size == data.size) { "Input array size must match accumulator size." }
         for (i in args.indices) {
             data[i] += args[i]
         }

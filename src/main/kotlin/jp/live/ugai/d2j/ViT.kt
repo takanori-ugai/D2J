@@ -154,6 +154,5 @@ class ViT(
     /**
      * Executes getOutputShapes.
      */
-    override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> =
-        arrayOf(Shape(inputShapes[0][0], numClasses.toLong()))
+    override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> = arrayOf(Shape(inputShapes[0][0], numClasses.toLong()))
 }

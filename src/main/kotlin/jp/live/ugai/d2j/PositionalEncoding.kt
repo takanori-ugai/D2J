@@ -67,8 +67,7 @@ class PositionalEncoding(
     /**
      * Executes getOutputShapes.
      */
-    override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> =
-        throw UnsupportedOperationException("Not implemented")
+    override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> = throw UnsupportedOperationException("Not implemented")
 
     /**
      * Executes initializeChildBlocks.

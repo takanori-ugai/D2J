@@ -439,13 +439,32 @@ class TransformerDecoderBlock(
         dataType: DataType,
         vararg inputShapes: Shape,
     ) {
-        val shapes1 = arrayOf(inputShapes[0], inputShapes[0], inputShapes[0], inputShapes[1])
-        attention1.initialize(manager, dataType, shapes1[0], shapes1[1], shapes1[2], shapes1[3])
-        addnorm1.initialize(manager, dataType, inputShapes[0])
-        attention2.initialize(manager, dataType, shapes1[0], shapes1[1], shapes1[2], shapes1[3])
-        addnorm2.initialize(manager, dataType, inputShapes[0])
-        ffn.initialize(manager, dataType, inputShapes[0])
-        addnorm3.initialize(manager, dataType, inputShapes[0])
+        val decoderShape = inputShapes[0]
+        val encoderShape =
+            if (inputShapes.size > 1 && inputShapes[1].dimension() == 3) {
+                inputShapes[1]
+            } else {
+                decoderShape
+            }
+        val encValidLensShape =
+            if (inputShapes.size > 2) {
+                inputShapes[2]
+            } else if (inputShapes.size > 1 && inputShapes[1].dimension() != 3) {
+                inputShapes[1]
+            } else {
+                null
+            }
+
+        attention1.initialize(manager, dataType, decoderShape, decoderShape, decoderShape)
+        addnorm1.initialize(manager, dataType, decoderShape)
+        if (encValidLensShape == null) {
+            attention2.initialize(manager, dataType, decoderShape, encoderShape, encoderShape)
+        } else {
+            attention2.initialize(manager, dataType, decoderShape, encoderShape, encoderShape, encValidLensShape)
+        }
+        addnorm2.initialize(manager, dataType, decoderShape)
+        ffn.initialize(manager, dataType, decoderShape)
+        addnorm3.initialize(manager, dataType, decoderShape)
     }
 
     /**
@@ -687,7 +706,27 @@ class TransformerDecoder(
         embedding.initialize(manager, dataType, tokenShape)
         posEncoding.initialize(manager, dataType, modelShape)
         for (blk in blks) {
-            blk.initialize(manager, dataType, modelShape, inputShapes[1])
+            val encoderShape =
+                if (inputShapes.size > 2) {
+                    inputShapes[1]
+                } else if (inputShapes.size > 1 && inputShapes[1].dimension() == 3) {
+                    inputShapes[1]
+                } else {
+                    modelShape
+                }
+            val validLensShape =
+                if (inputShapes.size > 2) {
+                    inputShapes[2]
+                } else if (inputShapes.size > 1 && inputShapes[1].dimension() != 3) {
+                    inputShapes[1]
+                } else {
+                    null
+                }
+            if (validLensShape == null) {
+                blk.initialize(manager, dataType, modelShape, encoderShape)
+            } else {
+                blk.initialize(manager, dataType, modelShape, encoderShape, validLensShape)
+            }
         }
         linear.initialize(manager, dataType, modelShape)
     }
@@ -732,7 +771,7 @@ fun train() {
     encoder.initialize(manager, DataType.FLOAT32, Shape(2, 35), Shape(2))
 
     val decoder = TransformerDecoder(tgtVocab.length(), numHiddens, ffnNumHiddens, numHeads, numBlks, dropout, manager)
-    decoder.initialize(manager, DataType.FLOAT32, Shape(2, 35, 256), Shape(2))
+    decoder.initialize(manager, DataType.FLOAT32, Shape(2, 35, 256), Shape(2, 35, 256), Shape(2))
 
     val net = EncoderDecoder(encoder, decoder)
     trainSeq2Seq(net, dataset, lr, numEpochs, tgtVocab, device)

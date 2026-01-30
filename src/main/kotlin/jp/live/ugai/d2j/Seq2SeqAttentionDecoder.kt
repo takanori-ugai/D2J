@@ -37,6 +37,7 @@ import org.jetbrains.letsPlot.ggsize
 import org.jetbrains.letsPlot.letsPlot
 import org.jetbrains.letsPlot.pos.positionIdentity
 import org.jetbrains.letsPlot.scale.scaleFillGradient
+import org.slf4j.LoggerFactory
 import java.util.Locale
 
 /**
@@ -81,6 +82,8 @@ fun main() {
     println(ff[2][0].shape) // (batch_size, num_hiddens) (4, 16)
     runAttention()
 }
+
+private val logger = LoggerFactory.getLogger("Seq2SeqAttentionDecoder")
 
 private fun runAttention() {
     val embedSize = 32
@@ -203,13 +206,13 @@ private fun runAttention() {
                     false,
                 )
             val decoderOutput = output[0]
-            println("Y::: $decoderOutput")
+            logger.debug("Decoder output: {}", decoderOutput)
             decState = output.subNDList(1)
-            println("DECSTATE::: $decState")
+            logger.debug("Decoder state: {}", decState)
             // We use the token with the highest prediction likelihood as the input
             // of the decoder at the next time step
             decX = decoderOutput.argMax(2)
-            println("DECX::: $decX")
+            logger.debug("Decoder next input: {}", decX)
             val pred = decX.squeeze(0).getLong().toInt()
             // Save attention weights (to be covered later)
             if (saveAttentionWeights) {

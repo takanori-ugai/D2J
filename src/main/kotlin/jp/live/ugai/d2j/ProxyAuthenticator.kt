@@ -21,6 +21,5 @@ class ProxyAuthenticator(
     /**
      * Executes getPasswordAuthentication.
      */
-    override fun getPasswordAuthentication(): PasswordAuthentication =
-        PasswordAuthentication(user, password.toCharArray())
+    override fun getPasswordAuthentication(): PasswordAuthentication = PasswordAuthentication(user, password.toCharArray())
 }

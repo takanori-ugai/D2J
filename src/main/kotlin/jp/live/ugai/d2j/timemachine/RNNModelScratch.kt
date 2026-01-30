@@ -46,7 +46,7 @@ class RNNModelScratch(
     /**
      * Performs the forward pass of the model.
      *
-     * @param X The input data.
+     * @param tokens The input data.
      * @param state The state.
      * @return A pair containing the output and the new state.
      */
@@ -61,7 +61,7 @@ class RNNModelScratch(
                     require(tokens.shape.get(2) == vocabSize.toLong()) {
                         "Expected one-hot input with last dimension $vocabSize, got shape ${tokens.shape}."
                     }
-                    tokens
+                    tokens.toType(DataType.FLOAT32, false)
                 }
                 else -> {
                     throw IllegalArgumentException(
