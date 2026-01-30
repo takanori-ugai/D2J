@@ -36,14 +36,7 @@ class Seq2SeqDecoder(
     public override var attentionWeights: NDArray? = null
 
     init {
-        /**
-         * The list.
-         */
         val list: List<String> = (0 until vocabSize).map { it.toString() }
-
-        /**
-         * The vocab.
-         */
         val vocab: Vocabulary = DefaultVocabulary(list)
         embedding =
             TrainableWordEmbedding
@@ -72,7 +65,7 @@ class Seq2SeqDecoder(
     }
 
     /**
-     * Executes initializeChildBlocks.
+     * Initializes embedding, recurrent, and projection layers based on input shapes.
      */
     override fun initializeChildBlocks(
         manager: NDManager,
@@ -102,12 +95,12 @@ class Seq2SeqDecoder(
     }
 
     /**
-     * Executes initState.
+     * Initializes decoder state from encoder outputs.
      */
     override fun initState(encOutputs: NDList): NDList = NDList(encOutputs[1])
 
     /**
-     * Executes forwardInternal.
+     * Runs the decoder forward pass with attention context concatenated to embeddings.
      */
     override fun forwardInternal(
         parameterStore: ParameterStore,

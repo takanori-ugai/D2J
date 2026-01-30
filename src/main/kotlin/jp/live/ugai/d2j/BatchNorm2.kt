@@ -17,6 +17,7 @@ import ai.djl.training.listener.TrainingListener
 import ai.djl.training.loss.Loss
 import ai.djl.training.optimizer.Optimizer
 import ai.djl.training.tracker.Tracker
+import jp.live.ugai.d2j.util.LoggingUtils
 import jp.live.ugai.d2j.util.Training
 import jp.live.ugai.d2j.util.getLong
 
@@ -37,7 +38,7 @@ object BatchNorm2 {
      */
     @JvmStatic
     fun main(args: Array<String>) {
-        setSystemProperties()
+        LoggingUtils.setDjlLoggingProperties()
 
         val trainIter = prepareDataset(Dataset.Usage.TRAIN, BATCH_SIZE)
         val testIter = prepareDataset(Dataset.Usage.TEST, BATCH_SIZE)
@@ -62,18 +63,6 @@ object BatchNorm2 {
 
         val evaluatorMetrics: MutableMap<String, DoubleArray> = mutableMapOf()
         Training.trainingChapter6(trainIter, testIter, NUM_EPOCHS, trainer, evaluatorMetrics)
-    }
-
-    /**
-     * Sets system properties for logging configuration.
-     */
-    private fun setSystemProperties() {
-        System.setProperty("org.slf4j.simpleLogger.showThreadName", "false")
-        System.setProperty("org.slf4j.simpleLogger.showLogName", "true")
-        System.setProperty("org.slf4j.simpleLogger.log.ai.djl.pytorch", "WARN")
-        System.setProperty("org.slf4j.simpleLogger.log.ai.djl.mxnet", "ERROR")
-        System.setProperty("org.slf4j.simpleLogger.log.ai.djl.ndarray.index", "ERROR")
-        System.setProperty("org.slf4j.simpleLogger.log.ai.djl.tensorflow", "WARN")
     }
 
     /**

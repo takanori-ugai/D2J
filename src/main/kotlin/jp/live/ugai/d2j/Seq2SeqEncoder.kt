@@ -32,14 +32,7 @@ class Seq2SeqEncoder(
     private val rnn: GRU
 
     init {
-        /**
-         * The list.
-         */
         val list: List<String> = (0 until vocabSize).map { it.toString() }
-
-        /**
-         * The vocab.
-         */
         val vocab: Vocabulary = DefaultVocabulary(list)
         // Embedding layer
         embedding =

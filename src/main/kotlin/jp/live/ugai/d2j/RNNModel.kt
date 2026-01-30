@@ -11,7 +11,7 @@ import ai.djl.training.ParameterStore
 import ai.djl.util.PairList
 
 /**
- * Represents RNNModel.
+ * Wraps a recurrent block with a projection layer to map hidden states to vocabulary logits.
  */
 class RNNModel(
     private val rnnLayer: RecurrentBlock,
@@ -28,7 +28,10 @@ class RNNModel(
     }
 
     /**
-     * Executes forwardInternal.
+     * Runs the recurrent layer over token indices and projects outputs to vocabulary logits.
+     *
+     * @param inputs NDList containing token indices and optional recurrent state.
+     * @return NDList of logits and the next recurrent state.
      */
     override fun forwardInternal(
         parameterStore: ParameterStore,
@@ -53,7 +56,7 @@ class RNNModel(
     }
 
     /**
-     * Executes initializeChildBlocks.
+     * Initializes the recurrent and projection layers using inferred input shapes.
      */
     override fun initializeChildBlocks(
         manager: NDManager,
@@ -73,10 +76,9 @@ class RNNModel(
         dense.initialize(manager, dataType, Shape(1, rnnOutShape.get(rnnOutShape.dimension() - 1)))
     }
 
-    // We won't implement this since we won't be using it but it's required as part of an AbstractBlock
-
     /**
-     * Executes getOutputShapes.
+     * This block does not provide static output shapes.
      */
-    override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape?> = arrayOfNulls<Shape>(0)
+    override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape?> =
+        throw UnsupportedOperationException("getOutputShapes is not implemented for RNNModel")
 }

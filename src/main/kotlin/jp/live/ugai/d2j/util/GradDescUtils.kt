@@ -9,11 +9,19 @@ import org.jetbrains.letsPlot.intern.Plot
 import org.jetbrains.letsPlot.letsPlot
 
 /**
- * Singleton for GradDescUtils.
+ * Utilities for plotting and tracing gradient descent behavior.
  */
 object GradDescUtils {
     /**
-     * Executes plotGD.
+     * Plots a function line and gradient descent trajectory.
+     *
+     * @param x0 The x-values for the function line.
+     * @param y0 The y-values for the function line.
+     * @param segment The x-values visited during optimization.
+     * @param func The objective function to plot along the segment.
+     * @param width The plot width in pixels.
+     * @param height The plot height in pixels.
+     * @return A Plot with the function line and optimization trajectory.
      */
     fun plotGD(
         x0: List<Float>,
@@ -45,7 +53,12 @@ object GradDescUtils {
     }
 
     /**
-     * Executes showTrace.
+     * Builds a plot showing the optimization trace over a 1D function.
+     *
+     * @param res The x-values visited during optimization.
+     * @param f The objective function to evaluate.
+     * @param manager The NDManager used to create the plotting range.
+     * @return A Plot of the function and trace points.
      */
     fun showTrace(
         res: List<Float>,
@@ -60,7 +73,11 @@ object GradDescUtils {
     // Optimize a 2D objective function with a customized trainer.
 
     /**
-     * Executes train2d.
+     * Runs a 2D optimization loop with a custom trainer function.
+     *
+     * @param trainer The update rule that returns the next state from current state.
+     * @param steps The number of optimization steps to run.
+     * @return The list of 2D points visited during optimization.
      */
     fun train2d(
         trainer: (List<Float>) -> List<Float>,
@@ -88,7 +105,11 @@ object GradDescUtils {
     // Show the trace of 2D variables during optimization.
 
     /**
-     * Executes showTrace2d.
+     * Plots the trace of 2D optimization steps on a contour plot.
+     *
+     * @param f The 2D objective function.
+     * @param results The optimization trace points.
+     * @return A Plot showing the contour and optimization trajectory.
      */
     fun showTrace2d(
         f: (Float, Float) -> Float,
@@ -155,7 +176,13 @@ object GradDescUtils {
     }
 
     /**
-     * Executes plotGammas.
+     * Plots exponential decay curves for multiple gamma values over time.
+     *
+     * @param time The time steps.
+     * @param gammas The gamma values to plot.
+     * @param width The plot width in pixels.
+     * @param height The plot height in pixels.
+     * @return A Plot of gamma decay curves.
      */
     fun plotGammas(
         time: List<Float>,
@@ -203,17 +230,12 @@ object GradDescUtils {
 }
 
 /**
- * Represents Weights.
- * @property x1 The x1.
- * @property x2 The x2.
+ * Represents a point in 2D optimization space.
+ *
+ * @property x1 The first coordinate.
+ * @property x2 The second coordinate.
  */
-class Weights(
-    /**
-     * The x1.
-     */
-    var x1: Float,
-    /**
-     * The x2.
-     */
-    var x2: Float,
+data class Weights(
+    val x1: Float,
+    val x2: Float,
 )

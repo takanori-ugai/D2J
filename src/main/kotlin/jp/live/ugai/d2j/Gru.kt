@@ -11,6 +11,7 @@ import ai.djl.nn.Activation
 import ai.djl.nn.recurrent.GRU
 import jp.live.ugai.d2j.timemachine.TimeMachine.trainCh8
 import jp.live.ugai.d2j.timemachine.TimeMachineDataset
+import jp.live.ugai.d2j.util.NDArrayUtils
 
 /**
  * Executes main.
@@ -32,47 +33,32 @@ fun main() {
     dataset.prepare()
     val vocab = dataset.vocab
 
-    fun normal(
-        shape: Shape,
-        device: Device,
-    ): NDArray = manager.randomNormal(0.0f, 0.01f, shape, DataType.FLOAT32, device)
-
-    fun three(
-        numInputs: Int,
-        numHiddens: Int,
-        device: Device,
-    ): NDList =
-        NDList(
-            normal(Shape(numInputs.toLong(), numHiddens.toLong()), device),
-            normal(Shape(numHiddens.toLong(), numHiddens.toLong()), device),
-            manager.zeros(Shape(numHiddens.toLong()), DataType.FLOAT32, device),
-        )
-
     fun getParams(
         vocabSize: Int,
         numHiddens: Int,
         device: Device,
     ): NDList {
         // Update gate parameters
-        var temp = three(vocabSize, numHiddens, device)
+        var temp = NDArrayUtils.three(manager, vocabSize, numHiddens, device)
         val weightXz = temp[0]
         val weightHz = temp[1]
         val biasZ = temp[2]
 
         // Reset gate parameters
-        temp = three(vocabSize, numHiddens, device)
+        temp = NDArrayUtils.three(manager, vocabSize, numHiddens, device)
         val weightXr = temp[0]
         val weightHr = temp[1]
         val biasR = temp[2]
 
         // Candidate hidden state parameters
-        temp = three(vocabSize, numHiddens, device)
+        temp = NDArrayUtils.three(manager, vocabSize, numHiddens, device)
         val weightXh = temp[0]
         val weightHh = temp[1]
         val biasH = temp[2]
 
         // Output layer parameters
-        val weightHq = normal(Shape(numHiddens.toLong(), vocabSize.toLong()), device)
+        val weightHq =
+            NDArrayUtils.normal(manager, Shape(numHiddens.toLong(), vocabSize.toLong()), device)
         val biasQ: NDArray = manager.zeros(Shape(vocabSize.toLong()), DataType.FLOAT32, device)
 
         // Attach gradients
@@ -161,6 +147,6 @@ fun main() {
 }
 
 /**
- * Represents Gru.
+ * Placeholder for a dedicated GRU example container.
  */
-class Gru
+internal class Gru

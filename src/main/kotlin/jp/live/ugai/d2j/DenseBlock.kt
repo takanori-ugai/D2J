@@ -182,7 +182,7 @@ class DenseBlock(
     numChannels: Int,
 ) : AbstractBlock(VERSION) {
     /**
-     * The net.
+     * Internal sequential block containing all convolutional blocks in this dense block.
      */
     val net = SequentialBlock()
 

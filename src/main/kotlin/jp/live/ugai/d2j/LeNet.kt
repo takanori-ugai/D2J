@@ -189,6 +189,6 @@ fun main() {
 }
 
 /**
- * Represents LeNet.
+ * Placeholder for a LeNet implementation (examples are defined in top-level functions).
  */
-class LeNet
+internal class LeNet

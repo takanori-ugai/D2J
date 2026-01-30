@@ -9,7 +9,7 @@ class Accumulator(
     n: Int,
 ) {
     /**
-     * The data.
+     * Backing array storing accumulated values.
      */
     val data = FloatArray(n)
 
@@ -25,14 +25,14 @@ class Accumulator(
     }
 
     /**
-     * Executes reset.
+     * Resets all accumulated values to 0f.
      */
     fun reset() {
         data.fill(0f)
     }
 
     /**
-     * Executes get.
+     * Returns the accumulated value at [index].
      */
     fun get(index: Int): Float = data[index]
 }

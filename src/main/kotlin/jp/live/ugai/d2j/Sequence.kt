@@ -21,7 +21,7 @@ import ai.djl.training.tracker.Tracker
 import ai.djl.translate.NoopTranslator
 
 /**
- * Executes main.
+ * Generates synthetic time-series data and trains a sequence prediction model.
  */
 fun main() {
     System.setProperty("org.slf4j.simpleLogger.showThreadName", "false")
@@ -96,9 +96,7 @@ fun train(
         DefaultTrainingConfig(loss)
             .optOptimizer(adam) // Optimizer (loss function)
             .optInitializer(XavierInitializer(), "")
-            .also { cfg ->
-                TrainingListener.Defaults.logging().forEach { cfg.addTrainingListeners(it) }
-            } // Logging
+            .addTrainingListeners(*TrainingListener.Defaults.logging()) // Logging
     val model: Model = Model.newInstance("sequence")
     model.block = net
     val trainer = model.newTrainer(config)
@@ -135,6 +133,6 @@ fun getNet(): SequentialBlock {
 }
 
 /**
- * Represents Sequence.
+ * Placeholder for a dedicated sequence modeling example container.
  */
-class Sequence
+internal class Sequence

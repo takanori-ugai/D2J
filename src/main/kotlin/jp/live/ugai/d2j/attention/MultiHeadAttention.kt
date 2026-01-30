@@ -174,15 +174,13 @@ class MultiHeadAttention(
             values = Chap10Utils.transposeQkv(weightValue.forward(ps, NDList(values), false)[0], numHeads)
             val list =
                 if (validLens == null) {
+                    attention.initialize(sub, dataType, queries.shape, keys.shape, values.shape)
                     NDList(queries, keys, values)
                 } else {
-                    NDList(queries, keys, values, validLens)
+                    val list = NDList(queries, keys, values, validLens)
+                    attention.initialize(sub, dataType, list[0].shape, list[1].shape, list[2].shape, list[3].shape)
+                    list
                 }
-            if (list.size == 3) {
-                attention.initialize(sub, dataType, list[0].shape, list[1].shape, list[2].shape)
-            } else {
-                attention.initialize(sub, dataType, list[0].shape, list[1].shape, list[2].shape, list[3].shape)
-            }
             val output: NDArray = attention.forward(ps, list, false).head()
             val outputConcat: NDArray = Chap10Utils.transposeOutput(output, numHeads)
             weightOutput.initialize(manager, dataType, outputConcat.shape)

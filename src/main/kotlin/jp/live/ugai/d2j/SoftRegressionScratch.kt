@@ -16,7 +16,7 @@ import org.jetbrains.letsPlot.intern.Plot
 import org.jetbrains.letsPlot.letsPlot
 
 /**
- * Executes main.
+ * Trains and evaluates a softmax regression model on Fashion-MNIST.
  */
 fun main() {
     System.setProperty("org.slf4j.simpleLogger.showThreadName", "false")
@@ -98,7 +98,8 @@ fun main() {
     }
 
     fun softmax(input: NDArray): NDArray {
-        val inputExp = input.exp()
+        val shifted = input.sub(input.max(intArrayOf(1), true))
+        val inputExp = shifted.exp()
         val partition = inputExp.sum(intArrayOf(1), true)
 //        println(inputExp.div(partition))
         return inputExp.div(partition) // The broadcast mechanism is applied here
@@ -305,6 +306,6 @@ class Accumulator(
 }
 
 /**
- * Represents SoftRegressionScratch.
+ * Container for softmax regression scratch implementation examples.
  */
-class SoftRegressionScratch
+internal class SoftRegressionScratch

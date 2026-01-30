@@ -8,7 +8,8 @@ import org.jetbrains.letsPlot.intern.Plot
 import org.jetbrains.letsPlot.letsPlot
 
 /**
- * Executes main.
+ * Demonstrates the difference between expected risk and empirical risk functions.
+ * Computes and prints sample values of both risk functions over a range of x values.
  */
 fun main() {
     // Define the target functions
@@ -27,7 +28,14 @@ fun main() {
 }
 
 /**
- * Executes plotGD.
+ * Plots gradient descent trajectory over a function.
+ *
+ * @param fLine The range of x values for the function line.
+ * @param res The x values at each step of the gradient descent.
+ * @param func The function to plot.
+ * @param width The plot width in pixels.
+ * @param height The plot height in pixels.
+ * @return A Plot object with the function line and gradient descent trajectory.
  */
 fun plotGD(
     fLine: List<Float>,
@@ -64,6 +72,6 @@ fun plotGD(
 }
 
 /**
- * Represents Optimization.
+ * Container class for optimization-related utilities and demonstrations.
  */
 class Optimization

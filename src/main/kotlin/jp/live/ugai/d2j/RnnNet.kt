@@ -12,6 +12,7 @@ import ai.djl.training.loss.SoftmaxCrossEntropyLoss
 import jp.live.ugai.d2j.timemachine.RNNModelScratch
 import jp.live.ugai.d2j.timemachine.Vocab
 import jp.live.ugai.d2j.util.Accumulator
+import jp.live.ugai.d2j.util.NDArrayUtils
 import jp.live.ugai.d2j.util.StopWatch
 import jp.live.ugai.d2j.util.Training.sgd
 
@@ -70,11 +71,11 @@ fun getParams(
     device: Device,
 ): NDList {
     // Hidden layer parameters
-    val weightXh: NDArray = normal(manager, Shape(vocabSize.toLong(), numHiddens.toLong()), device)
-    val weightHh: NDArray = normal(manager, Shape(numHiddens.toLong(), numHiddens.toLong()), device)
+    val weightXh: NDArray = NDArrayUtils.normal(manager, Shape(vocabSize.toLong(), numHiddens.toLong()), device)
+    val weightHh: NDArray = NDArrayUtils.normal(manager, Shape(numHiddens.toLong(), numHiddens.toLong()), device)
     val biasH: NDArray = manager.zeros(Shape(numHiddens.toLong()), DataType.FLOAT32, device)
     // Output layer parameters
-    val weightHq: NDArray = normal(manager, Shape(numHiddens.toLong(), vocabSize.toLong()), device)
+    val weightHq: NDArray = NDArrayUtils.normal(manager, Shape(numHiddens.toLong(), vocabSize.toLong()), device)
     val biasQ: NDArray = manager.zeros(Shape(vocabSize.toLong()), DataType.FLOAT32, device)
 
     // Attach gradients
@@ -84,15 +85,6 @@ fun getParams(
     }
     return params
 }
-
-/**
- * Executes normal.
- */
-fun normal(
-    manager: NDManager,
-    shape: Shape,
-    device: Device,
-): NDArray = manager.randomNormal(0f, 0.01f, shape, DataType.FLOAT32, device)
 
 /**
  * Executes initRNNState.
@@ -298,6 +290,6 @@ fun trainCh8(
 }
 
 /**
- * Represents RnnNet.
+ * Placeholder for a dedicated RNN scratch example container.
  */
-class RnnNet
+internal class RnnNet

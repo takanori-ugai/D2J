@@ -12,9 +12,10 @@ import ai.djl.nn.recurrent.LSTM
 import jp.live.ugai.d2j.timemachine.RNNModelScratch
 import jp.live.ugai.d2j.timemachine.TimeMachine.trainCh8
 import jp.live.ugai.d2j.timemachine.TimeMachineDataset
+import jp.live.ugai.d2j.util.NDArrayUtils
 
 /**
- * Executes main.
+ * Demonstrates training LSTM models on the TimeMachine dataset.
  */
 fun main() {
     val manager = NDManager.newBaseManager()
@@ -32,53 +33,38 @@ fun main() {
     dataset.prepare()
     val vocab = dataset.vocab
 
-    fun normal(
-        shape: Shape,
-        device: Device,
-    ): NDArray = manager.randomNormal(0.0f, 0.01f, shape, DataType.FLOAT32, device)
-
-    fun three(
-        numInputs: Int,
-        numHiddens: Int,
-        device: Device,
-    ): NDList =
-        NDList(
-            normal(Shape(numInputs.toLong(), numHiddens.toLong()), device),
-            normal(Shape(numHiddens.toLong(), numHiddens.toLong()), device),
-            manager.zeros(Shape(numHiddens.toLong()), DataType.FLOAT32, device),
-        )
-
     fun getLSTMParams(
         vocabSize: Int,
         numHiddens: Int,
         device: Device,
     ): NDList {
         // Input gate parameters
-        var temp: NDList = three(vocabSize, numHiddens, device)
+        var temp: NDList = NDArrayUtils.three(manager, vocabSize, numHiddens, device)
         val weightXi: NDArray = temp.get(0)
         val weightHi: NDArray = temp.get(1)
         val biasI: NDArray = temp.get(2)
 
         // Forget gate parameters
-        temp = three(vocabSize, numHiddens, device)
+        temp = NDArrayUtils.three(manager, vocabSize, numHiddens, device)
         val weightXf: NDArray = temp.get(0)
         val weightHf: NDArray = temp.get(1)
         val biasF: NDArray = temp.get(2)
 
         // Output gate parameters
-        temp = three(vocabSize, numHiddens, device)
+        temp = NDArrayUtils.three(manager, vocabSize, numHiddens, device)
         val weightXo: NDArray = temp.get(0)
         val weightHo: NDArray = temp.get(1)
         val biasO: NDArray = temp.get(2)
 
         // Candidate memory cell parameters
-        temp = three(vocabSize, numHiddens, device)
+        temp = NDArrayUtils.three(manager, vocabSize, numHiddens, device)
         val weightXc: NDArray = temp.get(0)
         val weightHc: NDArray = temp.get(1)
         val biasC: NDArray = temp.get(2)
 
         // Output layer parameters
-        val weightHq: NDArray = normal(Shape(numHiddens.toLong(), vocabSize.toLong()), device)
+        val weightHq: NDArray =
+            NDArrayUtils.normal(manager, Shape(numHiddens.toLong(), vocabSize.toLong()), device)
         val biasQ: NDArray = manager.zeros(Shape(vocabSize.toLong()), DataType.FLOAT32, device)
 
         // Attach gradients
@@ -186,6 +172,6 @@ fun main() {
 }
 
 /**
- * Represents Lstm.
+ * Placeholder for a dedicated LSTM example container.
  */
-class Lstm
+internal class Lstm

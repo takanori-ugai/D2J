@@ -116,7 +116,6 @@ fun main() {
             .also { cfg ->
                 TrainingListener.Defaults.logging().forEach { cfg.addTrainingListeners(it) }
             }
-    ; // Logging
 
     val trainer: Trainer = model.newTrainer(config)
     trainer.initialize(trainImages.shape)

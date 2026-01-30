@@ -73,6 +73,6 @@ fun main() {
 }
 
 /**
- * Represents MultiheadAttention.
+ * Placeholder for the multi-head attention example (see the main function above).
  */
-class MultiheadAttention
+internal class MultiheadAttention

@@ -31,7 +31,7 @@ import ai.djl.util.PairList
 import jp.live.ugai.d2j.util.Training.trainingChapter6
 
 /**
- * Executes main.
+ * Demonstrates ResNet residual block usage and trains a ResNet model on FashionMNIST.
  */
 fun main() {
     System.setProperty("org.slf4j.simpleLogger.showThreadName", "false")
@@ -190,14 +190,7 @@ class Residual(
     var block: ParallelBlock
 
     init {
-        /**
-         * The b1.
-         */
         val b1: Block
-
-        /**
-         * The conv1x1.
-         */
         val conv1x1: Block
         b1 = SequentialBlock()
         b1
@@ -238,14 +231,7 @@ class Residual(
                 "residualBlock",
                 ParallelBlock(
                     { list: List<NDList> ->
-                        /**
-                         * The unit.
-                         */
                         val unit = list[0]
-
-                        /**
-                         * The parallel.
-                         */
                         val parallel = list[1]
                         NDList(
                             unit
@@ -294,12 +280,7 @@ class Residual(
         dataType: DataType,
         vararg inputShapes: Shape,
     ) {
-        when (inputShapes.size) {
-            1 -> block.initialize(manager, dataType, inputShapes[0])
-            2 -> block.initialize(manager, dataType, inputShapes[0], inputShapes[1])
-            3 -> block.initialize(manager, dataType, inputShapes[0], inputShapes[1], inputShapes[2])
-            else -> throw IllegalArgumentException("Unsupported input shape count: ${inputShapes.size}")
-        }
+        block.initialize(manager, dataType, *inputShapes)
     }
 
     companion object {

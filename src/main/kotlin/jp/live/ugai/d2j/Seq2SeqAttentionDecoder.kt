@@ -26,6 +26,7 @@ import ai.djl.training.tracker.Tracker
 import ai.djl.util.PairList
 import jp.live.ugai.d2j.attention.AdditiveAttention
 import jp.live.ugai.d2j.attention.AttentionDecoder
+import jp.live.ugai.d2j.attention.Chap10Utils.bleu
 import jp.live.ugai.d2j.lstm.EncoderDecoder
 import jp.live.ugai.d2j.timemachine.Vocab
 import jp.live.ugai.d2j.util.Accumulator
@@ -41,7 +42,7 @@ import org.slf4j.LoggerFactory
 import java.util.Locale
 
 /**
- * Executes main.
+ * Demonstrates sequence-to-sequence attention training and inference.
  */
 fun main() {
     System.setProperty("org.slf4j.simpleLogger.showThreadName", "false")
@@ -229,37 +230,6 @@ private fun runAttention() {
         return Pair(outputString, attentionWeightSeq)
     }
 
-    // Compute the BLEU.
-    fun bleu(
-        predSeq: String,
-        labelSeq: String,
-        k: Int,
-    ): Double {
-        val predTokens = predSeq.split(" ")
-        val labelTokens = labelSeq.split(" ")
-        val lenPred = predTokens.size
-        val lenLabel = labelTokens.size
-        var score = Math.exp(Math.min(0.toDouble(), 1.0 - lenLabel / lenPred))
-        for (n in 1 until k + 1) {
-            var numMatches = 0
-            val labelSubs = mutableMapOf<String, Int>()
-            for (i in 0 until lenLabel - n + 1) {
-                val key = labelTokens.subList(i, i + n).joinToString(separator = " ")
-                labelSubs.put(key, labelSubs.getOrDefault(key, 0) + 1)
-            }
-            for (i in 0 until lenPred - n + 1) {
-                // val key =predTokens.subList(i, i + n).joinToString(" ")
-                val key = predTokens.subList(i, i + n).joinToString(separator = " ")
-                if (labelSubs.getOrDefault(key, 0) > 0) {
-                    numMatches += 1
-                    labelSubs.put(key, labelSubs.getOrDefault(key, 0) - 1)
-                }
-            }
-            score *= Math.pow(numMatches.toDouble() / (lenPred - n + 1).toDouble(), Math.pow(0.5, n.toDouble()))
-        }
-        return score
-    }
-
     val engs = arrayOf("go .", "i lost .", "he's calm .", "i'm home .")
     val fras = arrayOf("va !", "j'ai perdu .", "il est calme .", "je suis chez moi .")
     for (i in engs.indices) {
@@ -315,19 +285,10 @@ class Seq2SeqAttentionDecoder(
     private val numLayers: Int,
     dropout: Float = 0f,
 ) : AttentionDecoder() {
-    /**
-     * The attention.
-     */
     val attention = AdditiveAttention(numHiddens, dropout)
 
-    /**
-     * The embedding.
-     */
     val embedding: TrainableWordEmbedding
 
-    /**
-     * The rnn.
-     */
     val rnn =
         GRU
             .builder()
@@ -338,20 +299,10 @@ class Seq2SeqAttentionDecoder(
             .optDropRate(dropout)
             .build()
 
-    /**
-     * The linear.
-     */
     val linear = Linear.builder().setUnits(vocabSize).build()
 
     init {
-        /**
-         * The list.
-         */
         val list: List<String> = (0 until vocabSize).map { it.toString() }
-
-        /**
-         * The vocab.
-         */
         val vocab: Vocabulary = DefaultVocabulary(list)
         // Embedding layer
         embedding =

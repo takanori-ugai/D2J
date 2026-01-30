@@ -31,7 +31,11 @@ import java.net.URI
  */
 object TimeMachine {
     /**
-     * Executes tokenize.
+     * Splits text lines into tokens based on the specified tokenization strategy.
+     *
+     * @param lines The input text lines to tokenize.
+     * @param token The tokenization mode: "word" for whitespace splitting, "char" for character splitting.
+     * @return A list of token lists, one per input line.
      */
     fun tokenize(
         lines: List<String>,
@@ -44,7 +48,9 @@ object TimeMachine {
         }
 
     /**
-     * Executes readTimeMachine.
+     * Reads the Time Machine dataset lines from the remote source.
+     *
+     * @return The raw text lines from the dataset.
      */
     fun readTimeMachine(): List<String> {
         val url = URI("http://d2l-data.s3-accelerate.amazonaws.com/timemachine.txt").toURL()
@@ -56,7 +62,10 @@ object TimeMachine {
     }
 
     /**
-     * Executes loadCorpusTimeMachine.
+     * Loads and tokenizes the Time Machine corpus, returning token ids and vocabulary.
+     *
+     * @param maxTokens The maximum number of tokens to keep (0 or less for no limit).
+     * @return A pair of token id list and vocabulary.
      */
     fun loadCorpusTimeMachine(maxTokens: Int): Pair<List<Int>, Vocab> {
         val lines = readTimeMachine()
@@ -75,7 +84,15 @@ object TimeMachine {
     }
 
     /**
-     * Executes predictCh8.
+     * Generates text by predicting the next tokens from a prefix.
+     *
+     * @param prefix The seed text to start generation.
+     * @param numPreds The number of tokens to generate.
+     * @param net The model (scratch or concise) used for prediction.
+     * @param vocab The vocabulary for token conversions.
+     * @param device The device to run inference on.
+     * @param manager The NDManager used for array creation.
+     * @return The generated text.
      */
     fun predictCh8(
         prefix: String,
@@ -152,7 +169,16 @@ object TimeMachine {
     }
 
     /**
-     * Executes trainCh8.
+     * Trains a language model for a number of epochs and prints periodic metrics.
+     *
+     * @param net The model to train.
+     * @param dataset The training dataset.
+     * @param vocab The vocabulary for decoding predictions.
+     * @param lr The learning rate.
+     * @param numEpochs The number of training epochs.
+     * @param device The device to train on.
+     * @param useRandomIter Whether to use random sampling in the data iterator.
+     * @param manager The NDManager for array allocation.
      */
     fun trainCh8(
         net: Any,
@@ -218,7 +244,16 @@ object TimeMachine {
     }
 
     /**
-     * Executes trainEpochCh8.
+     * Trains the model for a single epoch and returns perplexity and speed.
+     *
+     * @param net The model to train.
+     * @param dataset The training dataset.
+     * @param loss The loss function.
+     * @param updater Parameter update function.
+     * @param device The device to train on.
+     * @param useRandomIter Whether to use random sampling in the data iterator.
+     * @param manager The NDManager for array allocation.
+     * @return A pair of (perplexity, tokens per second).
      */
     fun trainEpochCh8(
         net: Any,
@@ -293,7 +328,11 @@ object TimeMachine {
     }
 
     /**
-     * Executes gradClipping.
+     * Clips gradients to mitigate exploding gradients.
+     *
+     * @param net The model whose gradients will be clipped.
+     * @param theta The clipping threshold.
+     * @param manager The NDManager for gradient operations.
      */
     fun gradClipping(
         net: Any,

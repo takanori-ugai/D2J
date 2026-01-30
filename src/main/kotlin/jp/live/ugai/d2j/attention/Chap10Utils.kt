@@ -111,10 +111,9 @@ object Chap10Utils {
         input: NDArray,
         numHeads: Int,
     ): NDArray {
-        var X = input
-        X = X.reshape(-1, numHeads.toLong(), X.shape[1], X.shape[2])
-        X = X.transpose(0, 2, 1, 3)
-        return X.reshape(X.shape[0], X.shape[1], -1)
+        val reshaped = input.reshape(-1, numHeads.toLong(), input.shape[1], input.shape[2])
+        val transposed = reshaped.transpose(0, 2, 1, 3)
+        return transposed.reshape(transposed.shape[0], transposed.shape[1], -1)
     }
 
     /**
@@ -135,7 +134,7 @@ object Chap10Utils {
         tgtVocab: Vocab,
         device: Device,
     ) {
-        NDManager.newBaseManager().use { manager ->
+        NDManager.newBaseManager(device).use { manager ->
             val loss: Loss = MaskedSoftmaxCELoss()
             val lrt: Tracker = Tracker.fixed(lr)
             val adam: Optimizer = Optimizer.adam().optLearningRateTracker(lrt).build()

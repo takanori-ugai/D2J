@@ -15,7 +15,7 @@ import jp.live.ugai.d2j.util.NMT.loadDataNMT
 import java.util.Locale
 
 /**
- * Executes main.
+ * Demonstrates sequence-to-sequence training and inference on a toy dataset.
  */
 fun main() {
     System.setProperty("org.slf4j.simpleLogger.showThreadName", "false")

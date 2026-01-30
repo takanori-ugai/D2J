@@ -31,7 +31,7 @@ class PositionalEncoding(
         this.dropout = Dropout.builder().optRate(dropout).build()
         addChildBlock("dropout", this.dropout)
 
-        // Create a long enough `P`
+        // Create a long enough positional encoding matrix
         posEncoding = manager.zeros(Shape(1, maxLen.toLong(), numHiddens.toLong()))
         /**
          * The positions.

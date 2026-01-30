@@ -167,7 +167,8 @@ class AddNorm(
         vararg inputShapes: Shape,
     ) {
         require(inputShapes.size == 1) {
-            "AddNorm expects a single input shape, got ${inputShapes.size}."
+            "AddNorm expects a single input shape for initialization (both inputs share the same shape), " +
+                "got ${inputShapes.size}."
         }
         dropout.initialize(manager, dataType, inputShapes[0])
         ln.initialize(manager, dataType, inputShapes[0])
@@ -296,14 +297,7 @@ class TransformerEncoder(
 
     // The RNN encoder for sequence to sequence learning.
     init {
-        /**
-         * The list.
-         */
         val list: List<String> = (0 until vocabSize).map { it.toString() }
-
-        /**
-         * The vocab.
-         */
         val vocab: Vocabulary = DefaultVocabulary(list)
         // Embedding layer
         embedding =
@@ -316,9 +310,6 @@ class TransformerEncoder(
         addChildBlock("embedding", embedding)
         addChildBlock("posEncoding", posEncoding)
         repeat(numBlks) {
-            /**
-             * The blk.
-             */
             val blk = TransformerEncoderBlock(numHiddens, ffnNumHiddens, numHeads.toInt(), dropout, useBias)
             blks.add(blk)
             addChildBlock("block_$it", blk)

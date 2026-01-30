@@ -26,7 +26,10 @@ class SelfAttention(
     }
 
     /**
-     * Executes forwardInternal.
+     * Performs self-attention by using the same input as query, key, and value.
+     *
+     * @param inputs NDList containing the input tensor and optional valid lengths.
+     * @return NDList containing the self-attention output.
      */
     override fun forwardInternal(
         parameterStore: ParameterStore,
@@ -44,7 +47,7 @@ class SelfAttention(
     }
 
     /**
-     * Executes getOutputShapes.
+     * Returns the output shape, which matches the input tensor shape.
      */
     override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> {
         // The output shape is the same as the input shape.
@@ -52,7 +55,7 @@ class SelfAttention(
     }
 
     /**
-     * Executes initializeChildBlocks.
+     * Initializes the underlying attention block using input and optional valid-length shapes.
      */
     override fun initializeChildBlocks(
         manager: NDManager,
@@ -69,7 +72,7 @@ class SelfAttention(
 }
 
 /**
- * Executes main.
+ * Runs a quick self-attention sanity check with dummy inputs.
  */
 fun main() {
     val manager = NDManager.newBaseManager()
