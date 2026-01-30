@@ -36,6 +36,9 @@ class Vocab(
         // Sort according to frequencies
         tokenFreqs = countCorpus2D(tokens).toList().sortedByDescending { (_, value) -> value }
 
+        /**
+         * The uniqTokens.
+         */
         val uniqTokens = mutableListOf("<unk>").apply { addAll(reservedTokens) }
         uniqTokens.addAll(tokenFreqs.filter { it.second >= minFreq && !uniqTokens.contains(it.first) }.map { it.first })
 

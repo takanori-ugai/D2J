@@ -20,12 +20,15 @@ fun getLong(
     defaultValue: Long,
 ): Long = System.getProperty(propertyName)?.toLongOrNull() ?: defaultValue
 
+/**
+ * Singleton for Training.
+ */
 object Training {
     fun linreg(
-        X: NDArray,
+        features: NDArray,
         w: NDArray,
         b: NDArray,
-    ): NDArray = X.dot(w).add(b)
+    ): NDArray = features.dot(w).add(b)
 
     fun squaredLoss(
         yHat: NDArray,
@@ -42,23 +45,20 @@ object Training {
     ) {
         val lrt = Tracker.fixed(lr)
         val opt = Optimizer.sgd().setLearningRateTracker(lrt).build()
-        for (param in params) {
+        for ((index, param) in params.withIndex()) {
             // Update param in place.
             // param = param - param.gradient * lr / batchSize
             // val ind = params.indexOf(param)
             // params.rep
             // params.set(ind, param.sub(param.getGradient().mul(lr).div(batchSize)))
-            opt.update(param.toString(), param, param.gradient.div(batchSize))
+            opt.update("param_$index", param, param.gradient.div(batchSize))
 //            param.subi(param.getGradient().mul(lr).div(batchSize));
         }
     }
 
     /**
-     * Allows to do gradient calculations on a subManager. This is very useful when you are training
-     * on a lot of epochs. This subManager could later be closed and all NDArrays generated from the
-     * calculations in this function will be cleared from memory when subManager is closed. This is
-     * always a great practice but the impact is most notable when there is lot of data on various
-     * epochs.
+     * Allows gradient calculations on a subManager. This is useful when training many epochs;
+     * arrays created for gradients are attached to the subManager and cleared when it is closed.
      */
     fun sgd(
         params: NDList,
@@ -68,13 +68,12 @@ object Training {
     ) {
         val lrt = Tracker.fixed(lr)
         val opt = Optimizer.sgd().setLearningRateTracker(lrt).build()
-        for (param in params) {
+        for ((index, param) in params.withIndex()) {
             // Update param in place.
             // param = param - param.gradient * lr / batchSize
-//            val gradient = param.gradient
-//            gradient.attach(subManager)
-//            param.subi(gradient.mul(lr).div(batchSize))
-            opt.update(param.toString(), param, param.gradient.div(batchSize))
+            val gradient = param.gradient
+            gradient.attach(subManager)
+            opt.update("param_$index", param, gradient.div(batchSize))
         }
     }
 
@@ -82,26 +81,23 @@ object Training {
         yHat: NDArray,
         y: NDArray,
     ): Float {
-        // Check size of 1st dimension greater than 1
-        // to see if we have multiple samples
-        if (yHat.shape.size(1) > 1) {
-            // Argmax gets index of maximum args for given axis 1
-            // Convert yHat to same dataType as y (int32)
-            // Sum up number of true entries
-            return yHat
+        // If yHat is 2D with class scores, use argMax; otherwise compare directly.
+        return if (yHat.shape.dimension() > 1 && yHat.shape.get(1) > 1) {
+            yHat
                 .argMax(1)
                 .toType(DataType.INT32, false)
                 .eq(y.toType(DataType.INT32, false))
                 .sum()
                 .toType(DataType.FLOAT32, false)
                 .getFloat()
+        } else {
+            yHat
+                .toType(DataType.INT32, false)
+                .eq(y.toType(DataType.INT32, false))
+                .sum()
+                .toType(DataType.FLOAT32, false)
+                .getFloat()
         }
-        return yHat
-            .toType(DataType.INT32, false)
-            .eq(y.toType(DataType.INT32, false))
-            .sum()
-            .toType(DataType.FLOAT32, false)
-            .getFloat()
     }
 
     fun trainingChapter6(
@@ -119,14 +115,20 @@ object Training {
 
         trainer.evaluators
             .forEach { evaluator ->
-                evaluatorMetrics.put(
-                    "train_epoch_" + evaluator.name,
-                    metrics.getMetric("train_epoch_" + evaluator.name).map { x -> x.value }.toDoubleArray(),
-                )
-                evaluatorMetrics.put(
-                    "validate_epoch_" + evaluator.name,
-                    metrics.getMetric("validate_epoch_" + evaluator.name).map { x -> x.value }.toDoubleArray(),
-                )
+                val trainMetric = metrics.getMetric("train_epoch_" + evaluator.name)
+                if (trainMetric != null) {
+                    evaluatorMetrics.put(
+                        "train_epoch_" + evaluator.name,
+                        trainMetric.map { x -> x.value }.toDoubleArray(),
+                    )
+                }
+                val validateMetric = metrics.getMetric("validate_epoch_" + evaluator.name)
+                if (validateMetric != null) {
+                    evaluatorMetrics.put(
+                        "validate_epoch_" + evaluator.name,
+                        validateMetric.map { x -> x.value }.toDoubleArray(),
+                    )
+                }
             }
 
         return metrics.mean("epoch")
@@ -139,10 +141,13 @@ object Training {
     ): Float {
         val metric = Accumulator(2) // numCorrectedExamples, numExamples
         for (batch in dataIterator) {
-            val X = batch.data.head()
-            val y = batch.labels.head()
-            metric.add(floatArrayOf(accuracy(net(X), y), y.size().toFloat()))
-            batch.close()
+            try {
+                val X = batch.data.head()
+                val y = batch.labels.head()
+                metric.add(floatArrayOf(accuracy(net(X), y), y.size().toFloat()))
+            } finally {
+                batch.close()
+            }
         }
         return metric.get(0) / metric.get(1)
     }
@@ -160,12 +165,15 @@ object Training {
         val metric = Accumulator(2) // sumLoss, numExamples
 
         for (batch in dataIterator) {
-            val X = batch.data.head()
-            val y = batch.labels.head()
-            metric.add(
-                floatArrayOf(loss(net(X), y).sum().getFloat(), y.size().toFloat()),
-            )
-            batch.close()
+            try {
+                val X = batch.data.head()
+                val y = batch.labels.head()
+                metric.add(
+                    floatArrayOf(loss(net(X), y).sum().getFloat(), y.size().toFloat()),
+                )
+            } finally {
+                batch.close()
+            }
         }
         return metric.get(0) / metric.get(1)
     }

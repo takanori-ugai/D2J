@@ -4,6 +4,9 @@ import ai.djl.ndarray.NDManager
 import jp.live.ugai.d2j.timemachine.TimeMachine.trainCh8
 import jp.live.ugai.d2j.timemachine.TimeMachineDataset
 
+/**
+ * Executes main.
+ */
 fun main() {
     val manager = NDManager.newBaseManager()
     val batchSize = 32
@@ -41,4 +44,7 @@ fun main() {
     trainCh8(model, dataset, vocab, lr, numEpochs, device, false, manager)
 }
 
+/**
+ * Represents DeepRnn.
+ */
 class DeepRnn

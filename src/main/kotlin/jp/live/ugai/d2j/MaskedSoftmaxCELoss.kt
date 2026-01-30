@@ -5,10 +5,12 @@ import ai.djl.ndarray.NDList
 import ai.djl.training.loss.SoftmaxCrossEntropyLoss
 
 /**
- * The softmax cross-entropy loss with masks.
+ * Computes softmax cross-entropy loss with sequence masking support.
  */
 class MaskedSoftmaxCELoss : SoftmaxCrossEntropyLoss() {
-    /** {@inheritDoc}  */
+    /**
+     * Evaluates masked softmax cross-entropy loss for the given labels and predictions.
+     */
     override fun evaluate(
         labels: NDList,
         predictions: NDList,

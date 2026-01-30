@@ -15,6 +15,9 @@ import java.io.File
 import java.net.URI
 import java.nio.file.Paths
 
+/**
+ * Executes main.
+ */
 fun main() {
     val manager = NDManager.newBaseManager()
 
@@ -227,7 +230,7 @@ fun main() {
     fun getNegatives(
         allContexts: List<List<Int>>,
         corpus: List<List<Int>>,
-        K: Int,
+        numNegatives: Int,
     ): List<List<Int>> {
         val counter = Vocab.countCorpus2D(corpus)
         val samplingWeights = mutableListOf<Double>()
@@ -238,7 +241,7 @@ fun main() {
         val generator = RandomGenerator(samplingWeights)
         for (contexts in allContexts) {
             val negatives = mutableListOf<Int>()
-            while (negatives.size < contexts.size * K) {
+            while (negatives.size < contexts.size * numNegatives) {
                 val neg = generator.draw()
                 // Noise words cannot be context words
                 if (!contexts.contains(neg)) {
@@ -400,4 +403,7 @@ fun main() {
     }
 }
 
+/**
+ * Represents WordEmbeddingDataSet.
+ */
 class WordEmbeddingDataSet

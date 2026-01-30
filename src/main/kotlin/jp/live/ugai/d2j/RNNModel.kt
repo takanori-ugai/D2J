@@ -10,6 +10,9 @@ import ai.djl.nn.recurrent.RecurrentBlock
 import ai.djl.training.ParameterStore
 import ai.djl.util.PairList
 
+/**
+ * Wraps a recurrent block with a projection layer to map hidden states to vocabulary logits.
+ */
 class RNNModel(
     private val rnnLayer: RecurrentBlock,
     vocabSize: Int,
@@ -24,37 +27,58 @@ class RNNModel(
         this.addChildBlock("linear", dense)
     }
 
+    /**
+     * Runs the recurrent layer over token indices and projects outputs to vocabulary logits.
+     *
+     * @param inputs NDList containing token indices and optional recurrent state.
+     * @return NDList of logits and the next recurrent state.
+     */
     override fun forwardInternal(
         parameterStore: ParameterStore,
         inputs: NDList,
         training: Boolean,
         params: PairList<String, Any>?,
     ): NDList {
-        val X = inputs[0].transpose().oneHot(vocabSize)
-        inputs[0] = X
+        val tokenIndices = inputs[0].transpose().oneHot(vocabSize)
+        inputs[0] = tokenIndices
 //        println(inputs)
         val result = rnnLayer.forward(parameterStore, inputs, training)
-        val Y = result[0]
+        val rnnOutput = result[0]
         val state = result[1]
-        val shapeLength = Y.shape.dimension()
+        val shapeLength = rnnOutput.shape.dimension()
         val output =
             dense.forward(
                 parameterStore,
-                NDList(Y.reshape(Shape(-1, Y.shape[shapeLength - 1]))),
+                NDList(rnnOutput.reshape(Shape(-1, rnnOutput.shape[shapeLength - 1]))),
                 training,
             )
         return NDList(output[0], state)
     }
 
+    /**
+     * Initializes the recurrent and projection layers using inferred input shapes.
+     */
     override fun initializeChildBlocks(
         manager: NDManager,
         dataType: DataType,
         vararg inputShapes: Shape,
     ) {
-        val shape: Shape = rnnLayer.getOutputShapes(arrayOf(inputShapes[0]))[0]
-        dense.initialize(manager, dataType, Shape(vocabSize.toLong(), shape.get(shape.dimension() - 1)))
+        val inputShape = inputShapes[0]
+        val rnnInputShape =
+            if (inputShape.dimension() == 2) {
+                // Input is token indices: (batch, time) -> one-hot -> (time, batch, vocab)
+                Shape(inputShape[1], inputShape[0], vocabSize.toLong())
+            } else {
+                inputShape
+            }
+        rnnLayer.initialize(manager, dataType, rnnInputShape)
+        val rnnOutShape = rnnLayer.getOutputShapes(arrayOf(rnnInputShape))[0]
+        dense.initialize(manager, dataType, Shape(1, rnnOutShape.get(rnnOutShape.dimension() - 1)))
     }
 
-    // We won't implement this since we won't be using it but it's required as part of an AbstractBlock
-    override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape?> = arrayOfNulls<Shape>(0)
+    /**
+     * This block does not provide static output shapes.
+     */
+    override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape?> =
+        throw UnsupportedOperationException("getOutputShapes is not implemented for RNNModel")
 }

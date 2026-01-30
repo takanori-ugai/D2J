@@ -16,6 +16,9 @@ import ai.djl.training.ParameterStore
 import ai.djl.util.PairList
 import jp.live.ugai.d2j.lstm.Decoder
 
+/**
+ * Represents Seq2SeqDecoder.
+ */
 class Seq2SeqDecoder(
     vocabSize: Int,
     embedSize: Int,
@@ -26,6 +29,10 @@ class Seq2SeqDecoder(
     private val embedding: TrainableWordEmbedding
     private val rnn: GRU
     private val dense: Linear
+
+    /**
+     * The attentionWeights.
+     */
     public override var attentionWeights: NDArray? = null
 
     init {
@@ -57,7 +64,9 @@ class Seq2SeqDecoder(
         addChildBlock("dense", dense)
     }
 
-    /** {@inheritDoc}  */
+    /**
+     * Initializes embedding, recurrent, and projection layers based on input shapes.
+     */
     override fun initializeChildBlocks(
         manager: NDManager,
         dataType: DataType,
@@ -85,32 +94,38 @@ class Seq2SeqDecoder(
         }
     }
 
+    /**
+     * Initializes decoder state from encoder outputs.
+     */
     override fun initState(encOutputs: NDList): NDList = NDList(encOutputs[1])
 
+    /**
+     * Runs the decoder forward pass with attention context concatenated to embeddings.
+     */
     override fun forwardInternal(
         parameterStore: ParameterStore,
         inputs: NDList,
         training: Boolean,
         params: PairList<String, Any>?,
     ): NDList {
-        var X = inputs.head()
+        var input = inputs.head()
         var state = inputs[1]
-        X =
+        input =
             embedding
-                .forward(parameterStore, NDList(X), training, params)
+                .forward(parameterStore, NDList(input), training, params)
                 .head()
                 .swapAxes(0, 1)
         var context = state[NDIndex(-1)]
-        // Broadcast `context` so it has the same `numSteps` as `X`
+        // Broadcast `context` so it has the same `numSteps` as `input`
         context =
             context.broadcast(
                 Shape(
-                    X.shape.head(),
+                    input.shape.head(),
                     context.shape.head(),
                     context.shape[1],
                 ),
             )
-        val xAndContext = NDArrays.concat(NDList(X, context), 2)
+        val xAndContext = NDArrays.concat(NDList(input, context), 2)
         val rnnOutput =
             rnn.forward(parameterStore, NDList(xAndContext, state), training)
         var output = rnnOutput.head()

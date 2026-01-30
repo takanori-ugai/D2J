@@ -13,7 +13,15 @@ import java.nio.charset.StandardCharsets
 import java.util.Locale
 import java.util.zip.ZipFile
 
+/**
+ * Utilities for loading and preprocessing the English–French translation dataset.
+ */
 object NMT {
+    /**
+     * Downloads and reads the raw English–French dataset text.
+     *
+     * @return The raw dataset text, or null if the file entry is not found.
+     */
     fun readDataNMT(): String? {
         DownloadUtils.download(
             "http://d2l-data.s3-accelerate.amazonaws.com/fra-eng.zip",
@@ -32,6 +40,13 @@ object NMT {
         return null
     }
 
+    /**
+     * Returns true when punctuation should be preceded by a space.
+     *
+     * @param currChar The current character being examined.
+     * @param prevChar The previous character in the string.
+     * @return True if a space should be inserted before the punctuation.
+     */
     fun noSpace(
         currChar: Char,
         prevChar: Char,
@@ -41,11 +56,17 @@ object NMT {
             prevChar != ' '
     }
 
-    fun preprocessNMT(_text: String): String {
+    /**
+     * Normalizes the raw text by lowercasing and spacing punctuation.
+     *
+     * @param rawText The raw dataset text.
+     * @return The normalized text.
+     */
+    fun preprocessNMT(rawText: String): String {
         // Replace non-breaking space with space, and convert uppercase letters to
         // lowercase ones
 
-        val text = _text.replace('\u202f', ' ').replace("\\xa0".toRegex(), " ").lowercase(Locale.getDefault())
+        val text = rawText.replace('\u202f', ' ').replace("\\xa0".toRegex(), " ").lowercase(Locale.ROOT)
 
         // Insert space between words and punctuation marks
         val out = StringBuilder()
@@ -60,6 +81,13 @@ object NMT {
         return out.toString()
     }
 
+    /**
+     * Tokenizes the dataset into source/target sentence pairs.
+     *
+     * @param text The normalized dataset text.
+     * @param numExamples The maximum number of examples to return, or null for all.
+     * @return A pair of tokenized source and target sentence lists.
+     */
     fun tokenizeNMT(
         text: String,
         numExamples: Int?,
@@ -82,6 +110,14 @@ object NMT {
         return Pair(source, target)
     }
 
+    /**
+     * Truncates or pads a token id sequence to a fixed length.
+     *
+     * @param integerLine The token ids.
+     * @param numSteps The target sequence length.
+     * @param paddingToken The padding token id.
+     * @return The resized sequence.
+     */
     fun truncatePad(
         integerLine: List<Int>,
         numSteps: Int,
@@ -96,6 +132,14 @@ object NMT {
         return line + paddingTokenArr
     }
 
+    /**
+     * Converts tokenized sentences into NDArray batches with valid-lengths.
+     *
+     * @param lines Tokenized sentences.
+     * @param vocab Vocabulary used for token ids.
+     * @param numSteps The fixed sequence length.
+     * @return A pair of (padded token array, valid-length array).
+     */
     fun buildArrayNMT(
         lines: List<List<String>>,
         vocab: Vocab,
@@ -122,6 +166,14 @@ object NMT {
         return Pair(arr, validLen)
     }
 
+    /**
+     * Loads the translation dataset as a batched ArrayDataset and vocabularies.
+     *
+     * @param batchSize The batch size.
+     * @param numSteps The fixed sequence length.
+     * @param numExamples The number of examples to load.
+     * @return The dataset and the source/target vocabularies.
+     */
     fun loadDataNMT(
         batchSize: Int,
         numSteps: Int,

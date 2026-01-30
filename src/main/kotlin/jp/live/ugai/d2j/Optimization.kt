@@ -7,6 +7,10 @@ import org.jetbrains.letsPlot.ggsize
 import org.jetbrains.letsPlot.intern.Plot
 import org.jetbrains.letsPlot.letsPlot
 
+/**
+ * Demonstrates the difference between expected risk and empirical risk functions.
+ * Computes and prints sample values of both risk functions over a range of x values.
+ */
 fun main() {
     // Define the target functions
     val expectedRisk: (Float) -> Float = { x -> x * Math.cos(Math.PI * x).toFloat() }
@@ -17,16 +21,22 @@ fun main() {
     val expectedRiskValues = xValues.map(expectedRisk)
     val empiricalRiskValues = xValues.map(empiricalRisk)
 
-    // If plotting or further processing is needed, use these group labels
-    val expectedGroup = List(xValues.size) { "Expected Risk" }
-    val empiricalGroup = List(xValues.size) { "Empirical Risk" }
-
     // Example: print first few values for verification
     println("x: ${xValues.take(5)}")
     println("Expected Risk: ${expectedRiskValues.take(5)}")
     println("Empirical Risk: ${empiricalRiskValues.take(5)}")
 }
 
+/**
+ * Plots gradient descent trajectory over a function.
+ *
+ * @param fLine The range of x values for the function line.
+ * @param res The x values at each step of the gradient descent.
+ * @param func The function to plot.
+ * @param width The plot width in pixels.
+ * @param height The plot height in pixels.
+ * @return A Plot object with the function line and gradient descent trajectory.
+ */
 fun plotGD(
     fLine: List<Float>,
     res: List<Float>,
@@ -61,4 +71,7 @@ fun plotGD(
     return plot + ggsize(width, height)
 }
 
+/**
+ * Container class for optimization-related utilities and demonstrations.
+ */
 class Optimization

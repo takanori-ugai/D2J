@@ -11,6 +11,9 @@ import ai.djl.nn.AbstractBlock
  * @property attentionWeights The attention weights.
  */
 abstract class Decoder : AbstractBlock() {
+    /**
+     * The attentionWeights.
+     */
     open var attentionWeights: NDArray? = null
 
     /**

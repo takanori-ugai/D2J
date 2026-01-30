@@ -6,12 +6,12 @@ import ai.djl.engine.Engine
 import ai.djl.ndarray.NDArray
 import ai.djl.ndarray.NDArrays
 import ai.djl.ndarray.NDList
+import ai.djl.ndarray.NDManager
 import ai.djl.ndarray.index.NDIndex
 import ai.djl.ndarray.types.DataType
 import ai.djl.ndarray.types.Shape
 import ai.djl.training.DefaultTrainingConfig
 import ai.djl.training.ParameterStore
-import ai.djl.training.Trainer
 import ai.djl.training.dataset.ArrayDataset
 import ai.djl.training.initializer.XavierInitializer
 import ai.djl.training.loss.Loss
@@ -19,7 +19,6 @@ import ai.djl.training.optimizer.Optimizer
 import ai.djl.training.tracker.Tracker
 import jp.live.ugai.d2j.MaskedSoftmaxCELoss
 import jp.live.ugai.d2j.lstm.EncoderDecoder
-import jp.live.ugai.d2j.manager
 import jp.live.ugai.d2j.timemachine.Vocab
 import jp.live.ugai.d2j.util.Accumulator
 import jp.live.ugai.d2j.util.NMT
@@ -49,7 +48,7 @@ object Chap10Utils {
         val shape = input.shape
         val lastDim = shape[shape.dimension() - 1]
         // Create a tensor of indices [0, 1, ..., lastDim-1] and reshape for broadcasting
-        val arange = manager.arange(lastDim.toFloat()).reshape(1, 1, -1)
+        val arange = input.manager.arange(lastDim.toFloat()).reshape(1, 1, -1)
 
         // Ensure validLens is float32 for comparison
         val floatValidLens = validLens.toType(DataType.FLOAT32, false)
@@ -103,18 +102,17 @@ object Chap10Utils {
     /**
      * Transposes the output NDArray back to its original form after multi-head attention.
      *
-     * @param _X The input NDArray.
+     * @param input The input NDArray.
      * @param numHeads The number of attention heads.
      * @return The transposed NDArray.
      */
     fun transposeOutput(
-        _X: NDArray,
+        input: NDArray,
         numHeads: Int,
     ): NDArray {
-        var X = _X
-        X = X.reshape(-1, numHeads.toLong(), X.shape[1], X.shape[2])
-        X = X.transpose(0, 2, 1, 3)
-        return X.reshape(X.shape[0], X.shape[1], -1)
+        val reshaped = input.reshape(-1, numHeads.toLong(), input.shape[1], input.shape[2])
+        val transposed = reshaped.transpose(0, 2, 1, 3)
+        return transposed.reshape(transposed.shape[0], transposed.shape[1], -1)
     }
 
     /**
@@ -135,71 +133,80 @@ object Chap10Utils {
         tgtVocab: Vocab,
         device: Device,
     ) {
-        val loss: Loss = MaskedSoftmaxCELoss()
-        val lrt: Tracker = Tracker.fixed(lr)
-        val adam: Optimizer = Optimizer.adam().optLearningRateTracker(lrt).build()
-        val config: DefaultTrainingConfig =
-            DefaultTrainingConfig(loss)
-                .optOptimizer(adam) // Optimizer (loss function)
-                .optInitializer(XavierInitializer(), "")
-        val model: Model = Model.newInstance("")
-        model.block = net
-        val trainer: Trainer = model.newTrainer(config)
-        var watch: StopWatch
-        var metric: Accumulator
-        var lossValue = 0.0
-        var speed = 0.0
-        for (epoch in 1..numEpochs) {
-            watch = StopWatch()
-            metric = Accumulator(2) // Sum of training loss, no. of tokens
-            for (batch in dataset.getData(manager)) {
-                val X: NDArray = batch.data.get(0)
-                val lenX: NDArray = batch.data.get(1)
-                val Y: NDArray = batch.labels.get(0)
-                val lenY: NDArray = batch.labels.get(1)
-                val bos: NDArray =
-                    manager
-                        .full(Shape(Y.shape[0]), tgtVocab.getIdx("<bos>"))
-                        .reshape(-1, 1)
-                val decInput: NDArray =
-                    NDArrays.concat(
-                        NDList(bos, Y.get(NDIndex(":, :-1"))),
-                        1,
-                    ) // Teacher forcing
-                Engine.getInstance().newGradientCollector().use { gc ->
-                    val yHat: NDArray =
-                        net
-                            .forward(
-                                ParameterStore(manager, false),
-                                NDList(X, decInput, lenX),
-                                true,
-                            ).get(0)
-                    val l = loss.evaluate(NDList(Y, lenY), NDList(yHat))
-                    gc.backward(l)
-                    metric.add(floatArrayOf(l.sum().getFloat(), lenY.sum().getLong().toFloat()))
+        NDManager.newBaseManager(device).use { manager ->
+            val loss: Loss = MaskedSoftmaxCELoss()
+            val lrt: Tracker = Tracker.fixed(lr)
+            val adam: Optimizer = Optimizer.adam().optLearningRateTracker(lrt).build()
+            val config: DefaultTrainingConfig =
+                DefaultTrainingConfig(loss)
+                    .optOptimizer(adam) // Optimizer (loss function)
+                    .optInitializer(XavierInitializer(), "")
+                    .optDevices(arrayOf(device))
+            Model.newInstance("").use { model ->
+                model.block = net
+                model.newTrainer(config).use { trainer ->
+                    var watch: StopWatch
+                    var metric: Accumulator
+                    var lossValue = 0.0
+                    var speed = 0.0
+                    for (epoch in 1..numEpochs) {
+                        watch = StopWatch()
+                        metric = Accumulator(2) // Sum of training loss, no. of tokens
+                        for (batch in dataset.getData(manager)) {
+                            val X: NDArray = batch.data.get(0)
+                            val lenX: NDArray = batch.data.get(1)
+                            val Y: NDArray = batch.labels.get(0)
+                            val lenY: NDArray = batch.labels.get(1)
+                            val bos: NDArray =
+                                manager
+                                    .full(Shape(Y.shape[0]), tgtVocab.getIdx("<bos>"))
+                                    .reshape(-1, 1)
+                            val decInput: NDArray =
+                                NDArrays.concat(
+                                    NDList(bos, Y.get(NDIndex(":, :-1"))),
+                                    1,
+                                ) // Teacher forcing
+                            Engine.getInstance().newGradientCollector().use { gc ->
+                                val yHat: NDArray =
+                                    net
+                                        .forward(
+                                            ParameterStore(manager, false),
+                                            NDList(X, decInput, lenX),
+                                            true,
+                                        ).get(0)
+                                val l = loss.evaluate(NDList(Y, lenY), NDList(yHat))
+                                gc.backward(l)
+                                metric.add(floatArrayOf(l.sum().getFloat(), lenY.sum().getLong().toFloat()))
+                            }
+                            TrainingChapter9.gradClipping(net, 1, manager)
+                            // Update parameters
+                            trainer.step()
+                        }
+                        lossValue = metric.get(0).toDouble() / metric.get(1)
+                        speed = metric.get(1) / watch.stop()
+                        if (epoch % 10 == 0) {
+                            println("$epoch : $lossValue")
+                        }
+                    }
+                    println(
+                        "loss: %.3f, %.1f tokens/sec on %s%n".format(lossValue, speed, device.toString()),
+                    )
                 }
-                TrainingChapter9.gradClipping(net, 1, manager)
-                // Update parameters
-                trainer.step()
-            }
-            lossValue = metric.get(0).toDouble() / metric.get(1)
-            speed = metric.get(1) / watch.stop()
-            if ((epoch + 1) % 10 == 0) {
-                println("${epoch + 1} : $lossValue")
             }
         }
-        println("loss: %.3f, %.1f tokens/sec on %s%n".format(lossValue, speed, device.toString()))
     }
 
     /**
      * Tokenizes a sentence, appends <eos>, pads/truncates to numSteps, and returns the NDArray and valid length.
      *
+     * @param manager The NDManager used to create NDArrays.
      * @param sentence The input sentence to tokenize.
      * @param vocab The vocabulary for tokenization.
      * @param numSteps The maximum sequence length after padding/truncation.
      * @return Pair of (tokenized & padded NDArray with batch axis, valid length NDArray).
      */
     fun tokenizeAndPad(
+        manager: NDManager,
         sentence: String,
         vocab: Vocab,
         numSteps: Int,
@@ -207,7 +214,7 @@ object Chap10Utils {
         val tokens =
             vocab.getIdxs(sentence.lowercase(Locale.getDefault()).split(" ")) +
                 listOf(vocab.getIdx("<eos>"))
-        val validLen = manager.create(tokens.size)
+        val validLen = manager.create(longArrayOf(tokens.size.toLong()))
         val paddedTokens = NMT.truncatePad(tokens, numSteps, vocab.getIdx("<pad>"))
         val tokenArray = manager.create(paddedTokens.toIntArray()).expandDims(0)
         return Pair(tokenArray, validLen)
@@ -221,8 +228,8 @@ object Chap10Utils {
      * @param srcVocab The source vocabulary.
      * @param tgtVocab The target vocabulary.
      * @param numSteps The number of time steps in the prediction.
-     * @param device The device (CPU/GPU) where the prediction takes place.
      * @param saveAttentionWeights Whether to save the attention weights.
+     * @param manager The NDManager used for inference allocations.
      * @return The predicted sequence and the attention weights.
      */
     fun predictSeq2Seq(
@@ -231,42 +238,49 @@ object Chap10Utils {
         srcVocab: Vocab,
         tgtVocab: Vocab,
         numSteps: Int,
-        device: Device,
         saveAttentionWeights: Boolean,
+        manager: NDManager,
     ): Pair<String, List<List<Pair<FloatArray, Shape>>>> {
-        val (encX, encValidLen) = tokenizeAndPad(srcSentence, srcVocab, numSteps)
-        val encOutputs = net.encoder.forward(ParameterStore(manager, false), NDList(encX, encValidLen), false)
-        var decState = net.decoder.initState(encOutputs.addAll(NDList(encValidLen)))
-        // Add the batch axis
-        var decX = manager.create(floatArrayOf(tgtVocab.getIdx("<bos>").toFloat())).expandDims(0)
-        val outputSeq: MutableList<Int> = mutableListOf()
-        val attentionWeightSeq: MutableList<List<Pair<FloatArray, Shape>>> = mutableListOf()
-        for (i in 0 until numSteps) {
-            val output =
-                net.decoder.forward(
-                    ParameterStore(manager, false),
-                    NDList(decX).addAll(decState),
+        manager.newSubManager().use { localManager ->
+            val (encX, encValidLen) = tokenizeAndPad(localManager, srcSentence, srcVocab, numSteps)
+            val encOutputs =
+                net.encoder.forward(
+                    ParameterStore(localManager, false),
+                    NDList(encX, encValidLen),
                     false,
                 )
-            val Y = output[0]
-            decState = output.subNDList(1)
-            // We use the token with the highest prediction likelihood as the input
-            // of the decoder at the next time step
-            decX = Y.argMax(2)
-            val pred = decX.squeeze(0).getLong().toInt()
-            // Save attention weights (to be covered later)
-            if (saveAttentionWeights) {
-                attentionWeightSeq.add((net.decoder as AttentionDecoder).attentionWeightArr)
+            var decState = net.decoder.initState(encOutputs)
+            // Add the batch axis
+            var decX = localManager.create(floatArrayOf(tgtVocab.getIdx("<bos>").toFloat())).expandDims(0)
+            val outputSeq: MutableList<Int> = mutableListOf()
+            val attentionWeightSeq: MutableList<List<Pair<FloatArray, Shape>>> = mutableListOf()
+            for (i in 0 until numSteps) {
+                val output =
+                    net.decoder.forward(
+                        ParameterStore(localManager, false),
+                        NDList(decX).addAll(decState),
+                        false,
+                    )
+                val Y = output[0]
+                decState = output.subNDList(1)
+                // We use the token with the highest prediction likelihood as the input
+                // of the decoder at the next time step
+                decX = Y.argMax(2)
+                val pred = decX.squeeze(0).getLong().toInt()
+                // Save attention weights (to be covered later)
+                if (saveAttentionWeights) {
+                    attentionWeightSeq.add((net.decoder as AttentionDecoder).attentionWeightArr)
+                }
+                // Once the end-of-sequence token is predicted, the generation of the
+                // output sequence is complete
+                if (pred == tgtVocab.getIdx("<eos>")) {
+                    break
+                }
+                outputSeq.add(pred)
             }
-            // Once the end-of-sequence token is predicted, the generation of the
-            // output sequence is complete
-            if (pred == tgtVocab.getIdx("<eos>")) {
-                break
-            }
-            outputSeq.add(pred)
+            val outputString: String = tgtVocab.toTokens(outputSeq).joinToString(separator = " ")
+            return Pair(outputString, attentionWeightSeq)
         }
-        val outputString: String = tgtVocab.toTokens(outputSeq).joinToString(separator = " ")
-        return Pair(outputString, attentionWeightSeq)
     }
 
     /**

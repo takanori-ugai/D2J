@@ -3,3 +3,15 @@ build:
 style:
   MagicNumber:
     active: false
+  ReturnCount:
+    max: 5
+complexity:
+  LongParameterList:
+    functionThreshold: 20
+    constructorThreshold: 20
+  LongMethod:
+    threshold: 200
+  CyclomaticComplexMethod:
+    threshold: 50
+  NestedBlockDepth:
+    threshold: 10

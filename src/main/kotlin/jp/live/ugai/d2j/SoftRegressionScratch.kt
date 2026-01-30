@@ -10,11 +10,15 @@ import ai.djl.ndarray.types.DataType
 import ai.djl.ndarray.types.Shape
 import ai.djl.training.dataset.Batch
 import ai.djl.training.dataset.Dataset
+import jp.live.ugai.d2j.util.Accumulator
 import org.jetbrains.letsPlot.geom.geomLine
 import org.jetbrains.letsPlot.ggsize
 import org.jetbrains.letsPlot.intern.Plot
 import org.jetbrains.letsPlot.letsPlot
 
+/**
+ * Trains and evaluates a softmax regression model on Fashion-MNIST.
+ */
 fun main() {
     System.setProperty("org.slf4j.simpleLogger.showThreadName", "false")
     System.setProperty("org.slf4j.simpleLogger.showLogName", "true")
@@ -74,9 +78,9 @@ fun main() {
     val numInputs = 784
     val numOutputs = 10
     val manager = NDManager.newBaseManager()
-    val W = manager.randomNormal(0f, 0.01f, Shape(numInputs.toLong(), numOutputs.toLong()), DataType.FLOAT32)
-    val b = manager.zeros(Shape(numOutputs.toLong()), DataType.FLOAT32)
-    val params = NDList(W, b)
+    val weights = manager.randomNormal(0f, 0.01f, Shape(numInputs.toLong(), numOutputs.toLong()), DataType.FLOAT32)
+    val bias = manager.zeros(Shape(numOutputs.toLong()), DataType.FLOAT32)
+    val params = NDList(weights, bias)
 
     fun updater(
         params: NDList,
@@ -94,17 +98,18 @@ fun main() {
         }
     }
 
-    fun softmax(X: NDArray): NDArray {
-        val Xexp = X.exp()
-        val partition = Xexp.sum(intArrayOf(1), true)
-//        println(Xexp.div(partition))
-        return Xexp.div(partition) // The broadcast mechanism is applied here
+    fun softmax(input: NDArray): NDArray {
+        val shifted = input.sub(input.max(intArrayOf(1), true))
+        val inputExp = shifted.exp()
+        val partition = inputExp.sum(intArrayOf(1), true)
+//        println(inputExp.div(partition))
+        return inputExp.div(partition) // The broadcast mechanism is applied here
     }
 
-    fun net(X: NDArray): NDArray {
+    fun net(features: NDArray): NDArray {
         val currentW: NDArray = params.get(0)
         val currentB: NDArray = params.get(1)
-        return softmax(X.reshape(Shape(-1, numInputs.toLong())).dot(currentW).add(currentB))
+        return softmax(features.reshape(Shape(-1, numInputs.toLong())).dot(currentW).add(currentB))
     }
 
     fun crossEntropy(
@@ -157,11 +162,15 @@ fun main() {
         dataIterator: Iterable<Batch>,
     ): Float {
         val metric: Accumulator = Accumulator(2) // numCorrectedExamples, numExamples
-        val batch = dataIterator.iterator().next()
-        val X = batch.data.head()
-        val y = batch.labels.head()
-        metric.add(floatArrayOf(accuracy(net(X), y), y.size().toFloat()))
-        batch.close()
+        for (batch in dataIterator) {
+            try {
+                val features = batch.data.head()
+                val y = batch.labels.head()
+                metric.add(floatArrayOf(accuracy(net(features), y), y.size().toFloat()))
+            } finally {
+                batch.close()
+            }
+        }
         return metric[0] / metric[1]
     }
 
@@ -180,15 +189,15 @@ fun main() {
             .optLimit(java.lang.Long.getLong("DATASET_LIMIT", Long.MAX_VALUE))
             .build()
 
-    var X = manager.create(arrayOf(intArrayOf(1, 2, 3), intArrayOf(4, 5, 6)))
-    println(X.sum(intArrayOf(0), true))
-    println(X.sum(intArrayOf(1), true))
-    println(X.sum(intArrayOf(0, 1), true))
+    var sampleData = manager.create(arrayOf(intArrayOf(1, 2, 3), intArrayOf(4, 5, 6)))
+    println(sampleData.sum(intArrayOf(0), true))
+    println(sampleData.sum(intArrayOf(1), true))
+    println(sampleData.sum(intArrayOf(0, 1), true))
 
-    X = manager.randomNormal(Shape(2, 5))
-    val Xprob = softmax(X)
-    println(Xprob)
-    println(Xprob.sum(intArrayOf(1)))
+    sampleData = manager.randomNormal(Shape(2, 5))
+    val prob = softmax(sampleData)
+    println(prob)
+    println(prob.sum(intArrayOf(1)))
 
     val yHat = manager.create(arrayOf(floatArrayOf(0.1f, 0.3f, 0.6f), floatArrayOf(0.3f, 0.2f, 0.5f)))
     val index = NDIndex().addAllDim().addPickDim(manager.create(intArrayOf(0, 2)))
@@ -213,25 +222,28 @@ fun main() {
             param.setRequiresGradient(true)
         }
         for (batch in trainIter) {
-            var X = batch.data.head()
-            val y = batch.labels.head()
-            X = X.reshape(Shape(-1, numInputs.toLong()))
-            Engine.getInstance().newGradientCollector().use { gc ->
-                // Minibatch loss in X and y
-                val yHat = net(X)
-                val l: NDArray = loss(yHat, y)
-                gc.backward(l) // Compute gradient on l with respect to w and b
-                metric.add(
-                    floatArrayOf(
-                        l.sum().toType(DataType.FLOAT32, false).getFloat(),
-                        accuracy(yHat, y),
-                        y.size().toFloat(),
-                    ),
-                )
-                gc.close()
+            try {
+                var batchFeatures = batch.data.head()
+                val y = batch.labels.head()
+                batchFeatures = batchFeatures.reshape(Shape(-1, numInputs.toLong()))
+                Engine.getInstance().newGradientCollector().use { gc ->
+                    // Minibatch loss in features and y
+                    val yHat = net(batchFeatures)
+                    val l: NDArray = loss(yHat, y)
+                    gc.backward(l) // Compute gradient on l with respect to w and b
+                    metric.add(
+                        floatArrayOf(
+                            l.sum().toType(DataType.FLOAT32, false).getFloat(),
+                            accuracy(yHat, y),
+                            y.size().toFloat(),
+                        ),
+                    )
+                    gc.close()
+                }
+                updater(params, lr, batch.size) // Update parameters using their gradient
+            } finally {
+                batch.close()
             }
-            updater(params, lr, batch.size) // Update parameters using their gradient
-            batch.close()
         }
         // Return trainLoss, trainAccuracy
         return floatArrayOf(metric[0] / metric[2], metric[1] / metric[2])
@@ -247,8 +259,8 @@ fun main() {
     ) {
         val animator = Animator()
         for (i in 1..numEpochs) {
-            val trainMetrics = trainEpochCh3(net, trainDataset.getData(jp.live.ugai.d2j.manager), loss, updater)
-            val accuracy = evaluateAccuracy(net, testDataset.getData(jp.live.ugai.d2j.manager))
+            val trainMetrics = trainEpochCh3(net, trainDataset.getData(manager), loss, updater)
+            val accuracy = evaluateAccuracy(net, testDataset.getData(manager))
             val trainAccuracy = trainMetrics[1]
             val trainLoss = trainMetrics[0]
             animator.add(i, accuracy, trainAccuracy, trainLoss)
@@ -261,25 +273,7 @@ fun main() {
     trainCh3(::net, trainingSet, validationSet, ::crossEntropy, numEpochs, ::updater)
 }
 
-class Accumulator(
-    n: Int,
-) {
-    var data: FloatArray = FloatArray(n)
-
-    // Adds a set of numbers to the array
-    fun add(args: FloatArray) {
-        for (i in args.indices) {
-            data[i] += args[i]
-        }
-    }
-
-    // Resets the array
-    fun reset() {
-        data.fill(0f)
-    }
-
-    // Returns the data point at the given index
-    operator fun get(index: Int): Float = data[index]
-}
-
-class SoftRegressionScratch
+/**
+ * Container for softmax regression scratch implementation examples.
+ */
+internal class SoftRegressionScratch

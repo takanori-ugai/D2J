@@ -15,7 +15,13 @@ import ai.djl.util.PairList
  * @property decoder The decoder part of the architecture.
  */
 class EncoderDecoder(
+    /**
+     * The encoder.
+     */
     var encoder: Encoder,
+    /**
+     * The decoder.
+     */
     var decoder: Decoder,
 ) : AbstractBlock() {
     init {
@@ -34,7 +40,45 @@ class EncoderDecoder(
         manager: NDManager,
         dataType: DataType,
         vararg inputShapes: Shape,
-    ) {}
+    ) {
+        require(inputShapes.size >= 2) {
+            "EncoderDecoder expects at least 2 input shapes: encoder input and decoder input."
+        }
+
+        val encShapes =
+            if (inputShapes.size > 2) {
+                arrayOf(inputShapes[0], inputShapes[2])
+            } else {
+                arrayOf(inputShapes[0])
+            }
+        when (encShapes.size) {
+            1 -> encoder.initialize(manager, dataType, encShapes[0])
+            2 -> encoder.initialize(manager, dataType, encShapes[0], encShapes[1])
+            else -> throw IllegalArgumentException("Unsupported encoder input shape count: ${encShapes.size}")
+        }
+
+        if (inputShapes.size > 2) {
+            decoder.initialize(manager, dataType, inputShapes[1], inputShapes[2])
+            return
+        }
+
+        val encOutShapes =
+            try {
+                encoder.getOutputShapes(encShapes)
+            } catch (ex: UnsupportedOperationException) {
+                throw IllegalStateException(
+                    "Encoder output shapes are required to initialize the decoder. " +
+                        "Provide an explicit state shape or implement encoder output shapes.",
+                    ex,
+                )
+            }
+
+        require(encOutShapes.size >= 2) {
+            "Cannot infer decoder state shape from encoder outputs. " +
+                "Initialize encoder and decoder separately or provide an explicit state shape."
+        }
+        decoder.initialize(manager, dataType, inputShapes[1], encOutShapes[1])
+    }
 
     /**
      * Performs the forward pass of the Encoder-Decoder architecture.
@@ -51,6 +95,9 @@ class EncoderDecoder(
         training: Boolean,
         params: PairList<String, Any>?,
     ): NDList {
+        require(inputs.size >= 2) {
+            "EncoderDecoder forward expects at least 2 inputs: encoder input and decoder input."
+        }
         val encX = if (inputs.size > 2) NDList(inputs[0], inputs[2]) else NDList(inputs[0])
         val decState = decoder.initState(encoder.forward(parameterStore, encX, training, params))
         return decoder.forward(parameterStore, NDList(inputs[1]).addAll(decState), training, params)
@@ -63,5 +110,19 @@ class EncoderDecoder(
      * @return The output shapes.
      * @throws UnsupportedOperationException If the method is not implemented.
      */
-    override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> = throw UnsupportedOperationException("Not implemented")
+    override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> {
+        require(inputShapes.size >= 2) {
+            "EncoderDecoder expects at least 2 input shapes: encoder input and decoder input."
+        }
+        if (inputShapes.size > 2) {
+            return decoder.getOutputShapes(arrayOf(inputShapes[1], inputShapes[2]))
+        }
+        val encShapes = arrayOf(inputShapes[0])
+        val encOutShapes = encoder.getOutputShapes(encShapes)
+        require(encOutShapes.size >= 2) {
+            "Cannot infer decoder output shapes from encoder outputs. " +
+                "Provide an explicit state shape or implement encoder output shapes."
+        }
+        return decoder.getOutputShapes(arrayOf(inputShapes[1], encOutShapes[1]))
+    }
 }

@@ -13,6 +13,9 @@ import java.nio.charset.StandardCharsets
 import java.util.Locale
 import java.util.zip.ZipFile
 
+/**
+ * Executes main.
+ */
 fun main() {
     val manager = NDManager.newBaseManager()
 
@@ -43,10 +46,10 @@ fun main() {
         return (listOf(',', '.', '!', '?').contains(currChar) && prevChar != ' ')
     }
 
-    fun preprocessNMT(_text: String): String {
+    fun preprocessNMT(rawText: String): String {
         // Replace non-breaking space with space, and convert uppercase letters to
         // lowercase ones
-        var text = _text.replace('\u202f', ' ').replace("\\xa0".toRegex(), " ").lowercase(Locale.getDefault())
+        var text = rawText.replace('\u202f', ' ').replace("\\xa0".toRegex(), " ").lowercase(Locale.getDefault())
 
         // Insert space between words and punctuation marks
         val out = StringBuilder()
@@ -184,14 +187,17 @@ fun main() {
     val tgtVocab: Vocab = output.second.second
 
     val batch = dataset.getData(manager).iterator().next()
-    val X = batch.data[0]
+    val sourceBatch = batch.data[0]
     val xValidLen = batch.data[1]
-    val Y = batch.labels[0]
+    val targetBatch = batch.labels[0]
     val yValidLen = batch.labels[1]
-    println(X)
+    println(sourceBatch)
     println(xValidLen)
-    println(Y)
+    println(targetBatch)
     println(yValidLen)
 }
 
+/**
+ * Represents MachineTranslation.
+ */
 class MachineTranslation

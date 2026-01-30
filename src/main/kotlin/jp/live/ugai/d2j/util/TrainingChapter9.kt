@@ -4,8 +4,13 @@ import ai.djl.ndarray.NDList
 import ai.djl.ndarray.NDManager
 import ai.djl.nn.AbstractBlock
 
+/**
+ * Singleton for TrainingChapter9.
+ */
 object TrainingChapter9 {
-    /** Clip the gradient.  */
+    /**
+     * Executes gradClipping.
+     */
     fun gradClipping(
         net: Any,
         theta: Int,

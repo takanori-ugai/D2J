@@ -8,7 +8,13 @@ import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
+/**
+ * Represents SequentialBlockTest.
+ */
 class SequentialBlockTest {
+    /**
+     * Executes testOutputShape.
+     */
     @Test
     fun testOutputShape() {
         val manager = NDManager.newBaseManager()

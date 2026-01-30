@@ -24,9 +24,13 @@ import ai.djl.training.loss.Loss
 import ai.djl.training.optimizer.Optimizer
 import ai.djl.training.tracker.Tracker
 import ai.djl.util.PairList
+import jp.live.ugai.d2j.util.LoggingUtils
 import jp.live.ugai.d2j.util.Training
 import jp.live.ugai.d2j.util.getLong
 
+/**
+ * Represents BatchNormBlock.
+ */
 class BatchNormBlock(
     private val numFeatures: Int,
     numDimensions: Int,
@@ -37,6 +41,9 @@ class BatchNormBlock(
     private var beta: Parameter
 
     init {
+        /**
+         * The shape.
+         */
         val shape =
             if (numDimensions == 2) {
                 Shape(1, numFeatures.toLong())
@@ -61,13 +68,16 @@ class BatchNormBlock(
                     .optShape(shape)
                     .build(),
             )
+        /**
+         * The manager.
+         */
         val manager = NDManager.newBaseManager()
         movingMean = manager.zeros(shape)
         movingVar = manager.zeros(shape)
     }
 
     private fun batchNormUpdate(
-        X: NDArray,
+        input: NDArray,
         gamma: NDArray,
         beta: NDArray,
         movingMean0: NDArray,
@@ -83,26 +93,29 @@ class BatchNormBlock(
             movingVar.attach(subManager)
             val xHat: NDArray
             if (!isTraining) {
-                xHat = X.sub(movingMean).div(movingVar.add(eps).sqrt())
+                xHat = input.sub(movingMean).div(movingVar.add(eps).sqrt())
             } else {
                 // Averages over all axes except for the 'features' axis (axis 1)
-                val axesToReduce = (0 until X.shape.dimension()).filter { it != 1 }.toIntArray()
+                val axesToReduce = (0 until input.shape.dimension()).filter { it != 1 }.toIntArray()
 
                 // The DJL PyTorch engine only supports mean over a single axis, so we fold/chain the calls
-                val mean = axesToReduce.fold(X) { acc, axis -> acc.mean(intArrayOf(axis), true) }
-                val vari = axesToReduce.fold(X.sub(mean).pow(2)) { acc, axis -> acc.mean(intArrayOf(axis), true) }
+                val mean = axesToReduce.fold(input) { acc, axis -> acc.mean(intArrayOf(axis), true) }
+                val vari = axesToReduce.fold(input.sub(mean).pow(2)) { acc, axis -> acc.mean(intArrayOf(axis), true) }
 
-                xHat = X.sub(mean).div(vari.add(eps).sqrt())
+                xHat = input.sub(mean).div(vari.add(eps).sqrt())
                 movingMean = movingMean.mul(momentum).add(mean.mul(1.0f - momentum))
                 movingVar = movingVar.mul(momentum).add(vari.mul(1.0f - momentum))
             }
-            val Y = xHat.mul(gamma).add(beta)
+            val output = xHat.mul(gamma).add(beta)
             movingMean.attach(subManager.parentManager)
             movingVar.attach(subManager.parentManager)
-            return NDList(Y, movingMean, movingVar)
+            return NDList(output, movingMean, movingVar)
         }
     }
 
+    /**
+     * Executes forwardInternal.
+     */
     override fun forwardInternal(
         parameterStore: ParameterStore,
         inputs: NDList,
@@ -129,11 +142,17 @@ class BatchNormBlock(
         return NDList(result[0])
     }
 
+    /**
+     * Executes getOutputShapes.
+     */
     override fun getOutputShapes(inputs: Array<Shape>): Array<Shape> {
         // Batch norm does not change the shape of the input
         return inputs
     }
 
+    /**
+     * Executes toString.
+     */
     override fun toString(): String = "BatchNormBlock(numFeatures=$numFeatures)"
 
     companion object {
@@ -143,7 +162,7 @@ class BatchNormBlock(
 
         @JvmStatic
         fun main(args: Array<String>) {
-            setSystemProperties()
+            LoggingUtils.setDjlLoggingProperties()
 
             val trainIter = prepareDataset(Dataset.Usage.TRAIN, BATCH_SIZE)
             val testIter = prepareDataset(Dataset.Usage.TEST, BATCH_SIZE)
@@ -160,7 +179,9 @@ class BatchNormBlock(
                     .optOptimizer(optimizer)
                     .optDevices(Engine.getInstance().getDevices(1))
                     .addEvaluator(Accuracy())
-                    .addTrainingListeners(*TrainingListener.Defaults.logging())
+                    .also { cfg ->
+                        TrainingListener.Defaults.logging().forEach { cfg.addTrainingListeners(it) }
+                    }
 
             val trainer = model.newTrainer(config)
             trainer.initialize(Shape(1, 1, 28, 28))
@@ -193,15 +214,6 @@ class BatchNormBlock(
                     .values()
             println("gamma ${batchNormFirstParams[0].array.reshape(-1)}")
             println("beta ${batchNormFirstParams[1].array.reshape(-1)}")
-        }
-
-        private fun setSystemProperties() {
-            System.setProperty("org.slf4j.simpleLogger.showThreadName", "false")
-            System.setProperty("org.slf4j.simpleLogger.showLogName", "true")
-            System.setProperty("org.slf4j.simpleLogger.log.ai.djl.pytorch", "WARN")
-            System.setProperty("org.slf4j.simpleLogger.log.ai.djl.mxnet", "ERROR")
-            System.setProperty("org.slf4j.simpleLogger.log.ai.djl.ndarray.index", "ERROR")
-            System.setProperty("org.slf4j.simpleLogger.log.ai.djl.tensorflow", "WARN")
         }
 
         private fun prepareDataset(

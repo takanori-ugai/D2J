@@ -8,7 +8,13 @@ import java.awt.Color
 import java.awt.RenderingHints
 import java.awt.image.BufferedImage
 
+/**
+ * Singleton for ImageUtils.
+ */
 object ImageUtils {
+    /**
+     * Executes showImages.
+     */
     fun showImages(
         images: List<BufferedImage>,
         labels: List<String>,
@@ -41,6 +47,9 @@ object ImageUtils {
         return output
     }
 
+    /**
+     * Executes showImages.
+     */
     fun showImages(
         images: List<BufferedImage>,
         width: Int,
@@ -65,6 +74,9 @@ object ImageUtils {
         return output
     }
 
+    /**
+     * Executes drawBBoxes.
+     */
     fun drawBBoxes(
         img: Image,
         boxes: NDArray,
@@ -88,6 +100,9 @@ object ImageUtils {
         img.drawBoundingBoxes(detectedObjects)
     }
 
+    /**
+     * Executes bboxToRect.
+     */
     fun bboxToRect(bbox: NDArray): Rectangle {
         val width = bbox.getFloat(2) - bbox.getFloat(0)
         val height = bbox.getFloat(3) - bbox.getFloat(1)

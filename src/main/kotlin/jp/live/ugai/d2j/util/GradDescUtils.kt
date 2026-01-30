@@ -7,8 +7,25 @@ import org.jetbrains.letsPlot.geom.geomPoint
 import org.jetbrains.letsPlot.ggsize
 import org.jetbrains.letsPlot.intern.Plot
 import org.jetbrains.letsPlot.letsPlot
+import org.slf4j.LoggerFactory
 
+/**
+ * Utilities for plotting and tracing gradient descent behavior.
+ */
 object GradDescUtils {
+    private val logger = LoggerFactory.getLogger(GradDescUtils::class.java)
+
+    /**
+     * Plots a function line and gradient descent trajectory.
+     *
+     * @param x0 The x-values for the function line.
+     * @param y0 The y-values for the function line.
+     * @param segment The x-values visited during optimization.
+     * @param func The objective function to plot along the segment.
+     * @param width The plot width in pixels.
+     * @param height The plot height in pixels.
+     * @return A Plot with the function line and optimization trajectory.
+     */
     fun plotGD(
         x0: List<Float>,
         y0: List<Float>,
@@ -38,6 +55,14 @@ object GradDescUtils {
         return plot + ggsize(width, height)
     }
 
+    /**
+     * Builds a plot showing the optimization trace over a 1D function.
+     *
+     * @param res The x-values visited during optimization.
+     * @param f The objective function to evaluate.
+     * @param manager The NDManager used to create the plotting range.
+     * @return A Plot of the function and trace points.
+     */
     fun showTrace(
         res: List<Float>,
         f: (Float) -> Float,
@@ -49,6 +74,14 @@ object GradDescUtils {
     }
 
     // Optimize a 2D objective function with a customized trainer.
+
+    /**
+     * Runs a 2D optimization loop with a custom trainer function.
+     *
+     * @param trainer The update rule that returns the next state from current state.
+     * @param steps The number of optimization steps to run.
+     * @return The list of 2D points visited during optimization.
+     */
     fun train2d(
         trainer: (List<Float>) -> List<Float>,
         steps: Int,
@@ -73,12 +106,20 @@ object GradDescUtils {
     }
 
     // Show the trace of 2D variables during optimization.
+
+    /**
+     * Plots the trace of 2D optimization steps on a contour plot.
+     *
+     * @param f The 2D objective function.
+     * @param results The optimization trace points.
+     * @return A Plot showing the contour and optimization trajectory.
+     */
     fun showTrace2d(
         f: (Float, Float) -> Float,
         results: List<Weights>,
     ): Plot {
-        // TODO: add when tablesaw adds support for contour and meshgrids
-        println("Tablesaw not supporting for contour and meshgrids, will update soon")
+        // Contour and meshgrid rendering depends on tablesaw support.
+        logger.debug("Tablesaw does not support contour and meshgrids; skipping contour rendering.")
 
         fun meshgridPoints(
             x: List<Double>,
@@ -97,7 +138,7 @@ object GradDescUtils {
         val x1 = results.map { it.x1 }
         val x2 = results.map { it.x2 }
 
-        var gridPoints =
+        val gridPoints =
             meshgridPoints(
                 generateSequence(
                     (x1.min() - 0.5f).toDouble(),
@@ -109,8 +150,8 @@ object GradDescUtils {
                 ).takeWhile { it <= (x2.max() + 0.5f).toDouble() }.toList(),
             )
 
-        var dd = mapOf("x" to x1, "y" to x2, "z" to results.map { f(it.x1, it.x2) })
-        var dd3 =
+        val dd = mapOf("x" to x1, "y" to x2, "z" to results.map { f(it.x1, it.x2) })
+        val dd3 =
             mapOf(
                 "x" to gridPoints.map { it.first },
                 "y" to gridPoints.map { it.second },
@@ -137,6 +178,15 @@ object GradDescUtils {
         return plot + ggsize(500, 400)
     }
 
+    /**
+     * Plots exponential decay curves for multiple gamma values over time.
+     *
+     * @param time The time steps.
+     * @param gammas The gamma values to plot.
+     * @param width The plot width in pixels.
+     * @param height The plot height in pixels.
+     * @return A Plot of gamma decay curves.
+     */
     fun plotGammas(
         time: List<Float>,
         gammas: List<Float>,
@@ -182,7 +232,13 @@ object GradDescUtils {
     }
 }
 
-class Weights(
-    var x1: Float,
-    var x2: Float,
+/**
+ * Represents a point in 2D optimization space.
+ *
+ * @property x1 The first coordinate.
+ * @property x2 The second coordinate.
+ */
+data class Weights(
+    val x1: Float,
+    val x2: Float,
 )

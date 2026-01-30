@@ -28,6 +28,9 @@ import ai.djl.training.tracker.Tracker
 import ai.djl.util.PairList
 import jp.live.ugai.d2j.attention.MultiHeadAttention
 
+/**
+ * Executes main.
+ */
 fun main() {
     System.setProperty("org.slf4j.simpleLogger.showThreadName", "false")
     System.setProperty("org.slf4j.simpleLogger.showLogName", "true")
@@ -43,16 +46,16 @@ fun main() {
     val numHiddens = 512
     val batchSize = 4
     val patchEmb = PatchEmbedding(imgSize, patchSize, numHiddens)
-    val X = manager.randomNormal(Shape(batchSize.toLong(), 3, imgSize.toLong(), imgSize.toLong()))
-    patchEmb.initialize(manager, DataType.FLOAT32, X.shape)
-    println(patchEmb.forward(ps, NDList(X), false))
+    val inputBatch = manager.randomNormal(Shape(batchSize.toLong(), 3, imgSize.toLong(), imgSize.toLong()))
+    patchEmb.initialize(manager, DataType.FLOAT32, inputBatch.shape)
+    println(patchEmb.forward(ps, NDList(inputBatch), false))
 //        (batch_size, (img_size//patch_size)**2, num_hiddens))
 
-    val X1 = manager.ones(Shape(2, 100, 24))
+    val sampleInput = manager.ones(Shape(2, 100, 24))
     val encoderBlk = ViTBlock(24, 24, 48, 8, 0.5f)
-    encoderBlk.initialize(manager, DataType.FLOAT32, X1.shape, Shape(2))
-    println(encoderBlk.forward(ps, NDList(X1, null), false))
-    println("Shapes : ${encoderBlk.getOutputShapes(arrayOf(X1.shape)).toList()}")
+    encoderBlk.initialize(manager, DataType.FLOAT32, sampleInput.shape, Shape(2))
+    println(encoderBlk.forward(ps, NDList(sampleInput, null), false))
+    println("Shapes : ${encoderBlk.getOutputShapes(arrayOf(sampleInput.shape)).toList()}")
 
     val imgSize0 = 28
     val patchSize0 = 16
@@ -64,7 +67,7 @@ fun main() {
     val blkDropout0 = 0.1f
     val batchSize0 = 256
     val lr = 0.001f
-    val X0 = manager.ones(Shape(batchSize0.toLong(), 1, imgSize0.toLong(), imgSize0.toLong()))
+    val trainImages = manager.ones(Shape(batchSize0.toLong(), 1, imgSize0.toLong(), imgSize0.toLong()))
     val encoder =
         ViT(
             imgSize0,
@@ -75,7 +78,6 @@ fun main() {
             numBlks0,
             embDropout0,
             blkDropout0,
-            lr,
         )
 //    encoder.initialize(manager, DataType.FLOAT32, X0.shape)
 
@@ -111,19 +113,20 @@ fun main() {
             .optOptimizer(adam) // Optimizer (loss function)
             .optInitializer(XavierInitializer(), "")
             .addEvaluator(Accuracy()) // Model Accuracy
-            .addTrainingListeners(*TrainingListener.Defaults.logging())
-    ; // Logging
+            .also { cfg ->
+                TrainingListener.Defaults.logging().forEach { cfg.addTrainingListeners(it) }
+            }
 
     val trainer: Trainer = model.newTrainer(config)
-    trainer.initialize(X0.shape)
+    trainer.initialize(trainImages.shape)
     trainer.metrics = Metrics()
     EasyTrain.fit(trainer, 5, trainingSet, validationSet)
 
     val batch = validationSet.getData(manager).iterator().next()
-    val X3 = batch.getData().head()
+    val batchImages = batch.getData().head()
     val yHat: IntArray =
         encoder
-            .forward(ps, NDList(X3), false)
+            .forward(ps, NDList(batchImages), false)
             .head()
             .argMax(1)
             .toType(DataType.INT32, false)
@@ -140,12 +143,30 @@ fun main() {
     )
 }
 
+/**
+ * Represents PatchEmbedding.
+ * @property patchSize The patchSize.
+ * @property numHiddens The numHiddens.
+ */
 class PatchEmbedding(
     imgSize: Int = 96,
+    /**
+     * The patchSize.
+     */
     val patchSize: Int = 16,
+    /**
+     * The numHiddens.
+     */
     val numHiddens: Int = 512,
 ) : AbstractBlock() {
+    /**
+     * The numPatches.
+     */
     val numPatches = (imgSize / patchSize) * (imgSize / patchSize)
+
+    /**
+     * The conv.
+     */
     val conv =
         Conv2d
             .builder()
@@ -154,6 +175,16 @@ class PatchEmbedding(
             .setFilters(numHiddens)
             .build()
 
+    init {
+        require(imgSize % patchSize == 0) {
+            "imgSize ($imgSize) must be divisible by patchSize ($patchSize)"
+        }
+        addChildBlock("conv", conv)
+    }
+
+    /**
+     * Executes forwardInternal.
+     */
     override fun forwardInternal(
         parameterStore: ParameterStore,
         inputs: NDList,
@@ -165,32 +196,53 @@ class PatchEmbedding(
         return NDList(f.reshape(Shape(f.shape[0], f.shape[1], -1)).transpose(0, 2, 1))
     }
 
+    /**
+     * Executes initializeChildBlocks.
+     */
     override fun initializeChildBlocks(
         manager: NDManager,
         dataType: DataType,
         vararg inputShapes: Shape,
     ) {
-        conv.initialize(manager, dataType, *inputShapes)
+        require(inputShapes.size == 1) {
+            "PatchEmbedding expects a single input shape, got ${inputShapes.size}."
+        }
+        conv.initialize(manager, dataType, inputShapes[0])
     }
 
+    /**
+     * Executes getOutputShapes.
+     */
     override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> =
         arrayOf(Shape(inputShapes[0][0], numPatches.toLong(), numHiddens.toLong()))
 }
 
+/**
+ * Represents ViTBlock.
+ * @property normShape The normShape.
+ */
 class ViTBlock(
     numHiddens: Int,
+    /**
+     * The normShape.
+     */
     val normShape: Int,
     mlpNumHiddens: Int,
     numHeads: Int,
     dropout: Float,
     useBias: Boolean = false,
 ) : AbstractBlock() {
-    val ln1 = LayerNorm.builder().axis(normShape).build()
+    val ln1 = LayerNorm.builder().build()
     val attention = MultiHeadAttention(numHiddens, numHeads, dropout, useBias)
-    val ret0 =
-        SequentialBlock()
-            .add(LayerNorm.builder().axis(normShape).build())
-            .add(ViTMLP(mlpNumHiddens, numHiddens, dropout))
+    val ln2 = LayerNorm.builder().build()
+    val mlp = ViTMLP(mlpNumHiddens, numHiddens, dropout)
+
+    init {
+        addChildBlock("ln1", ln1)
+        addChildBlock("attention", attention)
+        addChildBlock("ln2", ln2)
+        addChildBlock("mlp", mlp)
+    }
 
     override fun forwardInternal(
         parameterStore: ParameterStore,
@@ -198,12 +250,14 @@ class ViTBlock(
         training: Boolean,
         params: PairList<String, Any>?,
     ): NDList {
-        var X = inputs[0]
-        val validLens = if (inputs.size < 2) null else inputs[1]
-        X = ln1.forward(parameterStore, NDList(X), training, params).head()
-        val att = attention.forward(parameterStore, NDList(X, X, X, validLens), training, params).head()
-        X = X.add(att)
-        return ret0.forward(parameterStore, NDList(X), training, params)
+        require(inputs.isNotEmpty()) { "ViTBlock requires at least one input." }
+        val input = inputs[0]
+        val norm1 = ln1.forward(parameterStore, NDList(input), training, params).head()
+        val att = attention.forward(parameterStore, NDList(norm1, norm1, norm1), training, params).head()
+        val residual = input.add(att)
+        val norm2 = ln2.forward(parameterStore, NDList(residual), training, params).head()
+        val mlpOut = mlp.forward(parameterStore, NDList(norm2), training, params).head()
+        return NDList(residual.add(mlpOut))
     }
 
     override fun initializeChildBlocks(
@@ -211,18 +265,19 @@ class ViTBlock(
         dataType: DataType,
         vararg inputShapes: Shape,
     ) {
-        val arr = List<Long>(normShape + 1) { normShape.toLong() }
-        ln1.initialize(manager, dataType, Shape(arr))
-        val shapes = arrayOf(inputShapes[0], inputShapes[0], inputShapes[0], Shape(inputShapes[0][0]))
-
-        attention.initialize(manager, dataType, *shapes)
-        ret0.initialize(manager, dataType, Shape(arr))
+        ln1.initialize(manager, dataType, inputShapes[0])
+        attention.initialize(manager, dataType, inputShapes[0], inputShapes[0], inputShapes[0])
+        ln2.initialize(manager, dataType, inputShapes[0])
+        mlp.initialize(manager, dataType, inputShapes[0])
     }
 
     // We won't implement this since we won't be using it but it's required as part of an AbstractBlock
     override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> = inputShapes
 }
 
+/**
+ * Represents ViTMLP.
+ */
 class ViTMLP(
     mlpNumHiddens: Int,
     mlpNumOutputs: Int,
@@ -237,4 +292,7 @@ class ViTMLP(
     }
 }
 
-class VisionTransformer
+/**
+ * Placeholder for a Vision Transformer example container.
+ */
+internal class VisionTransformer

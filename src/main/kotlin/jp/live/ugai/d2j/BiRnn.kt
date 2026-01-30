@@ -4,6 +4,9 @@ import ai.djl.ndarray.NDManager
 import jp.live.ugai.d2j.timemachine.TimeMachine.trainCh8
 import jp.live.ugai.d2j.timemachine.TimeMachineDataset
 
+/**
+ * Executes main.
+ */
 fun main() {
     val manager = NDManager.newBaseManager()
     // Load data
@@ -48,4 +51,7 @@ fun main() {
     trainCh8(model, dataset, vocab, lr, numEpochs, device, false, manager)
 }
 
+/**
+ * Represents BiRnn.
+ */
 class BiRnn

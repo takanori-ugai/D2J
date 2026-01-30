@@ -22,14 +22,13 @@ import ai.djl.training.listener.TrainingListener
 import ai.djl.training.loss.Loss
 import ai.djl.training.optimizer.Optimizer
 import ai.djl.training.tracker.Tracker
+import jp.live.ugai.d2j.util.LoggingUtils
 
+/**
+ * Trains and evaluates a LeNet-style CNN on Fashion-MNIST.
+ */
 fun main() {
-    System.setProperty("org.slf4j.simpleLogger.showThreadName", "false")
-    System.setProperty("org.slf4j.simpleLogger.showLogName", "true")
-    System.setProperty("org.slf4j.simpleLogger.log.ai.djl.pytorch", "WARN")
-    System.setProperty("org.slf4j.simpleLogger.log.ai.djl.mxnet", "ERROR")
-    System.setProperty("org.slf4j.simpleLogger.log.ai.djl.ndarray.index", "ERROR")
-    System.setProperty("org.slf4j.simpleLogger.log.ai.djl.tensorflow", "WARN")
+    LoggingUtils.setDjlLoggingProperties()
 
     Engine.getInstance().setRandomSeed(1111)
 
@@ -92,14 +91,16 @@ fun main() {
             .optOptimizer(sgd) // Optimizer (loss function)
             .optDevices(Engine.getInstance().getDevices(1)) // Single GPU
             .addEvaluator(Accuracy()) // Model Accuracy
-            .addTrainingListeners(*TrainingListener.Defaults.basic())
+            .also { cfg ->
+                TrainingListener.Defaults.basic().forEach { cfg.addTrainingListeners(it) }
+            }
 
     val trainer = model.newTrainer(config)
 
-    val X = manager.randomUniform(0f, 1.0f, Shape(1, 1, 28, 28))
-    trainer.initialize(X.shape)
+    val sampleInput = manager.randomUniform(0f, 1.0f, Shape(1, 1, 28, 28))
+    trainer.initialize(sampleInput.shape)
 
-    var currentShape = X.shape
+    var currentShape = sampleInput.shape
 
     for (i in 0 until block.children.size()) {
         val newShape =
@@ -182,5 +183,3 @@ fun main() {
     trainingChapter6(trainIter, testIter, numEpochs, trainer)
     println(trainAccuracy!!.toList())
 }
-
-class LeNet

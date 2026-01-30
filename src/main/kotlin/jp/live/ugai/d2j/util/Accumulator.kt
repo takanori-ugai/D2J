@@ -8,6 +8,9 @@ package jp.live.ugai.d2j.util
 class Accumulator(
     n: Int,
 ) {
+    /**
+     * Backing array storing accumulated values.
+     */
     val data = FloatArray(n)
 
     /**
@@ -21,11 +24,15 @@ class Accumulator(
         }
     }
 
-    /** Resets all elements in the accumulator to zero. */
+    /**
+     * Resets all accumulated values to 0f.
+     */
     fun reset() {
         data.fill(0f)
     }
 
-    /** Returns the value at the specified [index]. */
-    fun get(index: Int): Float = data[index]
+    /**
+     * Returns the accumulated value at [index].
+     */
+    operator fun get(index: Int): Float = data[index]
 }

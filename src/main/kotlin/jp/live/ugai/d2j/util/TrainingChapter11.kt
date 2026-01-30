@@ -29,8 +29,13 @@ import org.jetbrains.letsPlot.ggsize
 import org.jetbrains.letsPlot.intern.Plot
 import org.jetbrains.letsPlot.letsPlot
 
+/**
+ * Singleton for TrainingChapter11.
+ */
 object TrainingChapter11 {
-    /** Gets the airfoil dataset  */
+    /**
+     * Executes getDataCh11.
+     */
     fun getDataCh11(
         batchSize: Int,
         n: Int,
@@ -49,7 +54,9 @@ object TrainingChapter11 {
         return airfoil
     }
 
-    /** Evaluate the loss of a model on the given dataset  */
+    /**
+     * Executes evaluateLoss.
+     */
     fun evaluateLoss(
         dataIterator: Iterable<Batch>,
         w: NDArray,
@@ -67,6 +74,9 @@ object TrainingChapter11 {
         return metric.get(0) / metric.get(1)
     }
 
+    /**
+     * Executes plotLossEpoch.
+     */
     fun plotLossEpoch(
         loss: List<Number>,
         epoch: List<Number>,
@@ -85,6 +95,9 @@ object TrainingChapter11 {
         return (plot + ggsize(500, 400))
     }
 
+    /**
+     * Executes trainCh11.
+     */
     fun trainCh11(
         trainer: (NDList, NDList, MutableMap<String, Float>) -> Unit,
         states: NDList,
@@ -133,6 +146,9 @@ object TrainingChapter11 {
         return LossTime(epoch, loss, stopWatch.cumsum())
     }
 
+    /**
+     * Executes trainConciseCh11.
+     */
     fun trainConciseCh11(
         sgd: Optimizer?,
         dataset: AirfoilRandomAccess,
@@ -152,7 +168,9 @@ object TrainingChapter11 {
                 .optOptimizer(sgd)
                 .optDevices(manager.engine.getDevices(1)) // single GPU
                 .addEvaluator(Accuracy()) // Model Accuracy
-                .addTrainingListeners(*TrainingListener.Defaults.logging()) // Logging
+                .also { cfg ->
+                    TrainingListener.Defaults.logging().forEach { cfg.addTrainingListeners(it) }
+                } // Logging
         val trainer: Trainer = model.newTrainer(config)
         var n = 0
         val stopWatch = StopWatch()
@@ -195,8 +213,23 @@ object TrainingChapter11 {
     } // End Ch11 Optimization
 }
 
+/**
+ * Represents LossTime.
+ * @property epoch The epoch.
+ * @property loss The loss.
+ * @property time The time.
+ */
 class LossTime(
+    /**
+     * The epoch.
+     */
     val epoch: List<Number>,
+    /**
+     * The loss.
+     */
     val loss: List<Number>,
+    /**
+     * The time.
+     */
     val time: List<Double>,
 )

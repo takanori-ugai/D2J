@@ -20,6 +20,9 @@ import ai.djl.training.optimizer.Optimizer
 import ai.djl.training.tracker.Tracker
 import ai.djl.translate.NoopTranslator
 
+/**
+ * Generates synthetic time-series data and trains a sequence prediction model.
+ */
 fun main() {
     System.setProperty("org.slf4j.simpleLogger.showThreadName", "false")
     System.setProperty("org.slf4j.simpleLogger.showLogName", "true")
@@ -29,18 +32,18 @@ fun main() {
     System.setProperty("org.slf4j.simpleLogger.log.ai.djl.tensorflow", "WARN")
 
     val manager = NDManager.newBaseManager()
-    val T = 1000L // Generate a total of 1000 points
+    val totalPoints = 1000L // Generate a total of 1000 points
 
-    val time = manager.arange(1f, (T + 1).toFloat())
+    val time = manager.arange(1f, (totalPoints + 1).toFloat())
     val x =
         time.mul(0.01).sin().add(
-            manager.randomNormal(0f, 0.2f, Shape(T), DataType.FLOAT32),
+            manager.randomNormal(0f, 0.2f, Shape(totalPoints), DataType.FLOAT32),
         )
     val tau = 4L
-    val features = manager.zeros(Shape(T - tau, tau))
+    val features = manager.zeros(Shape(totalPoints - tau, tau))
 
     for (i in 0 until tau) {
-        features[NDIndex(":, {}", i)] = x[NDIndex("{}:{}", i, T - tau + i)]
+        features[NDIndex(":, {}", i)] = x[NDIndex("{}:{}", i, totalPoints - tau + i)]
     }
     val labels: NDArray = x[NDIndex("$tau:")].reshape(Shape(-1, 1))
 
@@ -57,7 +60,7 @@ fun main() {
             .build()
 
     val net = getNet()
-    val model = train(net, trainIter, batchSize, 5, 0.01f)
+    val model = train(net, trainIter, 5, 0.01f)
 
     val translator = NoopTranslator(null)
     val predictor = model.newPredictor(translator)
@@ -65,9 +68,9 @@ fun main() {
     val onestepPreds = predictor.predict(NDList(features))[0]
     println(onestepPreds.get(NDIndex(":10")))
 
-    val multiStepPreds = manager.zeros(Shape(T))
+    val multiStepPreds = manager.zeros(Shape(totalPoints))
     multiStepPreds[NDIndex(":{}", nTrain + tau)] = x[NDIndex(":{}", nTrain + tau)]
-    for (i in nTrain + tau until T) {
+    for (i in nTrain + tau until totalPoints) {
         val tempX = multiStepPreds[NDIndex("{}:{}", i - tau, i)].reshape(Shape(1, -1))
         val prediction = (predictor.predict(NDList(tempX)) as NDList)[0]
         multiStepPreds[NDIndex(i)] = prediction
@@ -76,10 +79,12 @@ fun main() {
 
 // var trainer: Trainer? = null
 
+/**
+ * Executes train.
+ */
 fun train(
     net: SequentialBlock,
     dataset: ArrayDataset,
-    batchSize: Int,
     numEpochs: Int,
     learningRate: Float,
 ): Model {
@@ -116,6 +121,9 @@ fun train(
     return model
 }
 
+/**
+ * Executes getNet.
+ */
 fun getNet(): SequentialBlock {
     val net = SequentialBlock()
     net.add(Linear.builder().setUnits(10).build())
@@ -124,4 +132,7 @@ fun getNet(): SequentialBlock {
     return net
 }
 
-class Sequence
+/**
+ * Placeholder for a dedicated sequence modeling example container.
+ */
+internal class Sequence

@@ -55,7 +55,9 @@ class Seq2SeqEncoder(
         addChildBlock("rnn", rnn)
     }
 
-    /** {@inheritDoc}  */
+    /**
+     * Initializes the embedding layer and GRU with appropriate input shapes.
+     */
     override fun initializeChildBlocks(
         manager: NDManager,
         dataType: DataType,
@@ -70,18 +72,20 @@ class Seq2SeqEncoder(
         }
     }
 
-    /** {@inheritDoc}  */
+    /**
+     * Executes forwardInternal.
+     */
     override fun forwardInternal(
         ps: ParameterStore,
         inputs: NDList,
         training: Boolean,
         params: PairList<String, Any>?,
     ): NDList {
-        var X = inputs.head()
-        // The output `X` shape: (`batchSize`, `numSteps`, `embedSize`)
-        X = embedding.forward(ps, NDList(X), training, params).head()
+        var input = inputs.head()
+        // The output `input` shape: (`batchSize`, `numSteps`, `embedSize`)
+        input = embedding.forward(ps, NDList(input), training, params).head()
         // In RNN models, the first axis corresponds to time steps
-        X = X.swapAxes(0, 1)
-        return rnn.forward(ps, NDList(X), training)
+        input = input.swapAxes(0, 1)
+        return rnn.forward(ps, NDList(input), training)
     }
 }
