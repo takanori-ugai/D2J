@@ -15,13 +15,9 @@ import ai.djl.ndarray.types.DataType
  * @property forwardFn The forward function of the model.
  */
 class RNNModelScratch(
-    /**
-     * The vocabSize.
-     */
+    /** Size of the vocabulary used for one-hot encoding. */
     var vocabSize: Int,
-    /**
-     * The numHiddens.
-     */
+    /** Number of hidden units in the RNN layer. */
     var numHiddens: Int,
     device: Device,
     getParams: (Int, Int, Device) -> NDList,

@@ -325,8 +325,14 @@ class Seq2SeqAttentionDecoder(
         val outputs = encOutputs[0]
         val hiddenState = encOutputs[1]
         val manager = encOutputs[0].manager
-        val encValidLens = if (encOutputs.size >= 3) encOutputs[2] else manager.create(0)
-        return NDList(outputs.swapAxes(0, 1), hiddenState, encValidLens)
+        val batchFirstOutputs = outputs.swapAxes(0, 1)
+        val encValidLens =
+            if (encOutputs.size >= 3) {
+                encOutputs[2]
+            } else {
+                manager.create(LongArray(batchFirstOutputs.shape[0].toInt()) { batchFirstOutputs.shape[1] })
+            }
+        return NDList(batchFirstOutputs, hiddenState, encValidLens)
     }
 
     /**

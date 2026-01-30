@@ -234,7 +234,6 @@ fun trainEpochCh8(
             }
             state.attach(childManager)
             var y = labels.transpose().reshape(Shape(-1))
-            features = features.toDevice(device, false)
             y = y.toDevice(device, false)
             manager.engine.newGradientCollector().use { gc ->
                 val pairResult = net.forward(features, state)
@@ -288,6 +287,8 @@ fun trainCh8(
     println(predict("time traveller"))
     println(predict("traveller"))
 }
+
+// TODO: Replace this placeholder with a concrete example container when needed.
 
 /**
  * Placeholder for a dedicated RNN scratch example container.

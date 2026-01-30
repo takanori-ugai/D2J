@@ -166,12 +166,17 @@ class AddNorm(
         dataType: DataType,
         vararg inputShapes: Shape,
     ) {
-        require(inputShapes.size == 1) {
-            "AddNorm expects a single input shape for initialization (both inputs share the same shape), " +
-                "got ${inputShapes.size}."
+        require(inputShapes.isNotEmpty()) {
+            "AddNorm expects at least one input shape."
         }
-        dropout.initialize(manager, dataType, inputShapes[0])
-        ln.initialize(manager, dataType, inputShapes[0])
+        val shape = inputShapes[0]
+        if (inputShapes.size > 1) {
+            require(inputShapes.all { it == shape }) {
+                "AddNorm expects all input shapes to match."
+            }
+        }
+        dropout.initialize(manager, dataType, shape)
+        ln.initialize(manager, dataType, shape)
     }
 }
 
@@ -348,8 +353,8 @@ class TransformerEncoder(
         dataType: DataType,
         vararg inputShapes: Shape,
     ) {
-        require(inputShapes.isNotEmpty()) {
-            "TransformerEncoder expects at least one input shape."
+        require(inputShapes.size >= 2) {
+            "TransformerEncoder expects token and valid-length shapes."
         }
         embedding.initialize(manager, dataType, inputShapes[0])
         val modelShape =
@@ -476,7 +481,7 @@ class TransformerDecoderBlock(
 //        # state[2][self.i] contains representations of the decoded output at
 //        # the i-th block up to the current time step
 
-        // TODO FIX IT
+        // Cache key/value states for autoregressive decoding by concatenating previous steps.
         var keyValues = input0
         if (inputs.size >= 4 && inputs[3] != null) {
             keyValues = NDArrays.concat(NDList(inputs[3], keyValues), 1)

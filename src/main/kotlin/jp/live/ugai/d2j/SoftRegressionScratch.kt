@@ -161,11 +161,15 @@ fun main() {
         dataIterator: Iterable<Batch>,
     ): Float {
         val metric: Accumulator = Accumulator(2) // numCorrectedExamples, numExamples
-        val batch = dataIterator.iterator().next()
-        val features = batch.data.head()
-        val y = batch.labels.head()
-        metric.add(floatArrayOf(accuracy(net(features), y), y.size().toFloat()))
-        batch.close()
+        for (batch in dataIterator) {
+            try {
+                val features = batch.data.head()
+                val y = batch.labels.head()
+                metric.add(floatArrayOf(accuracy(net(features), y), y.size().toFloat()))
+            } finally {
+                batch.close()
+            }
+        }
         return metric[0] / metric[1]
     }
 

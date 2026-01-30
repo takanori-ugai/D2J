@@ -12,7 +12,6 @@ import ai.djl.ndarray.types.DataType
 import ai.djl.ndarray.types.Shape
 import ai.djl.training.DefaultTrainingConfig
 import ai.djl.training.ParameterStore
-import ai.djl.training.Trainer
 import ai.djl.training.dataset.ArrayDataset
 import ai.djl.training.initializer.XavierInitializer
 import ai.djl.training.loss.Loss
@@ -142,53 +141,58 @@ object Chap10Utils {
                 DefaultTrainingConfig(loss)
                     .optOptimizer(adam) // Optimizer (loss function)
                     .optInitializer(XavierInitializer(), "")
-            val model: Model = Model.newInstance("")
-            model.block = net
-            val trainer: Trainer = model.newTrainer(config)
-            var watch: StopWatch
-            var metric: Accumulator
-            var lossValue = 0.0
-            var speed = 0.0
-            for (epoch in 1..numEpochs) {
-                watch = StopWatch()
-                metric = Accumulator(2) // Sum of training loss, no. of tokens
-                for (batch in dataset.getData(manager)) {
-                    val X: NDArray = batch.data.get(0)
-                    val lenX: NDArray = batch.data.get(1)
-                    val Y: NDArray = batch.labels.get(0)
-                    val lenY: NDArray = batch.labels.get(1)
-                    val bos: NDArray =
-                        manager
-                            .full(Shape(Y.shape[0]), tgtVocab.getIdx("<bos>"))
-                            .reshape(-1, 1)
-                    val decInput: NDArray =
-                        NDArrays.concat(
-                            NDList(bos, Y.get(NDIndex(":, :-1"))),
-                            1,
-                        ) // Teacher forcing
-                    Engine.getInstance().newGradientCollector().use { gc ->
-                        val yHat: NDArray =
-                            net
-                                .forward(
-                                    ParameterStore(manager, false),
-                                    NDList(X, decInput, lenX),
-                                    true,
-                                ).get(0)
-                        val l = loss.evaluate(NDList(Y, lenY), NDList(yHat))
-                        gc.backward(l)
-                        metric.add(floatArrayOf(l.sum().getFloat(), lenY.sum().getLong().toFloat()))
+                    .optDevices(arrayOf(device))
+            Model.newInstance("").use { model ->
+                model.block = net
+                model.newTrainer(config).use { trainer ->
+                    var watch: StopWatch
+                    var metric: Accumulator
+                    var lossValue = 0.0
+                    var speed = 0.0
+                    for (epoch in 1..numEpochs) {
+                        watch = StopWatch()
+                        metric = Accumulator(2) // Sum of training loss, no. of tokens
+                        for (batch in dataset.getData(manager)) {
+                            val X: NDArray = batch.data.get(0)
+                            val lenX: NDArray = batch.data.get(1)
+                            val Y: NDArray = batch.labels.get(0)
+                            val lenY: NDArray = batch.labels.get(1)
+                            val bos: NDArray =
+                                manager
+                                    .full(Shape(Y.shape[0]), tgtVocab.getIdx("<bos>"))
+                                    .reshape(-1, 1)
+                            val decInput: NDArray =
+                                NDArrays.concat(
+                                    NDList(bos, Y.get(NDIndex(":, :-1"))),
+                                    1,
+                                ) // Teacher forcing
+                            Engine.getInstance().newGradientCollector().use { gc ->
+                                val yHat: NDArray =
+                                    net
+                                        .forward(
+                                            ParameterStore(manager, false),
+                                            NDList(X, decInput, lenX),
+                                            true,
+                                        ).get(0)
+                                val l = loss.evaluate(NDList(Y, lenY), NDList(yHat))
+                                gc.backward(l)
+                                metric.add(floatArrayOf(l.sum().getFloat(), lenY.sum().getLong().toFloat()))
+                            }
+                            TrainingChapter9.gradClipping(net, 1, manager)
+                            // Update parameters
+                            trainer.step()
+                        }
+                        lossValue = metric.get(0).toDouble() / metric.get(1)
+                        speed = metric.get(1) / watch.stop()
+                        if ((epoch + 1) % 10 == 0) {
+                            println("${epoch + 1} : $lossValue")
+                        }
                     }
-                    TrainingChapter9.gradClipping(net, 1, manager)
-                    // Update parameters
-                    trainer.step()
-                }
-                lossValue = metric.get(0).toDouble() / metric.get(1)
-                speed = metric.get(1) / watch.stop()
-                if ((epoch + 1) % 10 == 0) {
-                    println("${epoch + 1} : $lossValue")
+                    println(
+                        "loss: %.3f, %.1f tokens/sec on %s%n".format(lossValue, speed, device.toString()),
+                    )
                 }
             }
-            println("loss: %.3f, %.1f tokens/sec on %s%n".format(lossValue, speed, device.toString()))
         }
     }
 

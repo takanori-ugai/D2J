@@ -112,16 +112,19 @@ class ViT(
         params: PairList<String, Any>?,
     ): NDList {
         var embeddings = patchEmbedding.forward(parameterStore, inputs, training, params).head()
+        val device = inputs.head().device
+        val clsTokenArray = parameterStore.getValue(clsToken, device, training)
+        val posEmbeddingArray = parameterStore.getValue(posEmbedding, device, training)
         // embeddings = torch.cat((self.cls_token.expand(embeddings.shape[0], -1, -1), embeddings), 1)
 
-        embeddings = clsToken.array.repeat(0, embeddings.shape[0]).concat(embeddings, 1)
-//        embeddings = dropOut.forward(parameterStore, NDList(embeddings.add(posEmbedding.array)), training, params)
+        embeddings = clsTokenArray.repeat(0, embeddings.shape[0]).concat(embeddings, 1)
+//        embeddings = dropOut.forward(parameterStore, NDList(embeddings.add(posEmbeddingArray)), training, params)
 //        embeddings = blks0.forward(parameterStore, NDList(embeddings), training, params).head()
         embeddings =
             blks0
                 .forward(
                     parameterStore,
-                    NDList(embeddings.add(posEmbedding.array)),
+                    NDList(embeddings.add(posEmbeddingArray)),
                     training,
                     params,
                 ).head()
