@@ -14,7 +14,6 @@ import ai.djl.nn.recurrent.RNN
 import ai.djl.nn.recurrent.RNN.Activation
 import ai.djl.training.DefaultTrainingConfig
 import ai.djl.training.ParameterStore
-import ai.djl.training.Trainer
 import ai.djl.training.dataset.RandomAccessDataset
 import ai.djl.training.evaluator.Accuracy
 import ai.djl.training.initializer.NormalInitializer

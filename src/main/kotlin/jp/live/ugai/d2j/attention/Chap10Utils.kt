@@ -61,21 +61,30 @@ object Chap10Utils {
                 val preparedLens = floatValidLens.reshape(-1, 1, 1)
                 // Broadcast arange(1,1,D) with preparedLens(B,1,1) -> mask(B,1,D)
                 val mask2d = arange.lt(preparedLens)
-                // Repeat the mask along the query dimension to get (B, N, D)
-                mask2d.repeat(1, shape[1])
+                // Expand to (B,1,D) then broadcast to (B,N,D) to avoid allocating repeats
+                val expanded = mask2d.expandDims(1).broadcast(Shape(shape[0], shape[1], shape[2]))
+                preparedLens.close()
+                mask2d.close()
+                expanded
             } else {
                 // Case 2: validLens is 2D (batch_size, num_queries)
                 // Reshape validLens to (B, N, 1) for broadcasting
                 val preparedLens = floatValidLens.expandDims(floatValidLens.shape.dimension())
                 // Broadcast arange(1,1,D) with preparedLens(B,N,1) -> mask(B,N,D)
-                arange.lt(preparedLens)
+                val out = arange.lt(preparedLens)
+                preparedLens.close()
+                out
             }
 
         // Apply the mask
         val maskedInput = input.duplicate()
         maskedInput.set(mask.logicalNot(), -1.0E6F)
-
-        return maskedInput.softmax(-1)
+        val out = maskedInput.softmax(-1)
+        arange.close()
+        floatValidLens.close()
+        mask.close()
+        maskedInput.close()
+        return out
     }
 
     /**

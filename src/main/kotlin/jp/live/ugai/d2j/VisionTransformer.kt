@@ -39,46 +39,50 @@ fun main() {
     System.setProperty("org.slf4j.simpleLogger.log.ai.djl.ndarray.index", "ERROR")
     System.setProperty("org.slf4j.simpleLogger.log.ai.djl.tensorflow", "WARN")
 
-    val manager = NDManager.newBaseManager()
-    val ps = ParameterStore(manager, false)
-    val imgSize = 96
-    val patchSize = 16
-    val numHiddens = 512
-    val batchSize = 4
-    val patchEmb = PatchEmbedding(imgSize, patchSize, numHiddens)
-    val inputBatch = manager.randomNormal(Shape(batchSize.toLong(), 3, imgSize.toLong(), imgSize.toLong()))
-    patchEmb.initialize(manager, DataType.FLOAT32, inputBatch.shape)
-    println(patchEmb.forward(ps, NDList(inputBatch), false))
-//        (batch_size, (img_size//patch_size)**2, num_hiddens))
+    NDManager.newBaseManager().use { manager ->
+        val imgSize = 96
+        val patchSize = 16
+        val numHiddens = 512
+        val batchSize = 4
+        manager.newSubManager().use { sub ->
+            val ps = ParameterStore(sub, false)
+            val patchEmb = PatchEmbedding(imgSize, patchSize, numHiddens)
+            val inputBatch = sub.randomNormal(Shape(batchSize.toLong(), 3, imgSize.toLong(), imgSize.toLong()))
+            patchEmb.initialize(sub, DataType.FLOAT32, inputBatch.shape)
+            println(patchEmb.forward(ps, NDList(inputBatch), false))
+        }
+        // (batch_size, (img_size//patch_size)**2, num_hiddens))
 
-    val sampleInput = manager.ones(Shape(2, 100, 24))
-    val encoderBlk = ViTBlock(24, 24, 48, 8, 0.5f)
-    encoderBlk.initialize(manager, DataType.FLOAT32, sampleInput.shape, Shape(2))
-    println(encoderBlk.forward(ps, NDList(sampleInput, null), false))
-    println("Shapes : ${encoderBlk.getOutputShapes(arrayOf(sampleInput.shape)).toList()}")
+        manager.newSubManager().use { sub ->
+            val ps = ParameterStore(sub, false)
+            val sampleInput = sub.ones(Shape(2, 100, 24))
+            val encoderBlk = ViTBlock(24, 24, 48, 8, 0.5f)
+            encoderBlk.initialize(sub, DataType.FLOAT32, sampleInput.shape, Shape(2))
+            println(encoderBlk.forward(ps, NDList(sampleInput, null), false))
+            println("Shapes : ${encoderBlk.getOutputShapes(arrayOf(sampleInput.shape)).toList()}")
+        }
 
-    val imgSize0 = 28
-    val patchSize0 = 7
-    val numHiddens0 = 512
-    val mlpNumHiddens0 = 2048
-    val numHeads0 = 8
-    val numBlks0 = 2
-    val embDropout0 = 0.1f
-    val blkDropout0 = 0.1f
-    val batchSize0 = 256
-    val lr = 0.001f
-    val trainImages = manager.ones(Shape(batchSize0.toLong(), 1, imgSize0.toLong(), imgSize0.toLong()))
-    val encoder =
-        ViT(
-            imgSize0,
-            patchSize0,
-            numHiddens0,
-            mlpNumHiddens0,
-            numHeads0,
-            numBlks0,
-            embDropout0,
-            blkDropout0,
-        )
+        val imgSize0 = 28
+        val patchSize0 = 14
+        val numHiddens0 = 128
+        val mlpNumHiddens0 = 256
+        val numHeads0 = 4
+        val numBlks0 = 1
+        val embDropout0 = 0.1f
+        val blkDropout0 = 0.1f
+        val batchSize0 = 8
+        val lr = 0.001f
+        val encoder =
+            ViT(
+                imgSize0,
+                patchSize0,
+                numHiddens0,
+                mlpNumHiddens0,
+                numHeads0,
+                numBlks0,
+                embDropout0,
+                blkDropout0,
+            )
 //    encoder.initialize(manager, DataType.FLOAT32, X0.shape)
 
     val randomShuffle = true
@@ -103,44 +107,100 @@ fun main() {
             .build()
     trainingSet.prepare()
     validationSet.prepare()
-    val model: Model = Model.newInstance("softmax-regression")
-    model.setBlock(encoder)
-    val loss: Loss = Loss.softmaxCrossEntropyLoss()
-    val lrt: Tracker = Tracker.fixed(lr)
-    val adam: Optimizer = Optimizer.adam().optLearningRateTracker(lrt).build()
-    val config: DefaultTrainingConfig =
-        DefaultTrainingConfig(loss)
-            .optOptimizer(adam) // Optimizer (loss function)
-            .optInitializer(XavierInitializer(), "")
-            .addEvaluator(Accuracy()) // Model Accuracy
-            .also { cfg ->
-                TrainingListener.Defaults.logging().forEach { cfg.addTrainingListeners(it) }
+        Model.newInstance("softmax-regression").use { model ->
+            model.setBlock(encoder)
+            val loss: Loss = Loss.softmaxCrossEntropyLoss()
+            val lrt: Tracker = Tracker.fixed(lr)
+            val adam: Optimizer = Optimizer.adam().optLearningRateTracker(lrt).build()
+            val config: DefaultTrainingConfig =
+                DefaultTrainingConfig(loss)
+                    .optOptimizer(adam) // Optimizer (loss function)
+                    .optInitializer(XavierInitializer(), "")
+                    .addEvaluator(Accuracy()) // Model Accuracy
+                    .also { cfg ->
+                        TrainingListener.Defaults.logging().forEach { cfg.addTrainingListeners(it) }
+                    }
+
+            model.newTrainer(config).use { trainer ->
+                trainer.initialize(Shape(batchSize0.toLong(), 1, imgSize0.toLong(), imgSize0.toLong()))
+                trainer.metrics = Metrics()
+                for (epoch in 0 until 5) {
+                    var batchIdx = 0
+                    for (batch in trainer.iterateDataset(trainingSet)) {
+                        batch.use { full ->
+                            logGpu("train[${epoch + 1}] batch=$batchIdx start")
+                            val splits = full.split(trainer.devices, false)
+                            trainer.newGradientCollector().use { gc ->
+                                for (split in splits) {
+                                    split.use { sb ->
+                                        logGpu("train[${epoch + 1}] batch=$batchIdx pre-forward")
+                                        trainer.manager.newSubManager().use { stepManager ->
+                                            val preds = trainer.forward(sb.data)
+                                            val lossVal = trainer.loss.evaluate(sb.labels, preds)
+                                            stepManager.tempAttachAll(preds, lossVal)
+                                            logGpu("train[${epoch + 1}] batch=$batchIdx post-forward")
+                                            gc.backward(lossVal)
+                                            lossVal.close()
+                                            preds.close()
+                                        }
+                                        logGpu("train[${epoch + 1}] batch=$batchIdx post-backward")
+                                    }
+                                }
+                            }
+                            trainer.step()
+                            trainer.manager.cap()
+                            logGpu("train[${epoch + 1}] batch=$batchIdx post-step")
+                        }
+                        batchIdx++
+                    }
+                    for (batch in trainer.iterateDataset(validationSet)) {
+                        batch.use { full ->
+                            val splits = full.split(trainer.devices, false)
+                            for (split in splits) {
+                                split.use { sb ->
+                                    logGpu("val[${epoch + 1}] pre-forward")
+                                    trainer.manager.newSubManager().use { stepManager ->
+                                        val preds = trainer.evaluate(sb.data)
+                                        val lossVal = trainer.loss.evaluate(sb.labels, preds)
+                                        stepManager.tempAttachAll(preds, lossVal)
+                                        lossVal.close()
+                                        preds.close()
+                                    }
+                                    logGpu("val[${epoch + 1}] post-forward")
+                                }
+                            }
+                        }
+                        trainer.manager.cap()
+                    }
+                }
             }
-
-    val trainer: Trainer = model.newTrainer(config)
-    trainer.initialize(trainImages.shape)
-    trainer.metrics = Metrics()
-    EasyTrain.fit(trainer, 5, trainingSet, validationSet)
-
-    val batch = validationSet.getData(manager).iterator().next()
-    val batchImages = batch.getData().head()
-    val yHat: IntArray =
-        encoder
-            .forward(ps, NDList(batchImages), false)
-            .head()
-            .argMax(1)
-            .toType(DataType.INT32, false)
-            .toIntArray()
-    println(yHat.toList().subList(0, 20))
-    println(
-        batch
-            .getLabels()
-            .head()
-            .toType(DataType.INT32, false)
-            .toIntArray()
-            .toList()
-            .subList(0, 20),
-    )
+            manager.newSubManager().use { sub ->
+                val ps = ParameterStore(sub, false)
+                val batch = validationSet.getData(sub).iterator().next()
+                batch.use {
+                    val batchImages = it.data.head()
+                    val yHat: IntArray =
+                        encoder
+                            .forward(ps, NDList(batchImages), false)
+                            .head()
+                            .argMax(1)
+                            .toType(DataType.INT32, false)
+                            .toIntArray()
+                    val yHatList = yHat.toList()
+                    println(yHatList.subList(0, minOf(20, yHatList.size)))
+                    println(
+                        it
+                            .labels
+                            .head()
+                            .toType(DataType.INT32, false)
+                            .toIntArray()
+                            .toList()
+                            .let { labels -> labels.subList(0, minOf(20, labels.size)) },
+                    )
+                }
+            }
+        }
+    }
 }
 
 /**
@@ -252,11 +312,16 @@ class ViTBlock(
     ): NDList {
         require(inputs.isNotEmpty()) { "ViTBlock requires at least one input." }
         val input = inputs[0]
+        logGpu("ViTBlock pre-ln1")
         val norm1 = ln1.forward(parameterStore, NDList(input), training, params).head()
+        logGpu("ViTBlock post-ln1")
         val att = attention.forward(parameterStore, NDList(norm1, norm1, norm1), training, params).head()
+        logGpu("ViTBlock post-attn")
         val residual = input.add(att)
         val norm2 = ln2.forward(parameterStore, NDList(residual), training, params).head()
+        logGpu("ViTBlock post-ln2")
         val mlpOut = mlp.forward(parameterStore, NDList(norm2), training, params).head()
+        logGpu("ViTBlock post-mlp")
         return NDList(residual.add(mlpOut))
     }
 
