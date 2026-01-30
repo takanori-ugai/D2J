@@ -177,9 +177,16 @@ class MultiHeadAttention(
                     attention.initialize(sub, dataType, queries.shape, keys.shape, values.shape)
                     NDList(queries, keys, values)
                 } else {
-                    val list = NDList(queries, keys, values, validLens)
-                    attention.initialize(sub, dataType, list[0].shape, list[1].shape, list[2].shape, list[3].shape)
-                    list
+                    val inputList = NDList(queries, keys, values, validLens)
+                    attention.initialize(
+                        sub,
+                        dataType,
+                        inputList[0].shape,
+                        inputList[1].shape,
+                        inputList[2].shape,
+                        inputList[3].shape,
+                    )
+                    inputList
                 }
             val output: NDArray = attention.forward(ps, list, false).head()
             val outputConcat: NDArray = Chap10Utils.transposeOutput(output, numHeads)

@@ -10,6 +10,7 @@ import ai.djl.ndarray.types.DataType
 import ai.djl.ndarray.types.Shape
 import ai.djl.training.dataset.Batch
 import ai.djl.training.dataset.Dataset
+import jp.live.ugai.d2j.util.Accumulator
 import org.jetbrains.letsPlot.geom.geomLine
 import org.jetbrains.letsPlot.ggsize
 import org.jetbrains.letsPlot.intern.Plot
@@ -221,25 +222,28 @@ fun main() {
             param.setRequiresGradient(true)
         }
         for (batch in trainIter) {
-            var batchFeatures = batch.data.head()
-            val y = batch.labels.head()
-            batchFeatures = batchFeatures.reshape(Shape(-1, numInputs.toLong()))
-            Engine.getInstance().newGradientCollector().use { gc ->
-                // Minibatch loss in features and y
-                val yHat = net(batchFeatures)
-                val l: NDArray = loss(yHat, y)
-                gc.backward(l) // Compute gradient on l with respect to w and b
-                metric.add(
-                    floatArrayOf(
-                        l.sum().toType(DataType.FLOAT32, false).getFloat(),
-                        accuracy(yHat, y),
-                        y.size().toFloat(),
-                    ),
-                )
-                gc.close()
+            try {
+                var batchFeatures = batch.data.head()
+                val y = batch.labels.head()
+                batchFeatures = batchFeatures.reshape(Shape(-1, numInputs.toLong()))
+                Engine.getInstance().newGradientCollector().use { gc ->
+                    // Minibatch loss in features and y
+                    val yHat = net(batchFeatures)
+                    val l: NDArray = loss(yHat, y)
+                    gc.backward(l) // Compute gradient on l with respect to w and b
+                    metric.add(
+                        floatArrayOf(
+                            l.sum().toType(DataType.FLOAT32, false).getFloat(),
+                            accuracy(yHat, y),
+                            y.size().toFloat(),
+                        ),
+                    )
+                    gc.close()
+                }
+                updater(params, lr, batch.size) // Update parameters using their gradient
+            } finally {
+                batch.close()
             }
-            updater(params, lr, batch.size) // Update parameters using their gradient
-            batch.close()
         }
         // Return trainLoss, trainAccuracy
         return floatArrayOf(metric[0] / metric[2], metric[1] / metric[2])
@@ -267,46 +271,6 @@ fun main() {
     }
 
     trainCh3(::net, trainingSet, validationSet, ::crossEntropy, numEpochs, ::updater)
-}
-
-/**
- * Represents Accumulator.
- */
-class Accumulator(
-    n: Int,
-) {
-    /**
-     * The data.
-     */
-    var data: FloatArray = FloatArray(n)
-
-    // Adds a set of numbers to the array
-
-    /**
-     * Executes add.
-     */
-    fun add(args: FloatArray) {
-        require(args.size == data.size) { "Input array size must match accumulator size." }
-        for (i in args.indices) {
-            data[i] += args[i]
-        }
-    }
-
-    // Resets the array
-
-    /**
-     * Executes reset.
-     */
-    fun reset() {
-        data.fill(0f)
-    }
-
-    // Returns the data point at the given index
-
-    /**
-     * Executes get.
-     */
-    operator fun get(index: Int): Float = data[index]
 }
 
 /**

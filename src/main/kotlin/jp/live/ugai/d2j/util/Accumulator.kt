@@ -34,5 +34,5 @@ class Accumulator(
     /**
      * Returns the accumulated value at [index].
      */
-    fun get(index: Int): Float = data[index]
+    operator fun get(index: Int): Float = data[index]
 }

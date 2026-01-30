@@ -71,7 +71,6 @@ class ViT(
             .builder()
             .optRequiresGrad(true)
             .optShape(Shape(1, numSteps.toLong(), numHiddens.toLong()))
-//    torch.randn(1, num_steps, num_hiddens))
             .setType(Parameter.Type.BIAS)
             .build()
 
@@ -118,8 +117,6 @@ class ViT(
         // embeddings = torch.cat((self.cls_token.expand(embeddings.shape[0], -1, -1), embeddings), 1)
 
         embeddings = clsTokenArray.repeat(0, embeddings.shape[0]).concat(embeddings, 1)
-//        embeddings = dropOut.forward(parameterStore, NDList(embeddings.add(posEmbeddingArray)), training, params)
-//        embeddings = blks0.forward(parameterStore, NDList(embeddings), training, params).head()
         embeddings =
             blks0
                 .forward(

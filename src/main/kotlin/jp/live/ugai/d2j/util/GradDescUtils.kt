@@ -7,11 +7,14 @@ import org.jetbrains.letsPlot.geom.geomPoint
 import org.jetbrains.letsPlot.ggsize
 import org.jetbrains.letsPlot.intern.Plot
 import org.jetbrains.letsPlot.letsPlot
+import org.slf4j.LoggerFactory
 
 /**
  * Utilities for plotting and tracing gradient descent behavior.
  */
 object GradDescUtils {
+    private val logger = LoggerFactory.getLogger(GradDescUtils::class.java)
+
     /**
      * Plots a function line and gradient descent trajectory.
      *
@@ -116,7 +119,7 @@ object GradDescUtils {
         results: List<Weights>,
     ): Plot {
         // Contour and meshgrid rendering depends on tablesaw support.
-        println("Tablesaw not supporting for contour and meshgrids, will update soon")
+        logger.debug("Tablesaw does not support contour and meshgrids; skipping contour rendering.")
 
         fun meshgridPoints(
             x: List<Double>,
@@ -135,7 +138,7 @@ object GradDescUtils {
         val x1 = results.map { it.x1 }
         val x2 = results.map { it.x2 }
 
-        var gridPoints =
+        val gridPoints =
             meshgridPoints(
                 generateSequence(
                     (x1.min() - 0.5f).toDouble(),
@@ -147,8 +150,8 @@ object GradDescUtils {
                 ).takeWhile { it <= (x2.max() + 0.5f).toDouble() }.toList(),
             )
 
-        var dd = mapOf("x" to x1, "y" to x2, "z" to results.map { f(it.x1, it.x2) })
-        var dd3 =
+        val dd = mapOf("x" to x1, "y" to x2, "z" to results.map { f(it.x1, it.x2) })
+        val dd3 =
             mapOf(
                 "x" to gridPoints.map { it.first },
                 "y" to gridPoints.map { it.second },

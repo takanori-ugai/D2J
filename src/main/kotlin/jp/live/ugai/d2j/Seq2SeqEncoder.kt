@@ -56,7 +56,7 @@ class Seq2SeqEncoder(
     }
 
     /**
-     * Executes initializeChildBlocks.
+     * Initializes the embedding layer and GRU with appropriate input shapes.
      */
     override fun initializeChildBlocks(
         manager: NDManager,

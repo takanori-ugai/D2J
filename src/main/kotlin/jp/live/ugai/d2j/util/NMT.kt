@@ -66,7 +66,7 @@ object NMT {
         // Replace non-breaking space with space, and convert uppercase letters to
         // lowercase ones
 
-        val text = rawText.replace('\u202f', ' ').replace("\\xa0".toRegex(), " ").lowercase(Locale.getDefault())
+        val text = rawText.replace('\u202f', ' ').replace("\\xa0".toRegex(), " ").lowercase(Locale.ROOT)
 
         // Insert space between words and punctuation marks
         val out = StringBuilder()

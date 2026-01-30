@@ -156,7 +156,7 @@ class AddNorm(
     /**
      * Executes getOutputShapes.
      */
-    override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> = inputShapes
+    override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> = arrayOf(inputShapes[0])
 
     /**
      * Executes initializeChildBlocks.
@@ -258,6 +258,9 @@ class TransformerEncoderBlock(
         dataType: DataType,
         vararg inputShapes: Shape,
     ) {
+        require(inputShapes.size >= 2) {
+            "TransformerEncoderBlock expects token and valid-length shapes."
+        }
         val shapes = arrayOf(inputShapes[0], inputShapes[0], inputShapes[0], inputShapes[1])
         attention.initialize(manager, dataType, shapes[0], shapes[1], shapes[2], shapes[3])
         addnorm1.initialize(manager, dataType, inputShapes[0])
@@ -435,6 +438,9 @@ class TransformerDecoderBlock(
         dataType: DataType,
         vararg inputShapes: Shape,
     ) {
+        require(inputShapes.isNotEmpty()) {
+            "TransformerDecoderBlock requires at least the decoder shape."
+        }
         val decoderShape = inputShapes[0]
         val encoderShape =
             if (inputShapes.size > 1 && inputShapes[1].dimension() == 3) {
@@ -537,12 +543,13 @@ class TransformerDecoderBlock(
     /**
      * Executes getOutputShapes.
      */
-    override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> =
-        if (inputShapes.size >= 3) {
-            arrayOf(inputShapes[0], inputShapes[1], inputShapes[2], inputShapes[0])
-        } else {
-            arrayOf(inputShapes[0])
+    override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> {
+        require(inputShapes.size >= 2) {
+            "TransformerDecoderBlock expects decoder and encoder shapes."
         }
+        val encValidLensShape = if (inputShapes.size > 2) inputShapes[2] else Shape()
+        return arrayOf(inputShapes[0], inputShapes[1], encValidLensShape, inputShapes[0])
+    }
 }
 
 /**

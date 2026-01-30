@@ -170,8 +170,3 @@ fun main() {
     val modelConcise = RNNModel(lstmLayer, vocab.length())
     trainCh8(modelConcise, dataset, vocab, lr, numEpochs, device, false, manager)
 }
-
-/**
- * Placeholder for a dedicated LSTM example container.
- */
-internal class Lstm

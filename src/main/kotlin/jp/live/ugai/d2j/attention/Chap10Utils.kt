@@ -184,8 +184,8 @@ object Chap10Utils {
                         }
                         lossValue = metric.get(0).toDouble() / metric.get(1)
                         speed = metric.get(1) / watch.stop()
-                        if ((epoch + 1) % 10 == 0) {
-                            println("${epoch + 1} : $lossValue")
+                        if (epoch % 10 == 0) {
+                            println("$epoch : $lossValue")
                         }
                     }
                     println(
@@ -229,6 +229,7 @@ object Chap10Utils {
      * @param tgtVocab The target vocabulary.
      * @param numSteps The number of time steps in the prediction.
      * @param saveAttentionWeights Whether to save the attention weights.
+     * @param manager The NDManager used for inference allocations.
      * @return The predicted sequence and the attention weights.
      */
     fun predictSeq2Seq(
@@ -238,19 +239,25 @@ object Chap10Utils {
         tgtVocab: Vocab,
         numSteps: Int,
         saveAttentionWeights: Boolean,
+        manager: NDManager,
     ): Pair<String, List<List<Pair<FloatArray, Shape>>>> {
-        NDManager.newBaseManager().use { manager ->
-            val (encX, encValidLen) = tokenizeAndPad(manager, srcSentence, srcVocab, numSteps)
-            val encOutputs = net.encoder.forward(ParameterStore(manager, false), NDList(encX, encValidLen), false)
+        manager.newSubManager().use { localManager ->
+            val (encX, encValidLen) = tokenizeAndPad(localManager, srcSentence, srcVocab, numSteps)
+            val encOutputs =
+                net.encoder.forward(
+                    ParameterStore(localManager, false),
+                    NDList(encX, encValidLen),
+                    false,
+                )
             var decState = net.decoder.initState(encOutputs)
             // Add the batch axis
-            var decX = manager.create(floatArrayOf(tgtVocab.getIdx("<bos>").toFloat())).expandDims(0)
+            var decX = localManager.create(floatArrayOf(tgtVocab.getIdx("<bos>").toFloat())).expandDims(0)
             val outputSeq: MutableList<Int> = mutableListOf()
             val attentionWeightSeq: MutableList<List<Pair<FloatArray, Shape>>> = mutableListOf()
             for (i in 0 until numSteps) {
                 val output =
                     net.decoder.forward(
-                        ParameterStore(manager, false),
+                        ParameterStore(localManager, false),
                         NDList(decX).addAll(decState),
                         false,
                     )

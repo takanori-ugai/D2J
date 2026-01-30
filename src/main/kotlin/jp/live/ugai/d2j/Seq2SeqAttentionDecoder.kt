@@ -71,7 +71,7 @@ fun main() {
         Shape(1, batchSize.toLong(), (numHiddens + embedSize).toLong()),
         Shape(4, numHiddens.toLong()),
     )
-    val inputTokens = manager.zeros(Shape(batchSize.toLong(), numSteps.toLong()))
+    val inputTokens = manager.zeros(Shape(batchSize.toLong(), numSteps.toLong()), DataType.INT64)
     val output = encoder.forward(ps, NDList(inputTokens), false)
     output.add(manager.create(0))
     val state = decoder.initState(output)
@@ -285,11 +285,11 @@ class Seq2SeqAttentionDecoder(
     private val numLayers: Int,
     dropout: Float = 0f,
 ) : AttentionDecoder() {
-    val attention = AdditiveAttention(numHiddens, dropout)
+    private val attention = AdditiveAttention(numHiddens, dropout)
 
-    val embedding: TrainableWordEmbedding
+    private val embedding: TrainableWordEmbedding
 
-    val rnn =
+    private val rnn =
         GRU
             .builder()
             .setNumLayers(numLayers)
@@ -299,7 +299,7 @@ class Seq2SeqAttentionDecoder(
             .optDropRate(dropout)
             .build()
 
-    val linear = Linear.builder().setUnits(vocabSize).build()
+    private val linear = Linear.builder().setUnits(vocabSize).build()
 
     init {
         val list: List<String> = (0 until vocabSize).map { it.toString() }
@@ -345,8 +345,9 @@ class Seq2SeqAttentionDecoder(
     ) {
         embedding.initialize(manager, dataType, inputShapes[0])
         attention.initialize(manager, DataType.FLOAT32, inputShapes[1], inputShapes[1])
-        rnn.initialize(manager, DataType.FLOAT32, Shape(1, 4, (numHiddens + embedSize).toLong()))
-        linear.initialize(manager, DataType.FLOAT32, Shape(4, numHiddens.toLong()))
+        val batchSize = inputShapes[0].get(0)
+        rnn.initialize(manager, DataType.FLOAT32, Shape(1, batchSize, (numHiddens + embedSize).toLong()))
+        linear.initialize(manager, DataType.FLOAT32, Shape(batchSize, numHiddens.toLong()))
     }
 
     /**

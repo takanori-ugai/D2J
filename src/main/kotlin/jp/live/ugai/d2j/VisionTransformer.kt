@@ -250,6 +250,7 @@ class ViTBlock(
         training: Boolean,
         params: PairList<String, Any>?,
     ): NDList {
+        require(inputs.isNotEmpty()) { "ViTBlock requires at least one input." }
         val input = inputs[0]
         val norm1 = ln1.forward(parameterStore, NDList(input), training, params).head()
         val att = attention.forward(parameterStore, NDList(norm1, norm1, norm1), training, params).head()
@@ -292,6 +293,6 @@ class ViTMLP(
 }
 
 /**
- * Represents VisionTransformer.
+ * Placeholder for a Vision Transformer example container.
  */
-class VisionTransformer
+internal class VisionTransformer

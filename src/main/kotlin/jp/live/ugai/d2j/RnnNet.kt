@@ -140,6 +140,7 @@ fun predictCh8(
     vocab: Vocab,
     device: Device,
 ): String {
+    require(prefix.isNotEmpty()) { "prefix must not be empty" }
     var state: NDList = net.beginState(1, device)
     val outputs: MutableList<Int> = ArrayList()
     outputs.add(vocab.getIdx("" + prefix[0]))
@@ -287,10 +288,3 @@ fun trainCh8(
     println(predict("time traveller"))
     println(predict("traveller"))
 }
-
-// TODO: Replace this placeholder with a concrete example container when needed.
-
-/**
- * Placeholder for a dedicated RNN scratch example container.
- */
-internal class RnnNet

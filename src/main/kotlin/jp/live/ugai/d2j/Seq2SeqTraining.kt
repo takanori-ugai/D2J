@@ -1,5 +1,6 @@
 package jp.live.ugai.d2j
 
+import ai.djl.Device
 import ai.djl.ndarray.NDArray
 import ai.djl.ndarray.NDList
 import ai.djl.ndarray.NDManager
@@ -90,7 +91,7 @@ fun main() {
     val engs = arrayOf("go .", "i lost .", "he's calm .", "i'm home .")
     val fras = arrayOf("va !", "j'ai perdu .", "il est calme .", "je suis chez moi .")
     for (i in engs.indices) {
-        val pair = predictSeq2SeqLocal(net, engs[i], srcVocab, tgtVocab, numSteps, false)
+        val pair = predictSeq2SeqLocal(net, engs[i], srcVocab, tgtVocab, numSteps, false, device)
         val translation: String = pair.first
         println("%s => %s, bleu %.3f".format(engs[i], translation, bleu(translation, fras[i], 2)))
     }
@@ -106,8 +107,9 @@ private fun predictSeq2SeqLocal(
     tgtVocab: Vocab,
     numSteps: Int,
     saveAttentionWeights: Boolean,
+    device: Device,
 ): Pair<String, List<NDArray?>> {
-    val manager = NDManager.newBaseManager()
+    val manager = NDManager.newBaseManager(device)
     val srcTokens =
         srcVocab.getIdxs(srcSentence.lowercase(Locale.getDefault()).split(" ")) +
             listOf(srcVocab.getIdx("<eos>"))
