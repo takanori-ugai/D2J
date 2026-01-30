@@ -143,7 +143,7 @@ class DotProductAttention(
         val queries = inputs[0]
         val keys = inputs[1]
         val values = inputs[2]
-        val validLens = inputs[3]
+        val validLens = if (inputs.size > 3) inputs[3] else null
 
         val d = queries.shape[queries.shape.dimension() - 1].toDouble()
         val scores = queries.matMul(keys.swapAxes(1, 2)).div(Math.sqrt(d))

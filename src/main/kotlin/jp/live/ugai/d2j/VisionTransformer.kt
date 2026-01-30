@@ -58,7 +58,7 @@ fun main() {
     println("Shapes : ${encoderBlk.getOutputShapes(arrayOf(sampleInput.shape)).toList()}")
 
     val imgSize0 = 28
-    val patchSize0 = 16
+    val patchSize0 = 7
     val numHiddens0 = 512
     val mlpNumHiddens0 = 2048
     val numHeads0 = 8

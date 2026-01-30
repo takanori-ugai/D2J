@@ -72,6 +72,7 @@ class RNNModel(
                 inputShape
             }
         rnnLayer.initialize(manager, dataType, rnnInputShape)
+        flattenParametersIfAvailable(rnnLayer)
         val rnnOutShape = rnnLayer.getOutputShapes(arrayOf(rnnInputShape))[0]
         dense.initialize(manager, dataType, Shape(1, rnnOutShape.get(rnnOutShape.dimension() - 1)))
     }
@@ -81,4 +82,12 @@ class RNNModel(
      */
     override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape?> =
         throw UnsupportedOperationException("getOutputShapes is not implemented for RNNModel")
+
+    private fun flattenParametersIfAvailable(block: Any) {
+        val method =
+            block.javaClass.methods.firstOrNull { candidate ->
+                candidate.name == "flattenParameters" && candidate.parameterCount == 0
+            }
+        method?.invoke(block)
+    }
 }

@@ -89,7 +89,8 @@ fun main() {
 
     val encoder = TransformerEncoder(200, 24, 48, 8, 2, 0.5f, manager)
     encoder.initialize(manager, DataType.FLOAT32, Shape(2, 100), validLens.shape)
-    println(encoder.forward(ps, NDList(manager.ones(Shape(2, 100)), validLens), false))
+    val tokenIds = manager.zeros(Shape(2, 100), DataType.INT64)
+    println(encoder.forward(ps, NDList(tokenIds, validLens), false))
 
     val decoderBlk = TransformerDecoderBlock(24, 48, 8, 0.5f, 0)
     val decoderInput = manager.ones(Shape(2, 100, 24))

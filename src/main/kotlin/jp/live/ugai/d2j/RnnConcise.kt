@@ -87,6 +87,7 @@ fun main() {
 
     val input = NDList(inputTensor, state[0])
     rnnLayer.initialize(manager, DataType.FLOAT32, input.shapes[0], input.shapes[1])
+    flattenParametersIfAvailable(rnnLayer)
     val forwardOutput = rnnLayer.forward(ParameterStore(manager, false), input, false)
     val rnnOutput = forwardOutput[0]
     val stateNew = forwardOutput[1]
@@ -203,6 +204,14 @@ fun predictCh8(
     return output.toString()
 }
 
+private fun flattenParametersIfAvailable(block: Any) {
+    val method =
+        block.javaClass.methods.firstOrNull { method ->
+            method.name == "flattenParameters" && method.parameterCount == 0
+        }
+    method?.invoke(block)
+}
+
 /**
  * Executes trainCh8.
  */
@@ -227,8 +236,6 @@ fun trainCh8(
             { batchSize: Int, subManager: NDManager ->
                 // Already initialized net
                 val castedNet = net as AbstractBlock
-                val model: Model = Model.newInstance("model")
-                model.block = castedNet
                 val lrt: Tracker = Tracker.fixed(lr)
                 val sgd: Optimizer = Optimizer.sgd().setLearningRateTracker(lrt).build()
                 val config: DefaultTrainingConfig =
@@ -240,8 +247,12 @@ fun trainCh8(
                         .also { cfg ->
                             TrainingListener.Defaults.logging().forEach { cfg.addTrainingListeners(it) }
                         } // Logging
-                val trainer: Trainer = model.newTrainer(config)
-                trainer.step()
+                Model.newInstance("model").use { model ->
+                    model.block = castedNet
+                    model.newTrainer(config).use { trainer ->
+                        trainer.step()
+                    }
+                }
             }
         }
     val predict: (String) -> String =
@@ -295,9 +306,12 @@ fun trainEpochCh8(
                     state = net.beginState(inputBatch.shape.shape[0].toInt(), device)
                 }
             } else {
+                val detachedState = NDList()
                 for (s in state) {
                     s.stopGradient()
+                    detachedState.add(s.duplicate())
                 }
+                state = detachedState
             }
             state?.attach(childManager)
             var labelFlat = labelBatch.transpose().reshape(Shape(-1))
