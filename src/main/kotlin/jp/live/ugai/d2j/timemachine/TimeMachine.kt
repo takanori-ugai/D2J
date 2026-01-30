@@ -6,6 +6,7 @@ import ai.djl.engine.Engine
 import ai.djl.ndarray.NDArray
 import ai.djl.ndarray.NDList
 import ai.djl.ndarray.NDManager
+import ai.djl.ndarray.types.DataType
 import ai.djl.ndarray.types.Shape
 import ai.djl.nn.AbstractBlock
 import ai.djl.nn.Parameter
@@ -190,6 +191,20 @@ object TimeMachine {
         useRandomIter: Boolean,
         manager: NDManager,
     ) {
+        // Initialize parameters once on the root manager to avoid them being tied to transient
+        // sub-managers created during training.
+        if (net is AbstractBlock) {
+            manager.newSubManager().use { initManager ->
+                val iterator = dataset.getData(initManager).iterator()
+                if (iterator.hasNext()) {
+                    val sample = iterator.next()
+                    val inputShape = sample.data.head().shape
+                    net.initialize(manager, DataType.FLOAT32, inputShape)
+                    flattenParametersIfAvailable(net)
+                }
+            }
+        }
+
         val loss = SoftmaxCrossEntropyLoss()
 //        val animator = Animator()
         val updater: (Int, NDManager) -> Unit =
@@ -243,6 +258,14 @@ object TimeMachine {
         println(predict("traveller"))
     }
 
+    private fun flattenParametersIfAvailable(block: Any) {
+        val method =
+            block.javaClass.methods.firstOrNull { candidate ->
+                candidate.name == "flattenParameters" && candidate.parameterCount == 0
+            }
+        method?.invoke(block)
+    }
+
     /**
      * Trains the model for a single epoch and returns perplexity and speed.
      *
@@ -281,9 +304,13 @@ object TimeMachine {
                         state = net.beginState(X.shape.shape[0].toInt(), device)
                     }
                 } else {
+                    // Detach state from previous graph to avoid backprop through history.
+                    val detachedState = NDList()
                     for (s in state) {
                         s.stopGradient()
+                        detachedState.add(s.duplicate())
                     }
+                    state = detachedState
                 }
                 state?.attach(childManager)
                 val y = Y.transpose().reshape(Shape(-1)).toDevice(device, false)
