@@ -1,0 +1,2 @@
+  - batchSize0: 16 → 8
+  - patchSize0: 7 → 14 (fewer tokens per image)

@@ -15,9 +15,7 @@ import ai.djl.nn.core.Linear
 import ai.djl.nn.norm.Dropout
 import ai.djl.nn.norm.LayerNorm
 import ai.djl.training.DefaultTrainingConfig
-import ai.djl.training.EasyTrain
 import ai.djl.training.ParameterStore
-import ai.djl.training.Trainer
 import ai.djl.training.dataset.Dataset
 import ai.djl.training.evaluator.Accuracy
 import ai.djl.training.initializer.XavierInitializer
@@ -85,28 +83,28 @@ fun main() {
             )
 //    encoder.initialize(manager, DataType.FLOAT32, X0.shape)
 
-    val randomShuffle = true
+        val randomShuffle = true
 
 // Get Training and Validation Datasets
 
 // Get Training and Validation Datasets
-    val trainingSet =
-        FashionMnist
-            .builder()
-            .optUsage(Dataset.Usage.TRAIN)
-            .setSampling(batchSize0, randomShuffle)
-            .optLimit(Long.MAX_VALUE)
-            .build()
+        val trainingSet =
+            FashionMnist
+                .builder()
+                .optUsage(Dataset.Usage.TRAIN)
+                .setSampling(batchSize0, randomShuffle)
+                .optLimit(Long.MAX_VALUE)
+                .build()
 
-    val validationSet =
-        FashionMnist
-            .builder()
-            .optUsage(Dataset.Usage.TEST)
-            .setSampling(batchSize0, false)
-            .optLimit(Long.MAX_VALUE)
-            .build()
-    trainingSet.prepare()
-    validationSet.prepare()
+        val validationSet =
+            FashionMnist
+                .builder()
+                .optUsage(Dataset.Usage.TEST)
+                .setSampling(batchSize0, false)
+                .optLimit(Long.MAX_VALUE)
+                .build()
+        trainingSet.prepare()
+        validationSet.prepare()
         Model.newInstance("softmax-regression").use { model ->
             model.setBlock(encoder)
             val loss: Loss = Loss.softmaxCrossEntropyLoss()
@@ -148,7 +146,7 @@ fun main() {
                                 }
                             }
                             trainer.step()
-                            trainer.manager.cap()
+//                            trainer.manager.cap()
                             logGpu("train[${epoch + 1}] batch=$batchIdx post-step")
                         }
                         batchIdx++
@@ -170,10 +168,11 @@ fun main() {
                                 }
                             }
                         }
-                        trainer.manager.cap()
+//                        trainer.manager.cap()
                     }
                 }
             }
+            println("End of Training")
             manager.newSubManager().use { sub ->
                 val ps = ParameterStore(sub, false)
                 val batch = validationSet.getData(sub).iterator().next()
