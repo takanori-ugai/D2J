@@ -11,6 +11,9 @@ import ai.djl.nn.norm.Dropout
 import ai.djl.training.ParameterStore
 import ai.djl.util.PairList
 
+/**
+ * Executes main.
+ */
 fun main() {
     val manager = NDManager.newBaseManager()
 //    val numHiddens = 100
@@ -21,63 +24,82 @@ fun main() {
     val numQueries = 4
     val numKvpairs = 6
     val validLens = manager.create(floatArrayOf(3.0f, 2.0f))
-    val X = manager.ones(Shape(batchSize.toLong(), numQueries.toLong(), numHiddens.toLong()))
-    val Y = manager.ones(Shape(batchSize.toLong(), numKvpairs.toLong(), numHiddens.toLong()))
+    val queries = manager.ones(Shape(batchSize.toLong(), numQueries.toLong(), numHiddens.toLong()))
+    val keyValues = manager.ones(Shape(batchSize.toLong(), numKvpairs.toLong(), numHiddens.toLong()))
 
     val ps = ParameterStore(manager, false)
-    val input = NDList(X, Y, Y, validLens)
-    attention.initialize(manager, DataType.FLOAT32, *input.shapes)
+    val input = NDList(queries, keyValues, keyValues, validLens)
+    attention.initialize(
+        manager,
+        DataType.FLOAT32,
+        input.shapes[0],
+        input.shapes[1],
+        input.shapes[2],
+        input.shapes[3],
+    )
     val result = attention.forward(ps, input, false)
     println(result[0])
 }
 
+/**
+ * Represents MultiHeadAttention.
+ */
 class MultiHeadAttention(
     numHiddens: Int,
     private val numHeads: Int,
     dropout: Float,
     useBias: Boolean,
 ) : AbstractBlock() {
+    /**
+     * The attention.
+     */
     var attention: DotProductAttention
-    private val W_k: Linear
-    private val W_q: Linear
-    private val W_v: Linear
-    private val W_o: Linear
-    private val dropout: Dropout
+    private val weightKey: Linear
+    private val weightQuery: Linear
+    private val weightValue: Linear
+    private val weightOutput: Linear
+    private val projDropout: Dropout
 
     init {
+        require(numHiddens % numHeads == 0) {
+            "numHiddens ($numHiddens) must be divisible by numHeads ($numHeads)"
+        }
         attention = DotProductAttention(dropout)
-        W_q =
+        weightQuery =
             Linear
                 .builder()
                 .setUnits(numHiddens.toLong())
                 .optBias(useBias)
                 .build()
-        addChildBlock("W_q", W_q)
-        W_k =
+        addChildBlock("W_q", weightQuery)
+        weightKey =
             Linear
                 .builder()
                 .setUnits(numHiddens.toLong())
                 .optBias(useBias)
                 .build()
-        addChildBlock("W_k", W_k)
-        W_v =
+        addChildBlock("W_k", weightKey)
+        weightValue =
             Linear
                 .builder()
                 .setUnits(numHiddens.toLong())
                 .optBias(useBias)
                 .build()
-        addChildBlock("W_v", W_v)
-        W_o =
+        addChildBlock("W_v", weightValue)
+        weightOutput =
             Linear
                 .builder()
                 .setUnits(numHiddens.toLong())
                 .optBias(useBias)
                 .build()
-        addChildBlock("W_o", W_o)
-        this.dropout = Dropout.builder().optRate(dropout).build()
-        addChildBlock("dropout", this.dropout)
+        addChildBlock("W_o", weightOutput)
+        this.projDropout = Dropout.builder().optRate(dropout).build()
+        addChildBlock("proj_dropout", this.projDropout)
     }
 
+    /**
+     * Executes forwardInternal.
+     */
     override fun forwardInternal(
         ps: ParameterStore,
         inputs: NDList,
@@ -94,31 +116,41 @@ class MultiHeadAttention(
         var queries = inputs[0]
         var keys = inputs[1]
         var values = inputs[2]
-        var validLens = inputs[3]
+        var validLens = if (inputs.size > 3) inputs[3] else null
         // On axis 0, copy the first item (scalar or vector) for
         // `numHeads` times, then copy the next item, and so on
         if (validLens != null) {
             validLens = validLens.repeat(0, numHeads.toLong())
         }
-        queries = Chap10Utils.transposeQkv(W_q.forward(ps, NDList(queries), training, params)[0], numHeads)
-        keys = Chap10Utils.transposeQkv(W_k.forward(ps, NDList(keys), training, params)[0], numHeads)
-        values = Chap10Utils.transposeQkv(W_v.forward(ps, NDList(values), training, params)[0], numHeads)
+        queries = Chap10Utils.transposeQkv(weightQuery.forward(ps, NDList(queries), training, params)[0], numHeads)
+        keys = Chap10Utils.transposeQkv(weightKey.forward(ps, NDList(keys), training, params)[0], numHeads)
+        values = Chap10Utils.transposeQkv(weightValue.forward(ps, NDList(values), training, params)[0], numHeads)
 
         // Shape of `output`: (`batchSize` * `numHeads`, no. of queries,
         // `numHiddens` / `numHeads`)
-        val output: NDArray =
-            attention
-                .forward(ps, NDList(queries, keys, values, validLens), training, params)
-                .get(0)
+        val attnInputs =
+            if (validLens == null) {
+                NDList(queries, keys, values)
+            } else {
+                NDList(queries, keys, values, validLens)
+            }
+        val output: NDArray = attention.forward(ps, attnInputs, training, params).get(0)
 
         // Shape of `outputConcat`:
         // (`batchSize`, no. of queries, `numHiddens`)
         val outputConcat: NDArray = Chap10Utils.transposeOutput(output, numHeads)
-        return dropout.forward(ps, NDList(W_o.forward(ps, NDList(outputConcat), training, params)[0]), training, params)
+        val projected = weightOutput.forward(ps, NDList(outputConcat), training, params)[0]
+        return projDropout.forward(ps, NDList(projected), training, params)
     }
 
+    /**
+     * Executes getOutputShapes.
+     */
     override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> = arrayOf(inputShapes[0])
 
+    /**
+     * Executes initializeChildBlocks.
+     */
     override fun initializeChildBlocks(
         manager: NDManager,
         dataType: DataType,
@@ -128,20 +160,32 @@ class MultiHeadAttention(
             var queries = sub.zeros(inputShapes[0], dataType)
             var keys = sub.zeros(inputShapes[1], dataType)
             var values = sub.zeros(inputShapes[2], dataType)
-            var validLens = sub.zeros(inputShapes[3], dataType)
-            validLens = validLens.repeat(0, numHeads.toLong())
+            val hasValidLens = inputShapes.size > 3
+            var validLens = if (hasValidLens) sub.zeros(inputShapes[3], dataType) else null
+            if (validLens != null) {
+                validLens = validLens.repeat(0, numHeads.toLong())
+            }
             val ps = ParameterStore(sub, false)
-            W_q.initialize(manager, dataType, queries.shape)
-            W_k.initialize(manager, dataType, keys.shape)
-            W_v.initialize(manager, dataType, values.shape)
-            queries = Chap10Utils.transposeQkv(W_q.forward(ps, NDList(queries), false)[0], numHeads)
-            keys = Chap10Utils.transposeQkv(W_k.forward(ps, NDList(keys), false)[0], numHeads)
-            values = Chap10Utils.transposeQkv(W_v.forward(ps, NDList(values), false)[0], numHeads)
-            val list = NDList(queries, keys, values, validLens)
-            attention.initialize(sub, dataType, *list.shapes)
+            weightQuery.initialize(manager, dataType, queries.shape)
+            weightKey.initialize(manager, dataType, keys.shape)
+            weightValue.initialize(manager, dataType, values.shape)
+            queries = Chap10Utils.transposeQkv(weightQuery.forward(ps, NDList(queries), false)[0], numHeads)
+            keys = Chap10Utils.transposeQkv(weightKey.forward(ps, NDList(keys), false)[0], numHeads)
+            values = Chap10Utils.transposeQkv(weightValue.forward(ps, NDList(values), false)[0], numHeads)
+            val list =
+                if (validLens == null) {
+                    NDList(queries, keys, values)
+                } else {
+                    NDList(queries, keys, values, validLens)
+                }
+            if (list.size == 3) {
+                attention.initialize(sub, dataType, list[0].shape, list[1].shape, list[2].shape)
+            } else {
+                attention.initialize(sub, dataType, list[0].shape, list[1].shape, list[2].shape, list[3].shape)
+            }
             val output: NDArray = attention.forward(ps, list, false).head()
             val outputConcat: NDArray = Chap10Utils.transposeOutput(output, numHeads)
-            W_o.initialize(manager, dataType, outputConcat.shape)
+            weightOutput.initialize(manager, dataType, outputConcat.shape)
         }
     }
 }

@@ -13,6 +13,9 @@ import jp.live.ugai.d2j.timemachine.RNNModelScratch
 import jp.live.ugai.d2j.timemachine.TimeMachine.trainCh8
 import jp.live.ugai.d2j.timemachine.TimeMachineDataset
 
+/**
+ * Executes main.
+ */
 fun main() {
     val manager = NDManager.newBaseManager()
     val batchSize = 32
@@ -52,34 +55,50 @@ fun main() {
     ): NDList {
         // Input gate parameters
         var temp: NDList = three(vocabSize, numHiddens, device)
-        val W_xi: NDArray = temp.get(0)
-        val W_hi: NDArray = temp.get(1)
-        val b_i: NDArray = temp.get(2)
+        val weightXi: NDArray = temp.get(0)
+        val weightHi: NDArray = temp.get(1)
+        val biasI: NDArray = temp.get(2)
 
         // Forget gate parameters
         temp = three(vocabSize, numHiddens, device)
-        val W_xf: NDArray = temp.get(0)
-        val W_hf: NDArray = temp.get(1)
-        val b_f: NDArray = temp.get(2)
+        val weightXf: NDArray = temp.get(0)
+        val weightHf: NDArray = temp.get(1)
+        val biasF: NDArray = temp.get(2)
 
         // Output gate parameters
         temp = three(vocabSize, numHiddens, device)
-        val W_xo: NDArray = temp.get(0)
-        val W_ho: NDArray = temp.get(1)
-        val b_o: NDArray = temp.get(2)
+        val weightXo: NDArray = temp.get(0)
+        val weightHo: NDArray = temp.get(1)
+        val biasO: NDArray = temp.get(2)
 
         // Candidate memory cell parameters
         temp = three(vocabSize, numHiddens, device)
-        val W_xc: NDArray = temp.get(0)
-        val W_hc: NDArray = temp.get(1)
-        val b_c: NDArray = temp.get(2)
+        val weightXc: NDArray = temp.get(0)
+        val weightHc: NDArray = temp.get(1)
+        val biasC: NDArray = temp.get(2)
 
         // Output layer parameters
-        val W_hq: NDArray = normal(Shape(numHiddens.toLong(), vocabSize.toLong()), device)
-        val b_q: NDArray = manager.zeros(Shape(vocabSize.toLong()), DataType.FLOAT32, device)
+        val weightHq: NDArray = normal(Shape(numHiddens.toLong(), vocabSize.toLong()), device)
+        val biasQ: NDArray = manager.zeros(Shape(vocabSize.toLong()), DataType.FLOAT32, device)
 
         // Attach gradients
-        val params = NDList(W_xi, W_hi, b_i, W_xf, W_hf, b_f, W_xo, W_ho, b_o, W_xc, W_hc, b_c, W_hq, b_q)
+        val params =
+            NDList(
+                weightXi,
+                weightHi,
+                biasI,
+                weightXf,
+                weightHf,
+                biasF,
+                weightXo,
+                weightHo,
+                biasO,
+                weightXc,
+                weightHc,
+                biasC,
+                weightHq,
+                biasQ,
+            )
         for (param in params) {
             param.setRequiresGradient(true)
         }
@@ -101,41 +120,44 @@ fun main() {
         state: NDList,
         params: NDList,
     ): Pair<NDArray, NDList> {
-        val W_xi = params[0]
-        val W_hi = params[1]
-        val b_i = params[2]
-        val W_xf = params[3]
-        val W_hf = params[4]
-        val b_f = params[5]
-        val W_xo = params[6]
-        val W_ho = params[7]
-        val b_o = params[8]
-        val W_xc = params[9]
-        val W_hc = params[10]
-        val b_c = params[11]
-        val W_hq = params[12]
-        val b_q = params[13]
-        var H = state[0]
-        var C = state[1]
+        val weightXi = params[0]
+        val weightHi = params[1]
+        val biasI = params[2]
+        val weightXf = params[3]
+        val weightHf = params[4]
+        val biasF = params[5]
+        val weightXo = params[6]
+        val weightHo = params[7]
+        val biasO = params[8]
+        val weightXc = params[9]
+        val weightHc = params[10]
+        val biasC = params[11]
+        val weightHq = params[12]
+        val biasQ = params[13]
+        var hiddenState = state[0]
+        var cellState = state[1]
         val outputs = NDList()
-        var X: NDArray
-        var Y: NDArray
-        var I: NDArray
-        var F: NDArray
-        var O: NDArray
-        var C_tilda: NDArray
+        var inputStep: NDArray
+        var outputStep: NDArray
+        var inputGate: NDArray
+        var forgetGate: NDArray
+        var outputGate: NDArray
+        var candidateCell: NDArray
         for (i in 0 until inputs.size(0)) {
-            X = inputs[i]
-            I = Activation.sigmoid(X.dot(W_xi).add(H.dot(W_hi).add(b_i)))
-            F = Activation.sigmoid(X.dot(W_xf).add(H.dot(W_hf).add(b_f)))
-            O = Activation.sigmoid(X.dot(W_xo).add(H.dot(W_ho).add(b_o)))
-            C_tilda = Activation.tanh(X.dot(W_xc).add(H.dot(W_hc).add(b_c)))
-            C = F.mul(C).add(I.mul(C_tilda))
-            H = O.mul(Activation.tanh(C))
-            Y = H.dot(W_hq).add(b_q)
-            outputs.add(Y)
+            inputStep = inputs[i]
+            inputGate = Activation.sigmoid(inputStep.dot(weightXi).add(hiddenState.dot(weightHi).add(biasI)))
+            forgetGate = Activation.sigmoid(inputStep.dot(weightXf).add(hiddenState.dot(weightHf).add(biasF)))
+            outputGate = Activation.sigmoid(inputStep.dot(weightXo).add(hiddenState.dot(weightHo).add(biasO)))
+            candidateCell = Activation.tanh(inputStep.dot(weightXc).add(hiddenState.dot(weightHc).add(biasC)))
+            cellState = forgetGate.mul(cellState).add(inputGate.mul(candidateCell))
+            hiddenState = outputGate.mul(Activation.tanh(cellState))
+            outputStep = hiddenState.dot(weightHq).add(biasQ)
+            outputs.add(outputStep)
         }
-        return Pair(if (outputs.size > 1) NDArrays.concat(outputs) else outputs[0], NDList(H, C))
+        return Pair(
+            if (outputs.size > 1) NDArrays.concat(outputs) else outputs[0],
+            NDList(hiddenState, cellState),
+        )
     }
 
     val vocabSize = vocab!!.length()
@@ -163,4 +185,7 @@ fun main() {
     trainCh8(modelConcise, dataset, vocab, lr, numEpochs, device, false, manager)
 }
 
+/**
+ * Represents Lstm.
+ */
 class Lstm

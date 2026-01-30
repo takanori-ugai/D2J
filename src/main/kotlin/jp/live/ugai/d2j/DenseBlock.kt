@@ -27,6 +27,9 @@ import ai.djl.training.tracker.Tracker
 import ai.djl.util.PairList
 import jp.live.ugai.d2j.util.Training.trainingChapter6
 
+/**
+ * Executes main.
+ */
 fun main() {
     System.setProperty("org.slf4j.simpleLogger.showThreadName", "false")
     System.setProperty("org.slf4j.simpleLogger.showLogName", "true")
@@ -38,13 +41,13 @@ fun main() {
     val manager = NDManager.newBaseManager()
     var block = SequentialBlock().add(DenseBlock(2, 10))
 
-    val X = manager.randomUniform(0.0f, 1.0f, Shape(4, 3, 8, 8))
+    val inputTensor = manager.randomUniform(0.0f, 1.0f, Shape(4, 3, 8, 8))
 
-    block.initialize(manager, DataType.FLOAT32, X.shape)
+    block.initialize(manager, DataType.FLOAT32, inputTensor.shape)
 
 //    val parameterStore = ParameterStore(manager, true)
 
-    var currentShape = arrayOf(X.shape)
+    var currentShape = arrayOf(inputTensor.shape)
     for (child in block.children.values()) {
         currentShape = child.getOutputShapes(currentShape)
     }
@@ -105,8 +108,6 @@ fun main() {
 //    var testAccuracy: DoubleArray
 //    var trainAccuracy: DoubleArray
 
-    val epochCount = IntArray(numEpochs) { it + 1 }
-
     val trainIter =
         FashionMnist
             .builder()
@@ -142,15 +143,20 @@ fun main() {
         DefaultTrainingConfig(loss)
             .optOptimizer(sgd) // Optimizer (loss function)
             .addEvaluator(Accuracy()) // Model Accuracy
-            .addTrainingListeners(*TrainingListener.Defaults.logging()) // Logging
+            .also { cfg ->
+                TrainingListener.Defaults.logging().forEach { cfg.addTrainingListeners(it) }
+            } // Logging
 
     val trainer = model.newTrainer(config)
     trainer.initialize(Shape(1, 1, 96, 96))
 
     val evaluatorMetrics: MutableMap<String, DoubleArray> = mutableMapOf()
-    val avgTrainTimePerEpoch = trainingChapter6(trainIter, testIter, numEpochs, trainer, evaluatorMetrics)
+    trainingChapter6(trainIter, testIter, numEpochs, trainer, evaluatorMetrics)
 }
 
+/**
+ * Executes transitionBlock.
+ */
 fun transitionBlock(numChannels: Int): SequentialBlock =
     SequentialBlock()
         .add(BatchNorm.builder().build())
@@ -175,6 +181,9 @@ class DenseBlock(
     numConvs: Int,
     numChannels: Int,
 ) : AbstractBlock(VERSION) {
+    /**
+     * The net.
+     */
     val net = SequentialBlock()
 
     init {
@@ -204,7 +213,15 @@ class DenseBlock(
         params: PairList<String, Any>?,
     ): NDList =
         net.children.values().fold(X) { acc, block ->
-            NDList(NDArrays.concat(NDList(acc.singletonOrThrow(), block.forward(parameterStore, acc, training).singletonOrThrow()), 1))
+            NDList(
+                NDArrays.concat(
+                    NDList(
+                        acc.singletonOrThrow(),
+                        block.forward(parameterStore, acc, training, params).singletonOrThrow(),
+                    ),
+                    1,
+                ),
+            )
         }
 
     /**
@@ -241,7 +258,7 @@ class DenseBlock(
     ) {
         var shapesX: Shape = inputShapes[0]
         for (block in net.children.values()) {
-            block.initialize(manager, DataType.FLOAT32, shapesX)
+            block.initialize(manager, dataType, shapesX)
             val shapesY: Array<Shape> = block.getOutputShapes(arrayOf(shapesX))
             shapesX =
                 Shape(
@@ -263,7 +280,7 @@ class DenseBlock(
      * @param numChannels The number of output channels for the Conv2d layer.
      * @return A SequentialBlock representing the convolutional block.
      */
-    private fun convBlock(numChannels: Int): SequentialBlock? =
+    private fun convBlock(numChannels: Int): SequentialBlock =
         SequentialBlock()
             .add(BatchNorm.builder().build())
             .add(Activation::relu)

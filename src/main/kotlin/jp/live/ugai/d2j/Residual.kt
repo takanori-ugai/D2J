@@ -30,6 +30,9 @@ import ai.djl.training.tracker.Tracker
 import ai.djl.util.PairList
 import jp.live.ugai.d2j.util.Training.trainingChapter6
 
+/**
+ * Executes main.
+ */
 fun main() {
     System.setProperty("org.slf4j.simpleLogger.showThreadName", "false")
     System.setProperty("org.slf4j.simpleLogger.showLogName", "true")
@@ -43,20 +46,20 @@ fun main() {
     var blk = SequentialBlock()
     blk.add(Residual(3, false, Shape(1, 1)))
 
-    var X = manager.randomUniform(0f, 1.0f, Shape(4, 3, 6, 6))
+    var inputTensor = manager.randomUniform(0f, 1.0f, Shape(4, 3, 6, 6))
 
     val parameterStore = ParameterStore(manager, true)
 
-    blk.initialize(manager, DataType.FLOAT32, X.shape)
+    blk.initialize(manager, DataType.FLOAT32, inputTensor.shape)
 
-    println(blk.forward(parameterStore, NDList(X), false).singletonOrThrow().shape)
+    println(blk.forward(parameterStore, NDList(inputTensor), false).singletonOrThrow().shape)
 
     blk = SequentialBlock()
     blk.add(Residual(6, true, Shape(2, 2)))
 
-    blk.initialize(manager, DataType.FLOAT32, X.shape)
+    blk.initialize(manager, DataType.FLOAT32, inputTensor.shape)
 
-    println(blk.forward(parameterStore, NDList(X), false).singletonOrThrow().shape)
+    println(blk.forward(parameterStore, NDList(inputTensor), false).singletonOrThrow().shape)
 
     val net = SequentialBlock()
     net
@@ -82,25 +85,23 @@ fun main() {
         .add(Pool.globalAvgPool2dBlock())
         .add(Linear.builder().setUnits(10).build())
 
-    X = manager.randomUniform(0f, 1f, Shape(1, 1, 224, 224))
-    net.initialize(manager, DataType.FLOAT32, X.shape)
-    var currentShape = X.shape
+    var modelInputTensor = manager.randomUniform(0f, 1f, Shape(1, 1, 224, 224))
+    net.initialize(manager, DataType.FLOAT32, modelInputTensor.shape)
+    var currentShape = modelInputTensor.shape
 
     for (i in 0 until net.children.size()) {
-        X =
+        modelInputTensor =
             net.children[i]
                 .value
-                .forward(parameterStore, NDList(X), false)
+                .forward(parameterStore, NDList(modelInputTensor), false)
                 .singletonOrThrow()
-        currentShape = X.shape
+        currentShape = modelInputTensor.shape
         println(net.children[i].key + " layer output : " + currentShape)
     }
 
     val batchSize = 256
     val lr = 0.05f
     val numEpochs = Integer.getInteger("MAX_EPOCH", 10)
-
-    val epochCount = IntArray(numEpochs) { it + 1 }
 
     val trainIter =
         FashionMnist
@@ -137,7 +138,9 @@ fun main() {
         DefaultTrainingConfig(loss)
             .optOptimizer(sgd) // Optimizer (loss function)
             .addEvaluator(Accuracy()) // Model Accuracy
-            .addTrainingListeners(*TrainingListener.Defaults.logging()) // Logging
+            .also { cfg ->
+                TrainingListener.Defaults.logging().forEach { cfg.addTrainingListeners(it) }
+            } // Logging
 
     val trainer: Trainer = model.newTrainer(config)
 
@@ -154,6 +157,9 @@ fun main() {
     println("%.1f examples/sec".format(trainIter.size() / (avgTrainTimePerEpoch / Math.pow(10.0, 9.0))))
 }
 
+/**
+ * Executes resnetBlock.
+ */
 fun resnetBlock(
     numChannels: Int,
     numResiduals: Int,
@@ -170,15 +176,28 @@ fun resnetBlock(
     return blk
 }
 
+/**
+ * Represents Residual.
+ */
 class Residual(
     numChannels: Int,
     use1x1Conv: Boolean,
     strideShape: Shape,
 ) : AbstractBlock(VERSION) {
+    /**
+     * The block.
+     */
     var block: ParallelBlock
 
     init {
+        /**
+         * The b1.
+         */
         val b1: Block
+
+        /**
+         * The conv1x1.
+         */
         val conv1x1: Block
         b1 = SequentialBlock()
         b1
@@ -219,7 +238,14 @@ class Residual(
                 "residualBlock",
                 ParallelBlock(
                     { list: List<NDList> ->
+                        /**
+                         * The unit.
+                         */
                         val unit = list[0]
+
+                        /**
+                         * The parallel.
+                         */
                         val parallel = list[1]
                         NDList(
                             unit
@@ -234,8 +260,14 @@ class Residual(
             )
     }
 
+    /**
+     * Executes toString.
+     */
     override fun toString(): String = "Residual()"
 
+    /**
+     * Executes forwardInternal.
+     */
     override fun forwardInternal(
         parameterStore: ParameterStore,
         inputs: NDList,
@@ -243,6 +275,9 @@ class Residual(
         params: PairList<String, Any>?,
     ): NDList = block.forward(parameterStore, inputs, training)
 
+    /**
+     * Executes getOutputShapes.
+     */
     override fun getOutputShapes(inputs: Array<Shape>): Array<Shape> {
         var current: Array<Shape> = inputs
         for (block in block.children.values()) {
@@ -251,12 +286,20 @@ class Residual(
         return current
     }
 
+    /**
+     * Executes initializeChildBlocks.
+     */
     override fun initializeChildBlocks(
         manager: NDManager,
         dataType: DataType,
         vararg inputShapes: Shape,
     ) {
-        block.initialize(manager, dataType, *inputShapes)
+        when (inputShapes.size) {
+            1 -> block.initialize(manager, dataType, inputShapes[0])
+            2 -> block.initialize(manager, dataType, inputShapes[0], inputShapes[1])
+            3 -> block.initialize(manager, dataType, inputShapes[0], inputShapes[1], inputShapes[2])
+            else -> throw IllegalArgumentException("Unsupported input shape count: ${inputShapes.size}")
+        }
     }
 
     companion object {

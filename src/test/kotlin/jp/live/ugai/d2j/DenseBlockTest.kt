@@ -6,7 +6,13 @@ import ai.djl.ndarray.types.Shape
 import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Test
 
+/**
+ * Represents DenseBlockTest.
+ */
 class DenseBlockTest {
+    /**
+     * Executes testTransitionBlock.
+     */
     @Test
     fun testTransitionBlock() {
         val manager = NDManager.newBaseManager()
@@ -21,6 +27,9 @@ class DenseBlockTest {
         assertArrayEquals(expectedShape.shape, currentShape[0].shape)
     }
 
+    /**
+     * Executes testDenseBlockOutputShape.
+     */
     @Test
     fun testDenseBlockOutputShape() {
         val manager = NDManager.newBaseManager()
@@ -32,6 +41,9 @@ class DenseBlockTest {
         assertArrayEquals(expectedShape.shape, currentShape[0].shape)
     }
 
+    /**
+     * Executes testDenseBlockForward.
+     */
     @Test
     fun testDenseBlockForward() {
         val manager = NDManager.newBaseManager()

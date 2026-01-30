@@ -7,6 +7,9 @@ import org.jetbrains.letsPlot.ggsize
 import org.jetbrains.letsPlot.intern.Plot
 import org.jetbrains.letsPlot.letsPlot
 
+/**
+ * Executes main.
+ */
 fun main() {
     // Define the target functions
     val expectedRisk: (Float) -> Float = { x -> x * Math.cos(Math.PI * x).toFloat() }
@@ -17,16 +20,15 @@ fun main() {
     val expectedRiskValues = xValues.map(expectedRisk)
     val empiricalRiskValues = xValues.map(empiricalRisk)
 
-    // If plotting or further processing is needed, use these group labels
-    val expectedGroup = List(xValues.size) { "Expected Risk" }
-    val empiricalGroup = List(xValues.size) { "Empirical Risk" }
-
     // Example: print first few values for verification
     println("x: ${xValues.take(5)}")
     println("Expected Risk: ${expectedRiskValues.take(5)}")
     println("Empirical Risk: ${empiricalRiskValues.take(5)}")
 }
 
+/**
+ * Executes plotGD.
+ */
 fun plotGD(
     fLine: List<Float>,
     res: List<Float>,
@@ -61,4 +63,7 @@ fun plotGD(
     return plot + ggsize(width, height)
 }
 
+/**
+ * Represents Optimization.
+ */
 class Optimization

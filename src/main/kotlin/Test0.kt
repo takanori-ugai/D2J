@@ -1,3 +1,6 @@
+/**
+ * Executes main.
+ */
 fun main() {
     val v1: Int = 0
 
@@ -11,4 +14,7 @@ fun main() {
     println(t0.f0())
 }
 
+/**
+ * Represents Test0.
+ */
 class Test0

@@ -14,6 +14,9 @@ import ai.djl.training.loss.Loss
 import ai.djl.training.optimizer.Optimizer
 import ai.djl.translate.Batchifier
 
+/**
+ * Executes main.
+ */
 fun main() {
     val nIn = 1L
     val nOut = 2L
@@ -110,4 +113,7 @@ fun main() {
     println(biasGrad)
 }
 
+/**
+ * Represents Test1.
+ */
 class Test1

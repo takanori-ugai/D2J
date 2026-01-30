@@ -8,7 +8,13 @@ import org.jetbrains.letsPlot.ggsize
 import org.jetbrains.letsPlot.intern.Plot
 import org.jetbrains.letsPlot.letsPlot
 
+/**
+ * Singleton for GradDescUtils.
+ */
 object GradDescUtils {
+    /**
+     * Executes plotGD.
+     */
     fun plotGD(
         x0: List<Float>,
         y0: List<Float>,
@@ -38,6 +44,9 @@ object GradDescUtils {
         return plot + ggsize(width, height)
     }
 
+    /**
+     * Executes showTrace.
+     */
     fun showTrace(
         res: List<Float>,
         f: (Float) -> Float,
@@ -49,6 +58,10 @@ object GradDescUtils {
     }
 
     // Optimize a 2D objective function with a customized trainer.
+
+    /**
+     * Executes train2d.
+     */
     fun train2d(
         trainer: (List<Float>) -> List<Float>,
         steps: Int,
@@ -73,11 +86,15 @@ object GradDescUtils {
     }
 
     // Show the trace of 2D variables during optimization.
+
+    /**
+     * Executes showTrace2d.
+     */
     fun showTrace2d(
         f: (Float, Float) -> Float,
         results: List<Weights>,
     ): Plot {
-        // TODO: add when tablesaw adds support for contour and meshgrids
+        // Contour and meshgrid rendering depends on tablesaw support.
         println("Tablesaw not supporting for contour and meshgrids, will update soon")
 
         fun meshgridPoints(
@@ -137,6 +154,9 @@ object GradDescUtils {
         return plot + ggsize(500, 400)
     }
 
+    /**
+     * Executes plotGammas.
+     */
     fun plotGammas(
         time: List<Float>,
         gammas: List<Float>,
@@ -182,7 +202,18 @@ object GradDescUtils {
     }
 }
 
+/**
+ * Represents Weights.
+ * @property x1 The x1.
+ * @property x2 The x2.
+ */
 class Weights(
+    /**
+     * The x1.
+     */
     var x1: Float,
+    /**
+     * The x2.
+     */
     var x2: Float,
 )

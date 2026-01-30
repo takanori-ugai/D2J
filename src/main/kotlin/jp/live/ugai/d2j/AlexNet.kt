@@ -23,6 +23,9 @@ import ai.djl.training.tracker.Tracker
 import jp.live.ugai.d2j.util.Training
 import jp.live.ugai.d2j.util.getLong
 
+/**
+ * Executes main.
+ */
 fun main() {
     val manager = NDManager.newBaseManager()
     val lr = 0.01f
@@ -39,14 +42,16 @@ fun main() {
         DefaultTrainingConfig(loss)
             .optOptimizer(sgd) // Optimizer (loss function)
             .addEvaluator(Accuracy()) // Model Accuracy
-            .addTrainingListeners(*TrainingListener.Defaults.logging()) // Logging
+            .also { cfg ->
+                TrainingListener.Defaults.logging().forEach { cfg.addTrainingListeners(it) }
+            } // Logging
 
     val trainer = model.newTrainer(config)
 
-    val X = manager.randomUniform(0f, 1.0f, Shape(1, 1, 224, 224))
-    trainer.initialize(X.shape)
+    val sampleInput = manager.randomUniform(0f, 1.0f, Shape(1, 1, 224, 224))
+    trainer.initialize(sampleInput.shape)
 
-    var currentShape = X.shape
+    var currentShape = sampleInput.shape
 
     for (i in 0 until model.block.children.size()) {
         val newShape =
@@ -69,12 +74,6 @@ fun main() {
 // double[] testAccuracy;
 // double[] epochCount;
 // double[] trainAccuracy;
-
-    val epochCount = DoubleArray(numEpochs) { it.toDouble() + 1 }
-
-// for (int i = 0; i < epochCount.length; i++) {
-//    epochCount[i] = (i + 1);//
-// }
 
     val trainIter =
         FashionMnist
@@ -100,9 +99,12 @@ fun main() {
     testIter.prepare()
 
     val evaluatorMetrics = mutableMapOf<String, DoubleArray>()
-    val avgTrainTimePerEpoch = Training.trainingChapter6(trainIter, testIter, numEpochs, trainer, evaluatorMetrics)
+    Training.trainingChapter6(trainIter, testIter, numEpochs, trainer, evaluatorMetrics)
 }
 
+/**
+ * Represents AlexNet.
+ */
 class AlexNet : SequentialBlock() {
     init {
         add(

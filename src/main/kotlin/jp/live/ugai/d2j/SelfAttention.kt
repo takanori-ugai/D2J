@@ -25,6 +25,9 @@ class SelfAttention(
         addChildBlock("attention", attention)
     }
 
+    /**
+     * Executes forwardInternal.
+     */
     override fun forwardInternal(
         parameterStore: ParameterStore,
         inputs: NDList,
@@ -40,11 +43,17 @@ class SelfAttention(
         return attention.forward(parameterStore, attentionInputs, training, params)
     }
 
+    /**
+     * Executes getOutputShapes.
+     */
     override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> {
         // The output shape is the same as the input shape.
         return arrayOf(inputShapes[0])
     }
 
+    /**
+     * Executes initializeChildBlocks.
+     */
     override fun initializeChildBlocks(
         manager: NDManager,
         dataType: DataType,
@@ -59,6 +68,9 @@ class SelfAttention(
     }
 }
 
+/**
+ * Executes main.
+ */
 fun main() {
     val manager = NDManager.newBaseManager()
 
@@ -74,7 +86,7 @@ fun main() {
 
     val ps = ParameterStore(manager, false)
     val inputs = NDList(x, validLens)
-    selfAttention.initialize(manager, DataType.FLOAT32, *inputs.shapes)
+    selfAttention.initialize(manager, DataType.FLOAT32, inputs.shapes[0], inputs.shapes[1])
 
     val result = selfAttention.forward(ps, inputs, false)
     println("SelfAttention output shape: ${result[0].shape}")

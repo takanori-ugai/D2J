@@ -41,6 +41,10 @@ class AdditiveAttention(
             .optBias(false)
             .build()
     private val dropoutLayer: Dropout = Dropout.builder().optRate(dropout).build()
+
+    /**
+     * The attentionWeights.
+     */
     var attentionWeights: NDArray? = null
 
     init {
@@ -50,6 +54,9 @@ class AdditiveAttention(
         addChildBlock("dropout", dropoutLayer)
     }
 
+    /**
+     * Executes forwardInternal.
+     */
     override fun forwardInternal(
         ps: ParameterStore,
         inputs: NDList,
@@ -59,22 +66,33 @@ class AdditiveAttention(
         val queries = wQ.forward(ps, NDList(inputs[0]), training, params).head()
         val keys = wK.forward(ps, NDList(inputs[1]), training, params).head()
         val values = inputs[2]
-        val validLens = inputs[3]
+        val validLens = if (inputs.size > 3) inputs[3] else null
 
         val features = queries.expandDims(2).add(keys.expandDims(1)).tanh()
         val scores = wV.forward(ps, NDList(features), training, params).head().squeeze(-1)
 
-        attentionWeights = maskedSoftmax(scores, validLens)
+        attentionWeights =
+            if (validLens == null || validLens.isEmpty) {
+                scores.softmax(-1)
+            } else {
+                maskedSoftmax(scores, validLens)
+            }
         val droppedAttention = dropoutLayer.forward(ps, NDList(attentionWeights), training, params).head()
         return NDList(droppedAttention.matMul(values))
     }
 
+    /**
+     * Executes getOutputShapes.
+     */
     override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> {
         val queriesShape = inputShapes[0]
         val valuesShape = inputShapes[2]
         return arrayOf(Shape(queriesShape[0], queriesShape[1], valuesShape[2]))
     }
 
+    /**
+     * Executes initializeChildBlocks.
+     */
     override fun initializeChildBlocks(
         manager: NDManager,
         dataType: DataType,
@@ -103,12 +121,19 @@ class DotProductAttention(
     dropout: Float,
 ) : AbstractBlock() {
     private val dropoutLayer: Dropout = Dropout.builder().optRate(dropout).build()
+
+    /**
+     * The attentionWeights.
+     */
     var attentionWeights: NDArray? = null
 
     init {
         addChildBlock("dropout", dropoutLayer)
     }
 
+    /**
+     * Executes forwardInternal.
+     */
     override fun forwardInternal(
         ps: ParameterStore,
         inputs: NDList,
@@ -123,17 +148,28 @@ class DotProductAttention(
         val d = queries.shape[queries.shape.dimension() - 1].toDouble()
         val scores = queries.matMul(keys.swapAxes(1, 2)).div(Math.sqrt(d))
 
-        attentionWeights = maskedSoftmax(scores, validLens)
+        attentionWeights =
+            if (validLens == null || validLens.isEmpty) {
+                scores.softmax(-1)
+            } else {
+                maskedSoftmax(scores, validLens)
+            }
         val droppedAttention = dropoutLayer.forward(ps, NDList(attentionWeights), training, params)[0]
         return NDList(droppedAttention.matMul(values))
     }
 
+    /**
+     * Executes getOutputShapes.
+     */
     override fun getOutputShapes(shapes: Array<Shape>): Array<Shape> {
         val queriesShape = shapes[0]
         val valuesShape = shapes[2]
         return arrayOf(Shape(queriesShape[0], queriesShape[1], valuesShape[2]))
     }
 
+    /**
+     * Executes initializeChildBlocks.
+     */
     override fun initializeChildBlocks(
         manager: NDManager,
         dataType: DataType,
@@ -145,6 +181,9 @@ class DotProductAttention(
     }
 
     companion object {
+        /**
+         * Executes main.
+         */
         @JvmStatic
         fun main(args: Array<String>) {
             val manager = NDManager.newBaseManager()
@@ -174,7 +213,14 @@ class DotProductAttention(
             val additiveAttention = AdditiveAttention(8, 0.1f)
             val inputA = NDList(queriesA, keysA, valuesA, validLensA)
             val ps = ParameterStore(manager, false)
-            additiveAttention.initialize(manager, DataType.FLOAT32, *inputA.shapes)
+            additiveAttention.initialize(
+                manager,
+                DataType.FLOAT32,
+                inputA.shapes[0],
+                inputA.shapes[1],
+                inputA.shapes[2],
+                inputA.shapes[3],
+            )
             println("Output shape: ${additiveAttention.forward(ps, inputA, false).head().shape}")
             println("Attention weights shape: ${additiveAttention.attentionWeights?.shape}")
 
@@ -183,7 +229,14 @@ class DotProductAttention(
             val queriesD = manager.randomNormal(0f, 1f, Shape(2, 1, 2), DataType.FLOAT32)
             val dotProductAttention = DotProductAttention(0.5f)
             val inputD = NDList(queriesD, keysA, valuesA, validLensA)
-            dotProductAttention.initialize(manager, DataType.FLOAT32, *inputD.shapes)
+            dotProductAttention.initialize(
+                manager,
+                DataType.FLOAT32,
+                inputD.shapes[0],
+                inputD.shapes[1],
+                inputD.shapes[2],
+                inputD.shapes[3],
+            )
             println("Output shape: ${dotProductAttention.forward(ps, inputD, false).head().shape}")
             println("Attention weights shape: ${dotProductAttention.attentionWeights?.shape}")
         }

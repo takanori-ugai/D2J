@@ -14,5 +14,6 @@ abstract class Encoder : AbstractBlock() {
      * @return The output shapes.
      * @throws UnsupportedOperationException If the method is not implemented.
      */
-    override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> = throw UnsupportedOperationException("Not implemented")
+    override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> =
+        throw UnsupportedOperationException("Not implemented")
 }

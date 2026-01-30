@@ -13,7 +13,13 @@ import java.nio.charset.StandardCharsets
 import java.util.Locale
 import java.util.zip.ZipFile
 
+/**
+ * Singleton for NMT.
+ */
 object NMT {
+    /**
+     * Executes readDataNMT.
+     */
     fun readDataNMT(): String? {
         DownloadUtils.download(
             "http://d2l-data.s3-accelerate.amazonaws.com/fra-eng.zip",
@@ -32,6 +38,9 @@ object NMT {
         return null
     }
 
+    /**
+     * Executes noSpace.
+     */
     fun noSpace(
         currChar: Char,
         prevChar: Char,
@@ -41,11 +50,14 @@ object NMT {
             prevChar != ' '
     }
 
-    fun preprocessNMT(_text: String): String {
+    /**
+     * Executes preprocessNMT.
+     */
+    fun preprocessNMT(rawText: String): String {
         // Replace non-breaking space with space, and convert uppercase letters to
         // lowercase ones
 
-        val text = _text.replace('\u202f', ' ').replace("\\xa0".toRegex(), " ").lowercase(Locale.getDefault())
+        val text = rawText.replace('\u202f', ' ').replace("\\xa0".toRegex(), " ").lowercase(Locale.getDefault())
 
         // Insert space between words and punctuation marks
         val out = StringBuilder()
@@ -60,6 +72,9 @@ object NMT {
         return out.toString()
     }
 
+    /**
+     * Executes tokenizeNMT.
+     */
     fun tokenizeNMT(
         text: String,
         numExamples: Int?,
@@ -82,6 +97,9 @@ object NMT {
         return Pair(source, target)
     }
 
+    /**
+     * Executes truncatePad.
+     */
     fun truncatePad(
         integerLine: List<Int>,
         numSteps: Int,
@@ -96,6 +114,9 @@ object NMT {
         return line + paddingTokenArr
     }
 
+    /**
+     * Executes buildArrayNMT.
+     */
     fun buildArrayNMT(
         lines: List<List<String>>,
         vocab: Vocab,
@@ -122,6 +143,9 @@ object NMT {
         return Pair(arr, validLen)
     }
 
+    /**
+     * Executes loadDataNMT.
+     */
     fun loadDataNMT(
         batchSize: Int,
         numSteps: Int,

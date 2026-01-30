@@ -15,20 +15,41 @@ import ai.djl.training.ParameterStore
 import ai.djl.training.initializer.ConstantInitializer
 import ai.djl.util.PairList
 
+/**
+ * Represents ViT.
+ * @property imgSize The imgSize.
+ * @property numHiddens The numHiddens.
+ * @property numClasses The numClasses.
+ */
 class ViT(
+    /**
+     * The imgSize.
+     */
     val imgSize: Int,
     patchSize: Int,
+    /**
+     * The numHiddens.
+     */
     val numHiddens: Int,
     mlpNumHiddens: Int,
     numHeads: Int,
     numBlks: Int,
     embDropout: Float,
     blkDropout: Float,
-    lr: Float = 0.1f,
     useBias: Boolean = false,
+    /**
+     * The numClasses.
+     */
     val numClasses: Int = 10,
 ) : AbstractBlock() {
+    /**
+     * The patchEmbedding.
+     */
     val patchEmbedding = PatchEmbedding(imgSize, patchSize, numHiddens)
+
+    /**
+     * The clsToken.
+     */
     val clsToken =
         Parameter
             .builder()
@@ -36,7 +57,15 @@ class ViT(
             .setType(Parameter.Type.BIAS)
             .optShape(Shape(1, 1, numHiddens.toLong()))
             .build()
+
+    /**
+     * The numSteps.
+     */
     val numSteps: Int = patchEmbedding.numPatches + 1
+
+    /**
+     * The posEmbedding.
+     */
     val posEmbedding =
         Parameter
             .builder()
@@ -45,9 +74,17 @@ class ViT(
 //    torch.randn(1, num_steps, num_hiddens))
             .setType(Parameter.Type.BIAS)
             .build()
+
+    /**
+     * The blks0.
+     */
     val blks0 =
         SequentialBlock()
             .add(Dropout.builder().optRate(embDropout).build())
+
+    /**
+     * The head.
+     */
     val head =
         SequentialBlock()
             .add(LayerNorm.builder().build())
@@ -57,27 +94,43 @@ class ViT(
         addParameter(clsToken)
         addParameter(posEmbedding)
         clsToken.setInitializer(ConstantInitializer(0f))
+        addChildBlock("patchEmbedding", patchEmbedding)
+        addChildBlock("blocks", blks0)
+        addChildBlock("head", head)
         repeat(numBlks) {
             blks0.add(ViTBlock(numHiddens, numHiddens, mlpNumHiddens, numHeads, blkDropout, useBias))
         }
     }
 
+    /**
+     * Executes forwardInternal.
+     */
     override fun forwardInternal(
         parameterStore: ParameterStore,
         inputs: NDList,
         training: Boolean,
         params: PairList<String, Any>?,
     ): NDList {
-        var X = patchEmbedding.forward(parameterStore, inputs, training, params).head()
-        // X = torch.cat((self.cls_token.expand(X.shape[0], -1, -1), X), 1)
+        var embeddings = patchEmbedding.forward(parameterStore, inputs, training, params).head()
+        // embeddings = torch.cat((self.cls_token.expand(embeddings.shape[0], -1, -1), embeddings), 1)
 
-        X = clsToken.array.repeat(0, X.shape[0]).concat(X, 1)
-//        X = dropOut.forward(parameterStore, NDList(X.add(posEmbedding.array)), training, params).head()
-//        X = blks0.forward(parameterStore, NDList(X), training, params).head()
-        X = blks0.forward(parameterStore, NDList(X.add(posEmbedding.array)), training, params).head()
-        return head.forward(parameterStore, NDList(X.get(NDIndex(":, 0"))), training, params)
+        embeddings = clsToken.array.repeat(0, embeddings.shape[0]).concat(embeddings, 1)
+//        embeddings = dropOut.forward(parameterStore, NDList(embeddings.add(posEmbedding.array)), training, params)
+//        embeddings = blks0.forward(parameterStore, NDList(embeddings), training, params).head()
+        embeddings =
+            blks0
+                .forward(
+                    parameterStore,
+                    NDList(embeddings.add(posEmbedding.array)),
+                    training,
+                    params,
+                ).head()
+        return head.forward(parameterStore, NDList(embeddings.get(NDIndex(":, 0"))), training, params)
     }
 
+    /**
+     * Executes initializeChildBlocks.
+     */
     override fun initializeChildBlocks(
         manager: NDManager,
         dataType: DataType,
@@ -88,11 +141,19 @@ class ViT(
         patchEmbedding.initialize(
             manager,
             dataType,
-            Shape(inputShapes[0][0], inputShapes[0][1], imgSize.toLong(), imgSize.toLong()),
+            Shape(inputShapes[0][0], inputShapes[0][1], inputShapes[0][2], inputShapes[0][3]),
         )
-        blks0.initialize(manager, dataType, Shape(inputShapes[0][0], numSteps.toLong(), numHiddens.toLong()))
+        blks0.initialize(
+            manager,
+            dataType,
+            Shape(inputShapes[0][0], numSteps.toLong(), numHiddens.toLong()),
+        )
         head.initialize(manager, dataType, Shape(inputShapes[0][0], numHiddens.toLong()))
     }
 
-    override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> = arrayOf(Shape(inputShapes[0][0], numClasses.toLong()))
+    /**
+     * Executes getOutputShapes.
+     */
+    override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> =
+        arrayOf(Shape(inputShapes[0][0], numClasses.toLong()))
 }

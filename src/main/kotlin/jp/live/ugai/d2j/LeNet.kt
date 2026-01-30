@@ -23,6 +23,9 @@ import ai.djl.training.loss.Loss
 import ai.djl.training.optimizer.Optimizer
 import ai.djl.training.tracker.Tracker
 
+/**
+ * Executes main.
+ */
 fun main() {
     System.setProperty("org.slf4j.simpleLogger.showThreadName", "false")
     System.setProperty("org.slf4j.simpleLogger.showLogName", "true")
@@ -92,14 +95,16 @@ fun main() {
             .optOptimizer(sgd) // Optimizer (loss function)
             .optDevices(Engine.getInstance().getDevices(1)) // Single GPU
             .addEvaluator(Accuracy()) // Model Accuracy
-            .addTrainingListeners(*TrainingListener.Defaults.basic())
+            .also { cfg ->
+                TrainingListener.Defaults.basic().forEach { cfg.addTrainingListeners(it) }
+            }
 
     val trainer = model.newTrainer(config)
 
-    val X = manager.randomUniform(0f, 1.0f, Shape(1, 1, 28, 28))
-    trainer.initialize(X.shape)
+    val sampleInput = manager.randomUniform(0f, 1.0f, Shape(1, 1, 28, 28))
+    trainer.initialize(sampleInput.shape)
 
-    var currentShape = X.shape
+    var currentShape = sampleInput.shape
 
     for (i in 0 until block.children.size()) {
         val newShape =
@@ -183,4 +188,7 @@ fun main() {
     println(trainAccuracy!!.toList())
 }
 
+/**
+ * Represents LeNet.
+ */
 class LeNet

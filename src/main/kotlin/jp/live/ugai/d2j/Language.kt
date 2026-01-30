@@ -10,6 +10,9 @@ import jp.live.ugai.d2j.timemachine.TimeMachine.tokenize
 import jp.live.ugai.d2j.timemachine.Vocab
 import kotlin.random.Random
 
+/**
+ * Executes main.
+ */
 fun main() {
     val manager = NDManager.newBaseManager()
     val tokens = tokenize(readTimeMachine(), "word")
@@ -63,14 +66,14 @@ fun main() {
  * Generate a minibatch of subsequences using random sampling.
  */
 fun seqDataIterRandom(
-    _corpus: List<Int>,
+    corpusInput: List<Int>,
     batchSize: Int,
     numSteps: Int,
     manager: NDManager,
 ): List<NDList> {
     // Start with a random offset (inclusive of `numSteps - 1`) to partition a
     // sequence
-    var corpus = _corpus.subList(Random.nextInt(numSteps - 1), _corpus.size)
+    var corpus = corpusInput.subList(Random.nextInt(numSteps - 1), corpusInput.size)
     // Subtract 1 since we need to account for labels
     val numSubseqs = (corpus.size - 1) / numSteps
     // The starting indices for subsequences of length `numSteps`
@@ -90,14 +93,14 @@ fun seqDataIterRandom(
     while (i < batchSize * numBatches) {
         // Here, `initialIndices` contains randomized starting indices for
         // subsequences
-//        val initialIndicesPerBatch = initialIndices.subList(i, i + batchSize)
-        val xNDArray = manager.create(Shape(initialIndices.size.toLong(), numSteps.toLong()), DataType.INT32)
-        val yNDArray = manager.create(Shape(initialIndices.size.toLong(), numSteps.toLong()), DataType.INT32)
-        for (j in initialIndices.indices) {
-            val X = data(initialIndices[j], corpus, numSteps)
-            xNDArray[NDIndex(j.toLong())] = manager.create(X.toIntArray())
-            val Y = data(initialIndices[j] + 1, corpus, numSteps)
-            yNDArray[NDIndex(j.toLong())] = manager.create(Y.toIntArray())
+        val initialIndicesPerBatch = initialIndices.subList(i, i + batchSize)
+        val xNDArray = manager.create(Shape(batchSize.toLong(), numSteps.toLong()), DataType.INT32)
+        val yNDArray = manager.create(Shape(batchSize.toLong(), numSteps.toLong()), DataType.INT32)
+        for (j in initialIndicesPerBatch.indices) {
+            val inputSeq = data(initialIndicesPerBatch[j], corpus, numSteps)
+            xNDArray[NDIndex(j.toLong())] = manager.create(inputSeq.toIntArray())
+            val targetSeq = data(initialIndicesPerBatch[j] + 1, corpus, numSteps)
+            yNDArray[NDIndex(j.toLong())] = manager.create(targetSeq.toIntArray())
         }
         val pair = NDList(xNDArray, yNDArray)
         pairs.add(pair)
@@ -106,6 +109,9 @@ fun seqDataIterRandom(
     return pairs
 }
 
+/**
+ * Executes data.
+ */
 fun data(
     pos: Int,
     corpus: List<Int>,
@@ -127,21 +133,24 @@ fun seqDataIterSequential(
     // Start with a random offset to partition a sequence
     val offset = Random.nextInt(numSteps)
     val numTokens = (corpus.size - offset - 1) / batchSize * batchSize
-    var Xs = manager.create(corpus.subList(offset, offset + numTokens).toIntArray())
-    var Ys = manager.create(corpus.subList(offset + 1, offset + 1 + numTokens).toIntArray())
-    Xs = Xs.reshape(Shape(batchSize.toLong(), -1))
-    Ys = Ys.reshape(Shape(batchSize.toLong(), -1))
-    val numBatches = Xs.shape[1].toInt() / numSteps
+    var inputs = manager.create(corpus.subList(offset, offset + numTokens).toIntArray())
+    var labels = manager.create(corpus.subList(offset + 1, offset + 1 + numTokens).toIntArray())
+    inputs = inputs.reshape(Shape(batchSize.toLong(), -1))
+    labels = labels.reshape(Shape(batchSize.toLong(), -1))
+    val numBatches = inputs.shape[1].toInt() / numSteps
     val pairs = mutableListOf<NDList>()
     var i = 0
     while (i < numSteps * numBatches) {
-        val X = Xs[NDIndex(":, {}:{}", i, i + numSteps)]
-        val Y = Ys[NDIndex(":, {}:{}", i, i + numSteps)]
-        val pair = NDList(X, Y)
+        val inputSeq = inputs[NDIndex(":, {}:{}", i, i + numSteps)]
+        val targetSeq = labels[NDIndex(":, {}:{}", i, i + numSteps)]
+        val pair = NDList(inputSeq, targetSeq)
         pairs.add(pair)
         i += numSteps
     }
     return pairs
 }
 
+/**
+ * Represents Language.
+ */
 class Language

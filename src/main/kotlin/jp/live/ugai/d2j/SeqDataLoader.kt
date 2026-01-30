@@ -10,20 +10,49 @@ import jp.live.ugai.d2j.timemachine.TimeMachine.loadCorpusTimeMachine
 import jp.live.ugai.d2j.timemachine.Vocab
 import java.util.Random
 
+/**
+ * Represents SeqDataLoader.
+ */
 class SeqDataLoader(
     batchSize: Int,
     numSteps: Int,
     useRandomIter: Boolean,
     maxTokens: Int,
 ) : Iterable<NDList> {
+    /**
+     * The dataIter.
+     */
     var dataIter: List<NDList>
+
+    /**
+     * The corpus.
+     */
     var corpus: List<Int>
+
+    /**
+     * The vocab.
+     */
     var vocab: Vocab
+
+    /**
+     * The batchSize.
+     */
     var batchSize: Int
+
+    /**
+     * The numSteps.
+     */
     var numSteps: Int
 
     init {
+        /**
+         * The manager.
+         */
         val manager = NDManager.newBaseManager()
+
+        /**
+         * The corpusVocabPair.
+         */
         val corpusVocabPair = loadCorpusTimeMachine(maxTokens)
         corpus = corpusVocabPair.first
         vocab = corpusVocabPair.second
@@ -36,6 +65,9 @@ class SeqDataLoader(
         }
     }
 
+    /**
+     * Executes iterator.
+     */
     override fun iterator(): Iterator<NDList> = dataIter.iterator()
 
     /**
@@ -78,10 +110,10 @@ class SeqDataLoader(
             val yNDArray: NDArray =
                 manager.create(Shape(initialIndices.size.toLong(), numSteps.toLong()), DataType.INT32)
             for (j in initialIndices.indices) {
-                val X = data(initialIndices[j], corpus, numSteps)
-                xNDArray[NDIndex(j.toLong())] = manager.create(X.toIntArray())
-                val Y = data(initialIndices[j] + 1, corpus, numSteps)
-                yNDArray[NDIndex(j.toLong())] = manager.create(Y.toIntArray())
+                val inputSeq = data(initialIndices[j], corpus, numSteps)
+                xNDArray[NDIndex(j.toLong())] = manager.create(inputSeq.toIntArray())
+                val targetSeq = data(initialIndices[j] + 1, corpus, numSteps)
+                yNDArray[NDIndex(j.toLong())] = manager.create(targetSeq.toIntArray())
             }
             val pair = NDList()
             pair.add(xNDArray)
@@ -104,25 +136,25 @@ class SeqDataLoader(
         // Start with a random offset to partition a sequence
         val offset = Random().nextInt(numSteps)
         val numTokens = (corpus.size - offset - 1) / batchSize * batchSize
-        var Xs =
+        var inputs =
             manager.create(
                 corpus.subList(offset, offset + numTokens).toIntArray(),
             )
-        var Ys =
+        var labels =
             manager.create(
                 corpus.subList(offset + 1, offset + 1 + numTokens).toIntArray(),
             )
-        Xs = Xs.reshape(Shape(batchSize.toLong(), -1))
-        Ys = Ys.reshape(Shape(batchSize.toLong(), -1))
-        val numBatches = Xs.shape[1].toInt() / numSteps
+        inputs = inputs.reshape(Shape(batchSize.toLong(), -1))
+        labels = labels.reshape(Shape(batchSize.toLong(), -1))
+        val numBatches = inputs.shape[1].toInt() / numSteps
         val pairs = mutableListOf<NDList>()
         var i = 0
         while (i < numSteps * numBatches) {
-            val X = Xs[NDIndex(":, {}:{}", i, i + numSteps)]
-            val Y = Ys[NDIndex(":, {}:{}", i, i + numSteps)]
+            val inputSeq = inputs[NDIndex(":, {}:{}", i, i + numSteps)]
+            val targetSeq = labels[NDIndex(":, {}:{}", i, i + numSteps)]
             val pair = NDList()
-            pair.add(X)
-            pair.add(Y)
+            pair.add(inputSeq)
+            pair.add(targetSeq)
             pairs.add(pair)
             i += numSteps
         }

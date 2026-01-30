@@ -8,11 +8,14 @@ import ai.djl.ndarray.types.Shape
 import ai.djl.training.ParameterStore
 import jp.live.ugai.d2j.attention.MultiHeadAttention
 
+/**
+ * Executes main.
+ */
 fun main() {
     val manager = NDManager.newBaseManager()
 
     fun transposeQkv(
-        _X: NDArray,
+        input: NDArray,
         numHeads: Int,
     ): NDArray? {
         // Shape of input `X`:
@@ -20,28 +23,28 @@ fun main() {
         // Shape of output `X`:
         // (`batchSize`, no. of queries or key-value pairs, `numHeads`,
         // `numHiddens` / `numHeads`)
-        var X = _X
-        X = X.reshape(X.shape[0], X.shape[1], numHeads.toLong(), -1)
+        var tensor = input
+        tensor = tensor.reshape(tensor.shape[0], tensor.shape[1], numHeads.toLong(), -1)
 
         // Shape of output `X`:
         // (`batchSize`, `numHeads`, no. of queries or key-value pairs,
         // `numHiddens` / `numHeads`)
-        X = X.transpose(0, 2, 1, 3)
+        tensor = tensor.transpose(0, 2, 1, 3)
 
         // Shape of `output`:
         // (`batchSize` * `numHeads`, no. of queries or key-value pairs,
         // `numHiddens` / `numHeads`)
-        return X.reshape(-1, X.shape[2], X.shape[3])
+        return tensor.reshape(-1, tensor.shape[2], tensor.shape[3])
     }
 
     fun transposeOutput(
-        _X: NDArray,
+        input: NDArray,
         numHeads: Int,
     ): NDArray? {
-        var X = _X
-        X = X.reshape(-1, numHeads.toLong(), X.shape[1], X.shape[2])
-        X = X.transpose(0, 2, 1, 3)
-        return X.reshape(X.shape[0], X.shape[1], -1)
+        var tensor = input
+        tensor = tensor.reshape(-1, numHeads.toLong(), tensor.shape[1], tensor.shape[2])
+        tensor = tensor.transpose(0, 2, 1, 3)
+        return tensor.reshape(tensor.shape[0], tensor.shape[1], -1)
     }
 
     val numHiddens = 100
@@ -52,14 +55,24 @@ fun main() {
     val numQueries = 4
     val numKvpairs = 6
     val validLens = manager.create(floatArrayOf(3.0f, 2.0f))
-    val X = manager.ones(Shape(batchSize.toLong(), numQueries.toLong(), numHiddens.toLong()))
-    val Y = manager.ones(Shape(batchSize.toLong(), numKvpairs.toLong(), numHiddens.toLong()))
+    val queries = manager.ones(Shape(batchSize.toLong(), numQueries.toLong(), numHiddens.toLong()))
+    val keyValues = manager.ones(Shape(batchSize.toLong(), numKvpairs.toLong(), numHiddens.toLong()))
 
     val ps = ParameterStore(manager, false)
-    val input = NDList(X, Y, Y, validLens)
-    attention.initialize(manager, DataType.FLOAT32, *input.shapes)
+    val input = NDList(queries, keyValues, keyValues, validLens)
+    attention.initialize(
+        manager,
+        DataType.FLOAT32,
+        input.shapes[0],
+        input.shapes[1],
+        input.shapes[2],
+        input.shapes[3],
+    )
     val result = attention.forward(ps, input, false)
     println(result[0].shape)
 }
 
+/**
+ * Represents MultiheadAttention.
+ */
 class MultiheadAttention

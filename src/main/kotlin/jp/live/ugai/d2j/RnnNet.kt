@@ -15,8 +15,14 @@ import jp.live.ugai.d2j.util.Accumulator
 import jp.live.ugai.d2j.util.StopWatch
 import jp.live.ugai.d2j.util.Training.sgd
 
+/**
+ * The manager.
+ */
 val manager = NDManager.newBaseManager()
 
+/**
+ * Executes main.
+ */
 fun main() {
     val batchSize = 32
     val numSteps = 35
@@ -27,22 +33,22 @@ fun main() {
 
     println(vocab.length())
     println(manager.create(intArrayOf(0, 2)).oneHot(vocab.length()))
-    var X = manager.arange(10).reshape(Shape(2, 5))
-    println(X.transpose().oneHot(28).shape)
+    var sampleData = manager.arange(10).reshape(Shape(2, 5))
+    println(sampleData.transpose().oneHot(28).shape)
 
     val numHiddens = 512
     val getParamsFn = ::getParams
     val initRNNStateFn = ::initRNNState
     val rnnFn = ::rnn
 
-    X = manager.arange(10).reshape(Shape(2, 5))
+    sampleData = manager.arange(10).reshape(Shape(2, 5))
     val device = manager.device
     val net = RNNModelScratch(vocab.length(), numHiddens, device, getParamsFn, initRNNStateFn, rnnFn)
-    val state = net.beginState(X.shape.shape[0].toInt(), device)
-    val pairResult: Pair<NDArray, NDList> = net.forward(X.toDevice(device, false), state)
-    val Y: NDArray = pairResult.first
+    val state = net.beginState(sampleData.shape.shape[0].toInt(), device)
+    val pairResult: Pair<NDArray, NDList> = net.forward(sampleData.toDevice(device, false), state)
+    val output: NDArray = pairResult.first
     val newState: NDList = pairResult.second
-    println(Y.shape)
+    println(output.shape)
     println(newState[0].shape)
 
     println(predictCh8("time traveller ", 10, net, vocab, manager.device))
@@ -53,68 +59,83 @@ fun main() {
     trainCh8(net, trainIter, vocab, lr, numEpochs, manager.device, false)
 }
 
+/**
+ * Executes getParams.
+ */
 fun getParams(
     vocabSize: Int,
     numHiddens: Int,
     device: Device,
 ): NDList {
     // Hidden layer parameters
-    val W_xh: NDArray = normal(Shape(vocabSize.toLong(), numHiddens.toLong()), device)
-    val W_hh: NDArray = normal(Shape(numHiddens.toLong(), numHiddens.toLong()), device)
-    val b_h: NDArray = manager.zeros(Shape(numHiddens.toLong()), DataType.FLOAT32, device)
+    val weightXh: NDArray = normal(Shape(vocabSize.toLong(), numHiddens.toLong()), device)
+    val weightHh: NDArray = normal(Shape(numHiddens.toLong(), numHiddens.toLong()), device)
+    val biasH: NDArray = manager.zeros(Shape(numHiddens.toLong()), DataType.FLOAT32, device)
     // Output layer parameters
-    val W_hq: NDArray = normal(Shape(numHiddens.toLong(), vocabSize.toLong()), device)
-    val b_q: NDArray = manager.zeros(Shape(vocabSize.toLong()), DataType.FLOAT32, device)
+    val weightHq: NDArray = normal(Shape(numHiddens.toLong(), vocabSize.toLong()), device)
+    val biasQ: NDArray = manager.zeros(Shape(vocabSize.toLong()), DataType.FLOAT32, device)
 
     // Attach gradients
-    val params = NDList(W_xh, W_hh, b_h, W_hq, b_q)
+    val params = NDList(weightXh, weightHh, biasH, weightHq, biasQ)
     for (param in params) {
         param.setRequiresGradient(true)
     }
     return params
 }
 
+/**
+ * Executes normal.
+ */
 fun normal(
     shape: Shape,
     device: Device,
 ): NDArray = manager.randomNormal(0f, 0.01f, shape, DataType.FLOAT32, device)
 
+/**
+ * Executes initRNNState.
+ */
 fun initRNNState(
     batchSize: Int,
     numHiddens: Int,
     device: Device,
 ): NDList = NDList(manager.zeros(Shape(batchSize.toLong(), numHiddens.toLong()), DataType.FLOAT32, device))
 
+/**
+ * Executes rnn.
+ */
 fun rnn(
     inputs: NDArray,
     state: NDList,
     params: NDList,
 ): Pair<NDArray, NDList> {
     // Shape of `inputs`: (`numSteps`, `batchSize`, `vocabSize`)
-    val W_xh = params[0]
-    val W_hh = params[1]
-    val b_h = params[2]
-    val W_hq = params[3]
-    val b_q = params[4]
-    var H = state[0]
+    val weightXh = params[0]
+    val weightHh = params[1]
+    val biasH = params[2]
+    val weightHq = params[3]
+    val biasQ = params[4]
+    var hiddenState = state[0]
     val outputs = NDList()
     // Shape of `X`: (`batchSize`, `vocabSize`)
-    var X: NDArray
-    var Y: NDArray
+    var inputStep: NDArray
+    var outputStep: NDArray
     for (i in 0 until inputs.size(0)) {
-        X = inputs[i]
-        H =
-            X
-                .dot(W_xh)
-                .add(H.dot(W_hh))
-                .add(b_h)
+        inputStep = inputs[i]
+        hiddenState =
+            inputStep
+                .dot(weightXh)
+                .add(hiddenState.dot(weightHh))
+                .add(biasH)
                 .tanh()
-        Y = H.dot(W_hq).add(b_q)
-        outputs.add(Y)
+        outputStep = hiddenState.dot(weightHq).add(biasQ)
+        outputs.add(outputStep)
     }
-    return Pair(if (outputs.size > 1) NDArrays.concat(outputs) else outputs[0], NDList(H))
+    return Pair(if (outputs.size > 1) NDArrays.concat(outputs) else outputs[0], NDList(hiddenState))
 }
 
+/**
+ * Executes predictCh8.
+ */
 fun predictCh8(
     prefix: String,
     numPreds: Int,
@@ -155,7 +176,9 @@ fun predictCh8(
     return output.toString()
 }
 
-/** Clip the gradient.  */
+/**
+ * Executes gradClipping.
+ */
 fun gradClipping(
     net: RNNModelScratch,
     theta: Int,
@@ -181,7 +204,9 @@ fun gradClipping(
     }
 }
 
-/** Train a model within one epoch.  */
+/**
+ * Executes trainEpochCh8.
+ */
 fun trainEpochCh8(
     net: RNNModelScratch,
     trainIter: List<NDList>,
@@ -196,25 +221,25 @@ fun trainEpochCh8(
     manager.newSubManager().use { childManager ->
         var state: NDList? = null
         for (pair in trainIter) {
-            var X = pair[0].toDevice(device, true)
-            X.attach(childManager)
-            val Y = pair[1].toDevice(device, true)
-            Y.attach(childManager)
+            var features = pair[0].toDevice(device, true)
+            features.attach(childManager)
+            val labels = pair[1].toDevice(device, true)
+            labels.attach(childManager)
             if (state == null || useRandomIter) {
                 // Initialize `state` when either it is the first iteration or
                 // using random sampling
-                state = net.beginState(X.shape.shape[0].toInt(), device)
+                state = net.beginState(features.shape.shape[0].toInt(), device)
             } else {
                 for (s in state) {
                     s.stopGradient()
                 }
             }
             state.attach(childManager)
-            var y = Y.transpose().reshape(Shape(-1))
-            X = X.toDevice(device, false)
+            var y = labels.transpose().reshape(Shape(-1))
+            features = features.toDevice(device, false)
             y = y.toDevice(device, false)
             manager.engine.newGradientCollector().use { gc ->
-                val pairResult = net.forward(X, state!!)
+                val pairResult = net.forward(features, state)
                 val yHat: NDArray = pairResult.first
                 state = pairResult.second
                 val l = loss.evaluate(NDList(y), NDList(yHat)).mean()
@@ -228,7 +253,9 @@ fun trainEpochCh8(
     return Pair(Math.exp((metric.get(0) / metric.get(1)).toDouble()), metric.get(1) / watch.stop())
 }
 
-/** Train a model.  */
+/**
+ * Executes trainCh8.
+ */
 fun trainCh8(
     net: RNNModelScratch,
     trainIter: List<NDList>,
@@ -263,4 +290,7 @@ fun trainCh8(
     println(predict("traveller"))
 }
 
+/**
+ * Represents RnnNet.
+ */
 class RnnNet

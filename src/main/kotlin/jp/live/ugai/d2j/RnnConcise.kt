@@ -30,9 +30,19 @@ import jp.live.ugai.d2j.util.Accumulator
 import jp.live.ugai.d2j.util.StopWatch
 import jp.live.ugai.d2j.util.Training.sgd
 
-const val batchSize = 32
-const val numSteps = 35
+/**
+ * Constant BATCH_SIZE.
+ */
+const val BATCH_SIZE = 32
 
+/**
+ * Constant NUM_STEPS.
+ */
+const val NUM_STEPS = 35
+
+/**
+ * Executes main.
+ */
 fun main() {
     System.setProperty("org.slf4j.simpleLogger.showThreadName", "false")
     System.setProperty("org.slf4j.simpleLogger.showLogName", "true")
@@ -49,8 +59,8 @@ fun main() {
             .Builder()
             .setManager(manager)
             .setMaxTokens(10000)
-            .setSampling(batchSize, false)
-            .setSteps(numSteps)
+            .setSampling(BATCH_SIZE, false)
+            .setSteps(NUM_STEPS)
             .build()
     dataset.prepare()
     val vocab = dataset.vocab
@@ -64,24 +74,29 @@ fun main() {
             .optReturnState(true)
             .optBatchFirst(false)
             .build()
-    val state = beginState(batchSize, 1, numHiddens)
+    val state = beginState(BATCH_SIZE, 1, numHiddens, manager)
     println(state.size)
     println(state[0].shape)
 
-    val X = manager.randomUniform(0.0f, 1.0f, Shape(numSteps.toLong(), batchSize.toLong(), vocab!!.length().toLong()))
+    val inputTensor =
+        manager.randomUniform(
+            0.0f,
+            1.0f,
+            Shape(NUM_STEPS.toLong(), BATCH_SIZE.toLong(), vocab!!.length().toLong()),
+        )
 
-    val input = NDList(X, state[0])
-    rnnLayer.initialize(manager, DataType.FLOAT32, *input.shapes)
+    val input = NDList(inputTensor, state[0])
+    rnnLayer.initialize(manager, DataType.FLOAT32, input.shapes[0], input.shapes[1])
     val forwardOutput = rnnLayer.forward(ParameterStore(manager, false), input, false)
-    val Y = forwardOutput[0]
+    val rnnOutput = forwardOutput[0]
     val stateNew = forwardOutput[1]
 
-    println(Y.shape)
+    println(rnnOutput.shape)
     println(stateNew.shape)
 
     val device = manager.device
     val net = RNNModel(rnnLayer, vocab.length())
-    net.initialize(manager, DataType.FLOAT32, X.shape)
+    net.initialize(manager, DataType.FLOAT32, inputTensor.shape)
     println(predictCh8("time traveller", 10, net, vocab, device, manager))
 
     val numEpochs: Int = Integer.getInteger("MAX_EPOCH", 500)
@@ -90,12 +105,19 @@ fun main() {
     predictCh8("time traveller", 10, net, vocab, device, manager)
 }
 
+/**
+ * Executes beginState.
+ */
 fun beginState(
     batchSize: Int,
     numLayers: Int,
     numHiddens: Int,
+    manager: NDManager,
 ): NDList = NDList(manager.zeros(Shape(numLayers.toLong(), batchSize.toLong(), numHiddens.toLong())))
 
+/**
+ * Executes predictCh8.
+ */
 fun predictCh8(
     prefix: String,
     numPreds: Int,
@@ -181,7 +203,9 @@ fun predictCh8(
     return output.toString()
 }
 
-/** Train a model.  */
+/**
+ * Executes trainCh8.
+ */
 fun trainCh8(
     net: Any,
     dataset: RandomAccessDataset,
@@ -197,7 +221,7 @@ fun trainCh8(
     val updater: (Int, NDManager) -> Unit =
         if (net is RNNModelScratch) {
             { batchSize: Int, subManager: NDManager ->
-                sgd(net.params, lr.toFloat(), batchSize, subManager)
+                sgd(net.params, lr, batchSize, subManager)
             }
         } else {
             { batchSize: Int, subManager: NDManager ->
@@ -213,7 +237,9 @@ fun trainCh8(
                         .optInitializer(NormalInitializer(0.01f), Parameter.Type.WEIGHT) // setting the initializer
                         .optDevices(Engine.getInstance().getDevices(1)) // setting the number of GPUs needed
                         .addEvaluator(Accuracy()) // Model Accuracy
-                        .addTrainingListeners(*TrainingListener.Defaults.logging()) // Logging
+                        .also { cfg ->
+                            TrainingListener.Defaults.logging().forEach { cfg.addTrainingListeners(it) }
+                        } // Logging
                 val trainer: Trainer = model.newTrainer(config)
                 trainer.step()
             }
@@ -242,7 +268,9 @@ fun trainCh8(
     println(predict("traveller"))
 }
 
-/** Train a model within one epoch.  */
+/**
+ * Executes trainEpochCh8.
+ */
 fun trainEpochCh8(
     net: Any,
     dataset: RandomAccessDataset,
@@ -258,13 +286,13 @@ fun trainEpochCh8(
     manager.newSubManager().use { childManager ->
         var state: NDList? = null
         for (batch in dataset.getData(childManager)) {
-            var X = batch.data.head().toDevice(device, true)
-            val Y = batch.labels.head().toDevice(device, true)
+            var inputBatch = batch.data.head().toDevice(device, true)
+            val labelBatch = batch.labels.head().toDevice(device, true)
             if (state == null || useRandomIter) {
                 // Initialize `state` when either it is the first iteration or
                 // using random sampling
                 if (net is RNNModelScratch) {
-                    state = net.beginState(X.shape.shape[0].toInt(), device)
+                    state = net.beginState(inputBatch.shape.shape[0].toInt(), device)
                 }
             } else {
                 for (s in state) {
@@ -272,13 +300,13 @@ fun trainEpochCh8(
                 }
             }
             state?.attach(childManager)
-            var y = Y.transpose().reshape(Shape(-1))
-            X = X.toDevice(device, false)
-            y = y.toDevice(device, false)
+            var labelFlat = labelBatch.transpose().reshape(Shape(-1))
+            inputBatch = inputBatch.toDevice(device, false)
+            labelFlat = labelFlat.toDevice(device, false)
             Engine.getInstance().newGradientCollector().use { gc ->
                 val yHat: NDArray
                 if (net is RNNModelScratch) {
-                    val pairResult = net.forward(X, state!!)
+                    val pairResult = net.forward(inputBatch, state!!)
                     yHat = pairResult.first
                     state = pairResult.second
                 } else {
@@ -288,24 +316,24 @@ fun trainEpochCh8(
                             // Begin state
                             (net as AbstractBlock)
                                 .forward(
-                                    ParameterStore(manager, false),
-                                    NDList(X),
+                                    ParameterStore(childManager, false),
+                                    NDList(inputBatch),
                                     true,
                                 )
                         } else {
                             (net as AbstractBlock)
                                 .forward(
-                                    ParameterStore(manager, false),
-                                    NDList(X).addAll(state),
+                                    ParameterStore(childManager, false),
+                                    NDList(inputBatch).addAll(state),
                                     true,
                                 )
                         }
                     yHat = pairResult[0]
                     state = pairResult.subNDList(1)
                 }
-                val l = loss.evaluate(NDList(y), NDList(yHat)).mean()
+                val l = loss.evaluate(NDList(labelFlat), NDList(yHat)).mean()
                 gc.backward(l)
-                metric.add(floatArrayOf(l.getFloat() * y.size(), y.size().toFloat()))
+                metric.add(floatArrayOf(l.getFloat() * labelFlat.size(), labelFlat.size().toFloat()))
             }
             gradClipping(net, 1, childManager)
             updater(1, childManager) // Since the `mean` function has been invoked
@@ -314,7 +342,9 @@ fun trainEpochCh8(
     return Pair(Math.exp((metric.get(0) / metric.get(1)).toDouble()), metric.get(1) / watch.stop())
 }
 
-/** Clip the gradient.  */
+/**
+ * Executes gradClipping.
+ */
 fun gradClipping(
     net: Any,
     theta: Int,

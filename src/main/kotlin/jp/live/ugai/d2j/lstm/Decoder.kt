@@ -11,6 +11,9 @@ import ai.djl.nn.AbstractBlock
  * @property attentionWeights The attention weights.
  */
 abstract class Decoder : AbstractBlock() {
+    /**
+     * The attentionWeights.
+     */
     open var attentionWeights: NDArray? = null
 
     /**
@@ -28,5 +31,6 @@ abstract class Decoder : AbstractBlock() {
      * @return The output shapes.
      * @throws UnsupportedOperationException If the method is not implemented.
      */
-    override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> = throw UnsupportedOperationException("Not implemented")
+    override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> =
+        throw UnsupportedOperationException("Not implemented")
 }

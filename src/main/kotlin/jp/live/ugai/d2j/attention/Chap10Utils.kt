@@ -49,7 +49,7 @@ object Chap10Utils {
         val shape = input.shape
         val lastDim = shape[shape.dimension() - 1]
         // Create a tensor of indices [0, 1, ..., lastDim-1] and reshape for broadcasting
-        val arange = manager.arange(lastDim.toFloat()).reshape(1, 1, -1)
+        val arange = input.manager.arange(lastDim.toFloat()).reshape(1, 1, -1)
 
         // Ensure validLens is float32 for comparison
         val floatValidLens = validLens.toType(DataType.FLOAT32, false)
@@ -103,15 +103,15 @@ object Chap10Utils {
     /**
      * Transposes the output NDArray back to its original form after multi-head attention.
      *
-     * @param _X The input NDArray.
+     * @param input The input NDArray.
      * @param numHeads The number of attention heads.
      * @return The transposed NDArray.
      */
     fun transposeOutput(
-        _X: NDArray,
+        input: NDArray,
         numHeads: Int,
     ): NDArray {
-        var X = _X
+        var X = input
         X = X.reshape(-1, numHeads.toLong(), X.shape[1], X.shape[2])
         X = X.transpose(0, 2, 1, 3)
         return X.reshape(X.shape[0], X.shape[1], -1)
@@ -207,7 +207,7 @@ object Chap10Utils {
         val tokens =
             vocab.getIdxs(sentence.lowercase(Locale.getDefault()).split(" ")) +
                 listOf(vocab.getIdx("<eos>"))
-        val validLen = manager.create(tokens.size)
+        val validLen = manager.create(longArrayOf(tokens.size.toLong()))
         val paddedTokens = NMT.truncatePad(tokens, numSteps, vocab.getIdx("<pad>"))
         val tokenArray = manager.create(paddedTokens.toIntArray()).expandDims(0)
         return Pair(tokenArray, validLen)
@@ -221,7 +221,6 @@ object Chap10Utils {
      * @param srcVocab The source vocabulary.
      * @param tgtVocab The target vocabulary.
      * @param numSteps The number of time steps in the prediction.
-     * @param device The device (CPU/GPU) where the prediction takes place.
      * @param saveAttentionWeights Whether to save the attention weights.
      * @return The predicted sequence and the attention weights.
      */
@@ -231,12 +230,11 @@ object Chap10Utils {
         srcVocab: Vocab,
         tgtVocab: Vocab,
         numSteps: Int,
-        device: Device,
         saveAttentionWeights: Boolean,
     ): Pair<String, List<List<Pair<FloatArray, Shape>>>> {
         val (encX, encValidLen) = tokenizeAndPad(srcSentence, srcVocab, numSteps)
         val encOutputs = net.encoder.forward(ParameterStore(manager, false), NDList(encX, encValidLen), false)
-        var decState = net.decoder.initState(encOutputs.addAll(NDList(encValidLen)))
+        var decState = net.decoder.initState(encOutputs)
         // Add the batch axis
         var decX = manager.create(floatArrayOf(tgtVocab.getIdx("<bos>").toFloat())).expandDims(0)
         val outputSeq: MutableList<Int> = mutableListOf()

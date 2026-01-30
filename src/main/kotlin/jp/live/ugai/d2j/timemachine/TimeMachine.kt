@@ -22,13 +22,17 @@ import ai.djl.training.tracker.Tracker
 import jp.live.ugai.d2j.util.Accumulator
 import jp.live.ugai.d2j.util.StopWatch
 import jp.live.ugai.d2j.util.Training.sgd
-import jp.live.ugai.d2j.util.tryGpu
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.net.URI
 
+/**
+ * Singleton for TimeMachine.
+ */
 object TimeMachine {
-    /** Split text lines into word or character tokens.  */
+    /**
+     * Executes tokenize.
+     */
     fun tokenize(
         lines: List<String>,
         token: String,
@@ -39,7 +43,9 @@ object TimeMachine {
             else -> throw IllegalArgumentException("ERROR: unknown token type: $token")
         }
 
-    /** Read `The Time Machine` dataset and return an array of the lines  */
+    /**
+     * Executes readTimeMachine.
+     */
     fun readTimeMachine(): List<String> {
         val url = URI("http://d2l-data.s3-accelerate.amazonaws.com/timemachine.txt").toURL()
         return BufferedReader(InputStreamReader(url.openStream())).use { inp ->
@@ -49,7 +55,9 @@ object TimeMachine {
         }
     }
 
-    /** Return token indices and the vocabulary of the time machine dataset.  */
+    /**
+     * Executes loadCorpusTimeMachine.
+     */
     fun loadCorpusTimeMachine(maxTokens: Int): Pair<List<Int>, Vocab> {
         val lines = readTimeMachine()
         val tokens = tokenize(lines, "char")
@@ -66,7 +74,9 @@ object TimeMachine {
         return Pair(corpus, vocab)
     }
 
-    /** Generate new characters following the `prefix`.  */
+    /**
+     * Executes predictCh8.
+     */
     fun predictCh8(
         prefix: String,
         numPreds: Int,
@@ -141,7 +151,9 @@ object TimeMachine {
         return outputs.joinToString("") { vocab.idxToToken[it] }
     }
 
-    /** Train a model.  */
+    /**
+     * Executes trainCh8.
+     */
     fun trainCh8(
         net: Any,
         dataset: RandomAccessDataset,
@@ -177,7 +189,9 @@ object TimeMachine {
                                     .getDevices(1),
                             ) // setting the number of GPUs needed
                             .addEvaluator(Accuracy()) // Model Accuracy
-                            .addTrainingListeners(*TrainingListener.Defaults.logging()) // Logging
+                            .also { cfg ->
+                                TrainingListener.Defaults.logging().forEach { cfg.addTrainingListeners(it) }
+                            } // Logging
                     model.newTrainer(config).step()
                 }
 
@@ -203,6 +217,9 @@ object TimeMachine {
         println(predict("traveller"))
     }
 
+    /**
+     * Executes trainEpochCh8.
+     */
     fun trainEpochCh8(
         net: Any,
         dataset: RandomAccessDataset,
@@ -217,10 +234,10 @@ object TimeMachine {
         val metric = Accumulator(2) // Sum of training loss, no. of tokens
         manager.newSubManager().use { childManager ->
             var state: NDList? = null
-            for (batch in dataset.getData(manager)) {
-                var X = batch.data.head().toDevice(tryGpu(0), true)
+            for (batch in dataset.getData(childManager)) {
+                var X = batch.data.head().toDevice(device, true)
                 X.attach(childManager)
-                val Y = batch.labels.head().toDevice(tryGpu(0), true)
+                val Y = batch.labels.head().toDevice(device, true)
                 Y.attach(childManager)
                 if (state == null || useRandomIter) {
                     // Initialize `state` when either it is the first iteration or
@@ -234,7 +251,7 @@ object TimeMachine {
                     }
                 }
                 state?.attach(childManager)
-                var y = Y.transpose().reshape(Shape(-1)).toDevice(device, false)
+                val y = Y.transpose().reshape(Shape(-1)).toDevice(device, false)
                 X = X.toDevice(device, false)
                 Engine.getInstance().newGradientCollector().use { gc ->
                     val yHat: NDArray
@@ -249,14 +266,14 @@ object TimeMachine {
                                 // Begin state
                                 (net as AbstractBlock)
                                     .forward(
-                                        ParameterStore(manager, false),
+                                        ParameterStore(childManager, false),
                                         NDList(X),
                                         true,
                                     )
                             } else {
                                 (net as AbstractBlock)
                                     .forward(
-                                        ParameterStore(manager, false),
+                                        ParameterStore(childManager, false),
                                         NDList(X).addAll(state),
                                         true,
                                     )
@@ -275,7 +292,9 @@ object TimeMachine {
         return Pair(Math.exp((metric.get(0) / metric.get(1)).toDouble()), metric.get(1) / watch.stop())
     }
 
-    /** Clip the gradient.  */
+    /**
+     * Executes gradClipping.
+     */
     fun gradClipping(
         net: Any,
         theta: Int,

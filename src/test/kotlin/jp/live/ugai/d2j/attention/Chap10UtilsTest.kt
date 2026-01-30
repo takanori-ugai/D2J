@@ -7,7 +7,13 @@ import org.junit.jupiter.api.Test
 import kotlin.math.exp
 import kotlin.math.pow
 
+/**
+ * Represents Chap10UtilsTest.
+ */
 class Chap10UtilsTest {
+    /**
+     * Executes testBleu.
+     */
     @Test
     fun testBleu() {
         val predSeq = "the cat is on the mat"
@@ -31,6 +37,9 @@ class Chap10UtilsTest {
         assertEquals(0.0, bleuScore3, 1e-6)
     }
 
+    /**
+     * Executes testMaskedSoftmax.
+     */
     @Test
     fun testMaskedSoftmax() {
         val manager = NDManager.newBaseManager()
@@ -51,6 +60,9 @@ class Chap10UtilsTest {
         assertEquals(expected.toFloatArray().joinToString(), result.toFloatArray().joinToString())
     }
 
+    /**
+     * Executes testTransposeQkv.
+     */
     @Test
     fun testTransposeQkv() {
         val manager = NDManager.newBaseManager()
@@ -63,6 +75,9 @@ class Chap10UtilsTest {
         )
     }
 
+    /**
+     * Executes testTransposeOutput.
+     */
     @Test
     fun testTransposeOutput() {
         val manager = NDManager.newBaseManager()
