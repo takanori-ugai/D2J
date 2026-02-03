@@ -110,6 +110,8 @@ class Seq2SeqDecoder(
     ): NDList {
         var input = inputs.head()
         var state = inputs[1]
+        // Embedding expects integer indices (int32/int64), not floats.
+        input = input.toType(DataType.INT64, false)
         input =
             embedding
                 .forward(parameterStore, NDList(input), training, params)

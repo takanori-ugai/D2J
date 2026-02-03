@@ -87,6 +87,7 @@ fun main() {
 
     val input = NDList(inputTensor, state[0])
     rnnLayer.initialize(manager, DataType.FLOAT32, input.shapes[0], input.shapes[1])
+    flattenParametersIfAvailable(rnnLayer)
     val forwardOutput = rnnLayer.forward(ParameterStore(manager, false), input, false)
     val rnnOutput = forwardOutput[0]
     val stateNew = forwardOutput[1]
@@ -217,6 +218,25 @@ fun trainCh8(
     manager: NDManager,
 ) {
     val loss = SoftmaxCrossEntropyLoss()
+    var model: Model? = null
+    var trainer: Trainer? = null
+    val inputShape: Shape? =
+        if (net is AbstractBlock) {
+            manager.newSubManager().use { initManager ->
+                val iterator = dataset.getData(initManager).iterator()
+                if (iterator.hasNext()) {
+                    iterator
+                        .next()
+                        .data
+                        .head()
+                        .shape
+                } else {
+                    null
+                }
+            }
+        } else {
+            null
+        }
 //    val animator = Animator()
     val updater: (Int, NDManager) -> Unit =
         if (net is RNNModelScratch) {
@@ -224,25 +244,26 @@ fun trainCh8(
                 sgd(net.params, lr, batchSize, subManager)
             }
         } else {
-            { batchSize: Int, subManager: NDManager ->
-                // Already initialized net
-                val castedNet = net as AbstractBlock
-                val model: Model = Model.newInstance("model")
-                model.block = castedNet
-                val lrt: Tracker = Tracker.fixed(lr)
-                val sgd: Optimizer = Optimizer.sgd().setLearningRateTracker(lrt).build()
-                val config: DefaultTrainingConfig =
-                    DefaultTrainingConfig(loss)
-                        .optOptimizer(sgd) // Optimizer (loss function)
-                        .optInitializer(NormalInitializer(0.01f), Parameter.Type.WEIGHT) // setting the initializer
-                        .optDevices(Engine.getInstance().getDevices(1)) // setting the number of GPUs needed
-                        .addEvaluator(Accuracy()) // Model Accuracy
-                        .also { cfg ->
-                            TrainingListener.Defaults.logging().forEach { cfg.addTrainingListeners(it) }
-                        } // Logging
-                val trainer: Trainer = model.newTrainer(config)
-                trainer.step()
+            // Already initialized net
+            val castedNet = net as AbstractBlock
+            val lrt: Tracker = Tracker.fixed(lr)
+            val sgd: Optimizer = Optimizer.sgd().setLearningRateTracker(lrt).build()
+            val config: DefaultTrainingConfig =
+                DefaultTrainingConfig(loss)
+                    .optOptimizer(sgd) // Optimizer (loss function)
+                    .optInitializer(NormalInitializer(0.01f), Parameter.Type.WEIGHT) // setting the initializer
+                    .optDevices(Engine.getInstance().getDevices(1)) // setting the number of GPUs needed
+                    .addEvaluator(Accuracy()) // Model Accuracy
+                    .also { cfg ->
+                        TrainingListener.Defaults.logging().forEach { cfg.addTrainingListeners(it) }
+                    } // Logging
+            model = Model.newInstance("model").also { it.block = castedNet }
+            trainer = model!!.newTrainer(config)
+            inputShape?.let { trainer!!.initialize(it) }
+            val stepper: (Int, NDManager) -> Unit = { _: Int, _: NDManager ->
+                trainer!!.step()
             }
+            stepper
         }
     val predict: (String) -> String =
         { prefix ->
@@ -251,15 +272,20 @@ fun trainCh8(
     // Train and predict
     var ppl = 0.0
     var speed = 0.0
-    for (epoch in 0 until numEpochs) {
-        val pair = trainEpochCh8(net, dataset, loss, updater, device, useRandomIter, manager)
-        ppl = pair.first
-        speed = pair.second
-        if ((epoch + 1) % 10 == 0) {
-//            animator.add(epoch + 1, ppl.toFloat(), "")
-//            animator.show()
-            println("${epoch + 1} : $ppl")
+    try {
+        for (epoch in 0 until numEpochs) {
+            val pair = trainEpochCh8(net, dataset, loss, updater, device, useRandomIter, manager)
+            ppl = pair.first
+            speed = pair.second
+            if ((epoch + 1) % 10 == 0) {
+//                animator.add(epoch + 1, ppl.toFloat(), "")
+//                animator.show()
+                println("${epoch + 1} : $ppl")
+            }
         }
+    } finally {
+        trainer?.close()
+        model?.close()
     }
     println(
         "perplexity: %.1f, %.1f tokens/sec on %s%n".format(ppl, speed, device.toString()),
@@ -295,9 +321,7 @@ fun trainEpochCh8(
                     state = net.beginState(inputBatch.shape.shape[0].toInt(), device)
                 }
             } else {
-                for (s in state) {
-                    s.stopGradient()
-                }
+                state = NDList(state.map { it.stopGradient().duplicate() })
             }
             state?.attach(childManager)
             var labelFlat = labelBatch.transpose().reshape(Shape(-1))

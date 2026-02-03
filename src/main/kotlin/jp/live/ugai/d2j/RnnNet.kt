@@ -229,9 +229,12 @@ fun trainEpochCh8(
                 // using random sampling
                 state = net.beginState(features.shape.shape[0].toInt(), device)
             } else {
+                val detachedState = NDList()
                 for (s in state) {
                     s.stopGradient()
+                    detachedState.add(s.duplicate())
                 }
+                state = detachedState
             }
             state.attach(childManager)
             var y = labels.transpose().reshape(Shape(-1))

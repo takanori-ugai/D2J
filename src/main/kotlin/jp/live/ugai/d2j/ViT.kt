@@ -110,13 +110,16 @@ class ViT(
         training: Boolean,
         params: PairList<String, Any>?,
     ): NDList {
+        logGpu("ViT pre-patch")
         var embeddings = patchEmbedding.forward(parameterStore, inputs, training, params).head()
+        logGpu("ViT post-patch")
         val device = inputs.head().device
         val clsTokenArray = parameterStore.getValue(clsToken, device, training)
         val posEmbeddingArray = parameterStore.getValue(posEmbedding, device, training)
         // embeddings = torch.cat((self.cls_token.expand(embeddings.shape[0], -1, -1), embeddings), 1)
 
         embeddings = clsTokenArray.repeat(0, embeddings.shape[0]).concat(embeddings, 1)
+        logGpu("ViT post-cls")
         embeddings =
             blks0
                 .forward(
@@ -125,7 +128,10 @@ class ViT(
                     training,
                     params,
                 ).head()
-        return head.forward(parameterStore, NDList(embeddings.get(NDIndex(":, 0"))), training, params)
+        logGpu("ViT post-blocks")
+        val out = head.forward(parameterStore, NDList(embeddings.get(NDIndex(":, 0"))), training, params)
+        logGpu("ViT post-head")
+        return out
     }
 
     /**

@@ -89,7 +89,8 @@ fun main() {
 
     val encoder = TransformerEncoder(200, 24, 48, 8, 2, 0.5f, manager)
     encoder.initialize(manager, DataType.FLOAT32, Shape(2, 100), validLens.shape)
-    println(encoder.forward(ps, NDList(manager.ones(Shape(2, 100)), validLens), false))
+    val tokenIds = manager.zeros(Shape(2, 100), DataType.INT64)
+    println(encoder.forward(ps, NDList(tokenIds, validLens), false))
 
     val decoderBlk = TransformerDecoderBlock(24, 48, 8, 0.5f, 0)
     val decoderInput = manager.ones(Shape(2, 100, 24))
@@ -370,6 +371,27 @@ class TransformerEncoder(
         for (blk in blks) {
             blk.initialize(manager, dataType, modelShape, inputShapes[1])
         }
+    }
+
+    /**
+     * Returns encoder output and valid-length shapes for decoder initialization.
+     */
+    override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> {
+        require(inputShapes.isNotEmpty()) { "TransformerEncoder expects token shapes." }
+        val tokenShape = inputShapes[0]
+        val modelShape =
+            if (tokenShape.dimension() == 3) {
+                tokenShape
+            } else {
+                tokenShape.add(numHiddens.toLong())
+            }
+        val validLensShape =
+            if (inputShapes.size > 1) {
+                inputShapes[1]
+            } else {
+                Shape(modelShape[0])
+            }
+        return arrayOf(modelShape, validLensShape)
     }
 }
 

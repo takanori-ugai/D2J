@@ -44,7 +44,7 @@ class RNNModel(
 //        println(inputs)
         val result = rnnLayer.forward(parameterStore, inputs, training)
         val rnnOutput = result[0]
-        val state = result[1]
+        val state = result.subNDList(1)
         val shapeLength = rnnOutput.shape.dimension()
         val output =
             dense.forward(
@@ -52,7 +52,7 @@ class RNNModel(
                 NDList(rnnOutput.reshape(Shape(-1, rnnOutput.shape[shapeLength - 1]))),
                 training,
             )
-        return NDList(output[0], state)
+        return NDList(output[0]).addAll(state)
     }
 
     /**
@@ -72,6 +72,7 @@ class RNNModel(
                 inputShape
             }
         rnnLayer.initialize(manager, dataType, rnnInputShape)
+        flattenParametersIfAvailable(rnnLayer)
         val rnnOutShape = rnnLayer.getOutputShapes(arrayOf(rnnInputShape))[0]
         dense.initialize(manager, dataType, Shape(1, rnnOutShape.get(rnnOutShape.dimension() - 1)))
     }

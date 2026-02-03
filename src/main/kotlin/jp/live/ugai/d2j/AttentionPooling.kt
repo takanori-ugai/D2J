@@ -49,8 +49,10 @@ class AttentionPooling : AbstractBlock() {
         val scores = inputs[0]
         val values = inputs[1]
 
-        attentionWeights = scores.softmax(-1)
-        return NDList(attentionWeights!!.matMul(values.reshape(-1, 1)).flatten())
+        val weights = scores.softmax(-1)
+        attentionWeights = if (training) null else weights
+        val out = weights.matMul(values.reshape(-1, 1)).flatten()
+        return NDList(out)
     }
 
     /**

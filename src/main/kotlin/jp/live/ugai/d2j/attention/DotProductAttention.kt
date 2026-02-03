@@ -71,13 +71,14 @@ class AdditiveAttention(
         val features = queries.expandDims(2).add(keys.expandDims(1)).tanh()
         val scores = wV.forward(ps, NDList(features), training, params).head().squeeze(-1)
 
-        attentionWeights =
+        val weights =
             if (validLens == null || validLens.isEmpty) {
                 scores.softmax(-1)
             } else {
                 maskedSoftmax(scores, validLens)
             }
-        val droppedAttention = dropoutLayer.forward(ps, NDList(attentionWeights), training, params).head()
+        attentionWeights = if (training) null else weights
+        val droppedAttention = dropoutLayer.forward(ps, NDList(weights), training, params).head()
         return NDList(droppedAttention.matMul(values))
     }
 
@@ -143,19 +144,24 @@ class DotProductAttention(
         val queries = inputs[0]
         val keys = inputs[1]
         val values = inputs[2]
-        val validLens = inputs[3]
+        val validLens = if (inputs.size > 3) inputs[3] else null
 
         val d = queries.shape[queries.shape.dimension() - 1].toDouble()
-        val scores = queries.matMul(keys.swapAxes(1, 2)).div(Math.sqrt(d))
+        val keysT = keys.swapAxes(1, 2)
+        val scores = queries.matMul(keysT).div(Math.sqrt(d))
+        keysT.close()
 
-        attentionWeights =
+        val weights =
             if (validLens == null || validLens.isEmpty) {
                 scores.softmax(-1)
             } else {
                 maskedSoftmax(scores, validLens)
             }
-        val droppedAttention = dropoutLayer.forward(ps, NDList(attentionWeights), training, params)[0]
-        return NDList(droppedAttention.matMul(values))
+        attentionWeights = if (training) null else weights
+        val droppedAttention = dropoutLayer.forward(ps, NDList(weights), training, params)[0]
+        val out = droppedAttention.matMul(values)
+        scores.close()
+        return NDList(out)
     }
 
     /**

@@ -6,6 +6,7 @@ import ai.djl.engine.Engine
 import ai.djl.ndarray.NDArray
 import ai.djl.ndarray.NDList
 import ai.djl.ndarray.NDManager
+import ai.djl.ndarray.types.DataType
 import ai.djl.ndarray.types.Shape
 import ai.djl.nn.AbstractBlock
 import ai.djl.nn.Parameter
@@ -19,6 +20,7 @@ import ai.djl.training.loss.Loss
 import ai.djl.training.loss.SoftmaxCrossEntropyLoss
 import ai.djl.training.optimizer.Optimizer
 import ai.djl.training.tracker.Tracker
+import jp.live.ugai.d2j.flattenParametersIfAvailable
 import jp.live.ugai.d2j.util.Accumulator
 import jp.live.ugai.d2j.util.StopWatch
 import jp.live.ugai.d2j.util.Training.sgd
@@ -190,6 +192,20 @@ object TimeMachine {
         useRandomIter: Boolean,
         manager: NDManager,
     ) {
+        // Initialize parameters once on the root manager to avoid them being tied to transient
+        // sub-managers created during training.
+        if (net is AbstractBlock) {
+            manager.newSubManager().use { initManager ->
+                val iterator = dataset.getData(initManager).iterator()
+                if (iterator.hasNext()) {
+                    val sample = iterator.next()
+                    val inputShape = sample.data.head().shape
+                    net.initialize(manager, DataType.FLOAT32, inputShape)
+                    flattenParametersIfAvailable(net)
+                }
+            }
+        }
+
         val loss = SoftmaxCrossEntropyLoss()
 //        val animator = Animator()
         val updater: (Int, NDManager) -> Unit =
@@ -281,9 +297,13 @@ object TimeMachine {
                         state = net.beginState(X.shape.shape[0].toInt(), device)
                     }
                 } else {
+                    // Detach state from previous graph to avoid backprop through history.
+                    val detachedState = NDList()
                     for (s in state) {
                         s.stopGradient()
+                        detachedState.add(s.duplicate())
                     }
+                    state = detachedState
                 }
                 state?.attach(childManager)
                 val y = Y.transpose().reshape(Shape(-1)).toDevice(device, false)

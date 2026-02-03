@@ -24,8 +24,8 @@ import jp.live.ugai.d2j.lstm.Encoder
 class Seq2SeqEncoder(
     vocabSize: Int,
     embedSize: Int,
-    numHiddens: Int,
-    numLayers: Int,
+    private val numHiddens: Int,
+    private val numLayers: Int,
     dropout: Float,
 ) : Encoder() {
     private val embedding: TrainableWordEmbedding
@@ -82,10 +82,25 @@ class Seq2SeqEncoder(
         params: PairList<String, Any>?,
     ): NDList {
         var input = inputs.head()
+        // Embedding expects integer indices (int32/int64), not floats.
+        input = input.toType(DataType.INT64, false)
         // The output `input` shape: (`batchSize`, `numSteps`, `embedSize`)
         input = embedding.forward(ps, NDList(input), training, params).head()
         // In RNN models, the first axis corresponds to time steps
         input = input.swapAxes(0, 1)
         return rnn.forward(ps, NDList(input), training)
+    }
+
+    /**
+     * Returns encoder output and state shapes for decoder initialization.
+     */
+    override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape> {
+        require(inputShapes.isNotEmpty()) { "Seq2SeqEncoder expects at least one input shape." }
+        val input = inputShapes[0]
+        val batch = input[0]
+        val steps = if (input.dimension() >= 2) input[1] else 1
+        val outputs = Shape(steps, batch, numHiddens.toLong())
+        val state = Shape(numLayers.toLong(), batch, numHiddens.toLong())
+        return arrayOf(outputs, state)
     }
 }

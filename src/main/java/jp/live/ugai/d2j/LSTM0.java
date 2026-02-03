@@ -34,8 +34,24 @@ public class LSTM0 extends RecurrentBlock {
     NDArrayEx ex = inputs.head().getNDArrayInternal();
     Device device = inputs.head().getDevice();
     NDList rnnParams = new NDList();
-    for (Parameter parameter : parameters.values()) {
-      rnnParams.add(parameterStore.getValue(parameter, device, training));
+    String[] directions = bidirectional ? new String[] {"l", "r"} : new String[] {"l"};
+    Parameter.Type[] types =
+        hasBiases
+            ? new Parameter.Type[] {Parameter.Type.WEIGHT, Parameter.Type.BIAS}
+            : new Parameter.Type[] {Parameter.Type.WEIGHT};
+    String[] letters = new String[] {"i2h", "h2h"};
+    // Match PyTorch expected parameter order: per layer/direction, weights then biases.
+    for (int layer = 0; layer < numLayers; layer++) {
+      for (String direction : directions) {
+        for (Parameter.Type type : types) {
+          for (String letter : letters) {
+            String key = direction + "_" + layer + "_" + letter + "_" + type.name();
+            Parameter param = parameters.get(key);
+            Preconditions.checkArgument(param != null, "Missing parameter: " + key);
+            rnnParams.add(parameterStore.getValue(param, device, training));
+          }
+        }
+      }
     }
 
     NDArray input = inputs.head();

@@ -2,6 +2,7 @@ package jp.live.ugai.d2j
 
 import ai.djl.ndarray.NDArray
 import ai.djl.ndarray.NDList
+import ai.djl.ndarray.types.DataType
 import ai.djl.training.loss.SoftmaxCrossEntropyLoss
 
 /**
@@ -15,15 +16,38 @@ class MaskedSoftmaxCELoss : SoftmaxCrossEntropyLoss() {
         labels: NDList,
         predictions: NDList,
     ): NDArray {
+        val yHat = predictions.singletonOrThrow()
+        val label =
+            if (labels[0].dataType == DataType.INT64) {
+                labels[0]
+            } else {
+                labels[0].toType(DataType.INT64, false)
+            }
+        val validLen = labels[1]
+
+        val numClasses = yHat.shape[yHat.shape.dimension() - 1].toInt()
+        val logProbs = yHat.logSoftmax(-1)
+        val oneHot = label.oneHot(numClasses)
+        val lossPerToken = logProbs.mul(oneHot).sum(intArrayOf(-1)).neg()
+        logProbs.close()
+        oneHot.close()
+
         val weights =
-            labels
-                .head()
+            lossPerToken
                 .onesLike()
-                .expandDims(-1)
-                .sequenceMask(labels[1])
-        // Remove the states from the labels NDList because otherwise, it will throw an error as SoftmaxCrossEntropyLoss
-        // expects only one NDArray for label and one NDArray for prediction
-        labels.removeAt(1)
-        return super.evaluate(labels, predictions).mul(weights).mean(intArrayOf(1))
+                .let { ones ->
+                    val masked = sequenceMask(ones, validLen)
+                    ones.close()
+                    masked
+                }
+        val maskedLoss = lossPerToken.mul(weights)
+        val out = maskedLoss.mean(intArrayOf(1))
+        maskedLoss.close()
+        lossPerToken.close()
+        weights.close()
+        if (label !== labels[0]) {
+            label.close()
+        }
+        return out
     }
 }
