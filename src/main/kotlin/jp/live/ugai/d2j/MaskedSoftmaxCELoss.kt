@@ -17,18 +17,35 @@ class MaskedSoftmaxCELoss : SoftmaxCrossEntropyLoss() {
         predictions: NDList,
     ): NDArray {
         val yHat = predictions.singletonOrThrow()
-        val label = labels[0].toType(DataType.INT64, false)
+        val label =
+            if (labels[0].dataType == DataType.INT64) {
+                labels[0]
+            } else {
+                labels[0].toType(DataType.INT64, false)
+            }
         val validLen = labels[1]
 
         val numClasses = yHat.shape[yHat.shape.dimension() - 1].toInt()
         val logProbs = yHat.logSoftmax(-1)
         val oneHot = label.oneHot(numClasses)
         val lossPerToken = logProbs.mul(oneHot).sum(intArrayOf(-1)).neg()
+        logProbs.close()
+        oneHot.close()
 
         val weights =
             lossPerToken
                 .onesLike()
-                .let { sequenceMask(it, validLen) }
-        return lossPerToken.mul(weights).mean(intArrayOf(1))
+                .let { ones ->
+                    val masked = sequenceMask(ones, validLen)
+                    ones.close()
+                    masked
+                }
+        val out = lossPerToken.mul(weights).mean(intArrayOf(1))
+        lossPerToken.close()
+        weights.close()
+        if (label !== labels[0]) {
+            label.close()
+        }
+        return out
     }
 }

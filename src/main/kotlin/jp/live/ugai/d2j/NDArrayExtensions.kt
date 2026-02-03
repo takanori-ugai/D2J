@@ -31,18 +31,28 @@ fun sequenceMask(
             .reshape(batch, 1)
             .broadcast(Shape(batch, steps))
     val mask2d = stepsRange.lt(lenBroadcast)
+    stepsRange.close()
+    lenBroadcast.close()
     val mask =
         if (input.shape.dimension() > 2) {
-            mask2d.expandDims(-1).broadcast(input.shape)
+            val expanded = mask2d.expandDims(-1).broadcast(input.shape)
+            mask2d.close()
+            expanded
         } else {
             mask2d
         }
 
     val maskTyped = mask.toType(input.dataType, false)
+    mask.close()
     val kept = input.mul(maskTyped)
     if (value == 0f) {
+        maskTyped.close()
         return kept
     }
     val fill = maskTyped.neg().add(1).mul(value)
-    return kept.add(fill)
+    maskTyped.close()
+    val result = kept.add(fill)
+    kept.close()
+    fill.close()
+    return result
 }

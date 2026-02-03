@@ -2,6 +2,7 @@ package jp.live.ugai.d2j
 
 import java.io.BufferedReader
 import java.io.InputStreamReader
+import java.util.concurrent.TimeUnit
 
 internal fun logGpu(tag: String) {
     val enabled =
@@ -14,11 +15,20 @@ internal fun logGpu(tag: String) {
                 "nvidia-smi",
                 "--query-gpu=memory.used,memory.total",
                 "--format=csv,noheader,nounits",
-            ).start()
-        BufferedReader(InputStreamReader(process.inputStream)).use { reader ->
-            val line = reader.readLine()?.trim()
-            if (!line.isNullOrEmpty()) {
-                println("GPU_MEM $tag : $line MiB")
+            ).redirectErrorStream(true).start()
+        try {
+            BufferedReader(InputStreamReader(process.inputStream)).use { reader ->
+                val line = reader.readLine()?.trim()
+                if (!line.isNullOrEmpty()) {
+                    println("GPU_MEM $tag : $line MiB")
+                }
+            }
+            if (!process.waitFor(2, TimeUnit.SECONDS)) {
+                process.destroyForcibly()
+            }
+        } finally {
+            if (process.isAlive) {
+                process.destroyForcibly()
             }
         }
     } catch (ex: Exception) {

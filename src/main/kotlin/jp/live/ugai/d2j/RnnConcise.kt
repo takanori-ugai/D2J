@@ -203,14 +203,6 @@ fun predictCh8(
     return output.toString()
 }
 
-private fun flattenParametersIfAvailable(block: Any) {
-    val method =
-        block.javaClass.methods.firstOrNull { method ->
-            method.name == "flattenParameters" && method.parameterCount == 0
-        }
-    method?.invoke(block)
-}
-
 /**
  * Executes trainCh8.
  */

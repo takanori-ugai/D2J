@@ -138,15 +138,12 @@ fun main() {
                                             stepManager.tempAttachAll(preds, lossVal)
                                             logGpu("train[${epoch + 1}] batch=$batchIdx post-forward")
                                             gc.backward(lossVal)
-                                            lossVal.close()
-                                            preds.close()
                                         }
                                         logGpu("train[${epoch + 1}] batch=$batchIdx post-backward")
                                     }
                                 }
                             }
                             trainer.step()
-//                            trainer.manager.cap()
                             logGpu("train[${epoch + 1}] batch=$batchIdx post-step")
                         }
                         batchIdx++
@@ -161,14 +158,11 @@ fun main() {
                                         val preds = trainer.evaluate(sb.data)
                                         val lossVal = trainer.loss.evaluate(sb.labels, preds)
                                         stepManager.tempAttachAll(preds, lossVal)
-                                        lossVal.close()
-                                        preds.close()
                                     }
                                     logGpu("val[${epoch + 1}] post-forward")
                                 }
                             }
                         }
-//                        trainer.manager.cap()
                     }
                 }
             }
@@ -358,5 +352,7 @@ class ViTMLP(
 
 /**
  * Placeholder for a Vision Transformer example container.
+ *
+ * TODO: Replace placeholder with a concrete example or remove if unused.
  */
 internal class VisionTransformer

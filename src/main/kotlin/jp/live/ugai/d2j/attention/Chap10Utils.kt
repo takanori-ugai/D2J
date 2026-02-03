@@ -51,7 +51,12 @@ object Chap10Utils {
         val arange = input.manager.arange(lastDim.toFloat()).reshape(1, 1, -1)
 
         // Ensure validLens is float32 for comparison
-        val floatValidLens = validLens.toType(DataType.FLOAT32, false)
+        val floatValidLens =
+            if (validLens.dataType == DataType.FLOAT32) {
+                validLens
+            } else {
+                validLens.toType(DataType.FLOAT32, false)
+            }
 
         // Create the mask using broadcasting
         val mask =
@@ -61,8 +66,8 @@ object Chap10Utils {
                 val preparedLens = floatValidLens.reshape(-1, 1, 1)
                 // Broadcast arange(1,1,D) with preparedLens(B,1,1) -> mask(B,1,D)
                 val mask2d = arange.lt(preparedLens)
-                // Expand to (B,1,D) then broadcast to (B,N,D) to avoid allocating repeats
-                val expanded = mask2d.expandDims(1).broadcast(Shape(shape[0], shape[1], shape[2]))
+                // Broadcast (B,1,D) to (B,N,D)
+                val expanded = mask2d.broadcast(Shape(shape[0], shape[1], shape[2]))
                 preparedLens.close()
                 mask2d.close()
                 expanded
@@ -81,7 +86,9 @@ object Chap10Utils {
         maskedInput.set(mask.logicalNot(), -1.0E6F)
         val out = maskedInput.softmax(-1)
         arange.close()
-        floatValidLens.close()
+        if (floatValidLens !== validLens) {
+            floatValidLens.close()
+        }
         mask.close()
         maskedInput.close()
         return out

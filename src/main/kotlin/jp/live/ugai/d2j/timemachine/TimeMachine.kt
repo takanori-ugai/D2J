@@ -20,6 +20,7 @@ import ai.djl.training.loss.Loss
 import ai.djl.training.loss.SoftmaxCrossEntropyLoss
 import ai.djl.training.optimizer.Optimizer
 import ai.djl.training.tracker.Tracker
+import jp.live.ugai.d2j.flattenParametersIfAvailable
 import jp.live.ugai.d2j.util.Accumulator
 import jp.live.ugai.d2j.util.StopWatch
 import jp.live.ugai.d2j.util.Training.sgd
@@ -256,14 +257,6 @@ object TimeMachine {
         )
         println(predict("time traveller"))
         println(predict("traveller"))
-    }
-
-    private fun flattenParametersIfAvailable(block: Any) {
-        val method =
-            block.javaClass.methods.firstOrNull { candidate ->
-                candidate.name == "flattenParameters" && candidate.parameterCount == 0
-            }
-        method?.invoke(block)
     }
 
     /**

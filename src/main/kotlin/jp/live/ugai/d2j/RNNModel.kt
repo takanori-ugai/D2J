@@ -82,12 +82,4 @@ class RNNModel(
      */
     override fun getOutputShapes(inputShapes: Array<Shape>): Array<Shape?> =
         throw UnsupportedOperationException("getOutputShapes is not implemented for RNNModel")
-
-    private fun flattenParametersIfAvailable(block: Any) {
-        val method =
-            block.javaClass.methods.firstOrNull { candidate ->
-                candidate.name == "flattenParameters" && candidate.parameterCount == 0
-            }
-        method?.invoke(block)
-    }
 }
