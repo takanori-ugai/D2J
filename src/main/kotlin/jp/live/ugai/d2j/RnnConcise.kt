@@ -220,6 +220,23 @@ fun trainCh8(
     val loss = SoftmaxCrossEntropyLoss()
     var model: Model? = null
     var trainer: Trainer? = null
+    val inputShape: Shape? =
+        if (net is AbstractBlock) {
+            manager.newSubManager().use { initManager ->
+                val iterator = dataset.getData(initManager).iterator()
+                if (iterator.hasNext()) {
+                    iterator
+                        .next()
+                        .data
+                        .head()
+                        .shape
+                } else {
+                    null
+                }
+            }
+        } else {
+            null
+        }
 //    val animator = Animator()
     val updater: (Int, NDManager) -> Unit =
         if (net is RNNModelScratch) {
@@ -242,6 +259,7 @@ fun trainCh8(
                     } // Logging
             model = Model.newInstance("model").also { it.block = castedNet }
             trainer = model!!.newTrainer(config)
+            inputShape?.let { trainer!!.initialize(it) }
             val stepper: (Int, NDManager) -> Unit = { _: Int, _: NDManager ->
                 trainer!!.step()
             }

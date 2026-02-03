@@ -56,7 +56,7 @@ fun main() {
             val ps = ParameterStore(sub, false)
             val sampleInput = sub.ones(Shape(2, 100, 24))
             val encoderBlk = ViTBlock(24, 24, 48, 8, 0.5f)
-            encoderBlk.initialize(sub, DataType.FLOAT32, sampleInput.shape, Shape(2))
+            encoderBlk.initialize(sub, DataType.FLOAT32, sampleInput.shape)
             println(encoderBlk.forward(ps, NDList(sampleInput), false))
             println("Shapes : ${encoderBlk.getOutputShapes(arrayOf(sampleInput.shape)).toList()}")
         }
