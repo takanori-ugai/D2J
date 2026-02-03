@@ -56,7 +56,7 @@ fun main() {
             val sampleInput = sub.ones(Shape(2, 100, 24))
             val encoderBlk = ViTBlock(24, 24, 48, 8, 0.5f)
             encoderBlk.initialize(sub, DataType.FLOAT32, sampleInput.shape, Shape(2))
-            println(encoderBlk.forward(ps, NDList(sampleInput, null), false))
+            println(encoderBlk.forward(ps, NDList(sampleInput), false))
             println("Shapes : ${encoderBlk.getOutputShapes(arrayOf(sampleInput.shape)).toList()}")
         }
 
@@ -122,49 +122,84 @@ fun main() {
             model.newTrainer(config).use { trainer ->
                 trainer.initialize(Shape(batchSize0.toLong(), 1, imgSize0.toLong(), imgSize0.toLong()))
                 trainer.metrics = Metrics()
+                trainer.notifyListeners { listener -> listener.onTrainingBegin(trainer) }
                 for (epoch in 0 until 5) {
                     var batchIdx = 0
                     for (batch in trainer.iterateDataset(trainingSet)) {
                         batch.use { full ->
                             logGpu("train[${epoch + 1}] batch=$batchIdx start")
-                            val splits = full.split(trainer.devices, false)
-                            trainer.newGradientCollector().use { gc ->
-                                for (split in splits) {
-                                    split.use { sb ->
-                                        logGpu("train[${epoch + 1}] batch=$batchIdx pre-forward")
-                                        trainer.manager.newSubManager().use { stepManager ->
-                                            val preds = trainer.forward(sb.data)
-                                            val lossVal = trainer.loss.evaluate(sb.labels, preds)
-                                            stepManager.tempAttachAll(preds, lossVal)
-                                            logGpu("train[${epoch + 1}] batch=$batchIdx post-forward")
-                                            gc.backward(lossVal)
+                            val labelsByDevice = mutableMapOf<Device, NDList>()
+                            val predsByDevice = mutableMapOf<Device, NDList>()
+                            trainer.manager.newSubManager().use { listenerManager ->
+                                val splits = full.split(trainer.devices, false)
+                                trainer.newGradientCollector().use { gc ->
+                                    for (split in splits) {
+                                        split.use { sb ->
+                                            logGpu("train[${epoch + 1}] batch=$batchIdx pre-forward")
+                                            trainer.manager.newSubManager().use { stepManager ->
+                                                val preds = trainer.forward(sb.data)
+                                                val lossVal = trainer.loss.evaluate(sb.labels, preds)
+                                                stepManager.tempAttachAll(preds, lossVal)
+                                                val device = sb.data.head().device
+                                                val labelCopy = sb.labels.duplicate()
+                                                val predCopy = preds.duplicate()
+                                                listenerManager.tempAttachAll(labelCopy, predCopy)
+                                                labelsByDevice[device] = labelCopy
+                                                predsByDevice[device] = predCopy
+                                                logGpu("train[${epoch + 1}] batch=$batchIdx post-forward")
+                                                gc.backward(lossVal)
+                                            }
+                                            logGpu("train[${epoch + 1}] batch=$batchIdx post-backward")
                                         }
-                                        logGpu("train[${epoch + 1}] batch=$batchIdx post-backward")
                                     }
                                 }
+                                trainer.step()
+                                trainer.notifyListeners { listener ->
+                                    listener.onTrainingBatch(
+                                        trainer,
+                                        TrainingListener.BatchData(full, labelsByDevice, predsByDevice),
+                                    )
+                                }
+                                logGpu("train[${epoch + 1}] batch=$batchIdx post-step")
                             }
-                            trainer.step()
-                            logGpu("train[${epoch + 1}] batch=$batchIdx post-step")
                         }
                         batchIdx++
                     }
                     for (batch in trainer.iterateDataset(validationSet)) {
                         batch.use { full ->
-                            val splits = full.split(trainer.devices, false)
-                            for (split in splits) {
-                                split.use { sb ->
-                                    logGpu("val[${epoch + 1}] pre-forward")
-                                    trainer.manager.newSubManager().use { stepManager ->
-                                        val preds = trainer.evaluate(sb.data)
-                                        val lossVal = trainer.loss.evaluate(sb.labels, preds)
-                                        stepManager.tempAttachAll(preds, lossVal)
+                            val labelsByDevice = mutableMapOf<Device, NDList>()
+                            val predsByDevice = mutableMapOf<Device, NDList>()
+                            trainer.manager.newSubManager().use { listenerManager ->
+                                val splits = full.split(trainer.devices, false)
+                                for (split in splits) {
+                                    split.use { sb ->
+                                        logGpu("val[${epoch + 1}] pre-forward")
+                                        trainer.manager.newSubManager().use { stepManager ->
+                                            val preds = trainer.evaluate(sb.data)
+                                            val lossVal = trainer.loss.evaluate(sb.labels, preds)
+                                            stepManager.tempAttachAll(preds, lossVal)
+                                            val device = sb.data.head().device
+                                            val labelCopy = sb.labels.duplicate()
+                                            val predCopy = preds.duplicate()
+                                            listenerManager.tempAttachAll(labelCopy, predCopy)
+                                            labelsByDevice[device] = labelCopy
+                                            predsByDevice[device] = predCopy
+                                        }
+                                        logGpu("val[${epoch + 1}] post-forward")
                                     }
-                                    logGpu("val[${epoch + 1}] post-forward")
+                                }
+                                trainer.notifyListeners { listener ->
+                                    listener.onValidationBatch(
+                                        trainer,
+                                        TrainingListener.BatchData(full, labelsByDevice, predsByDevice),
+                                    )
                                 }
                             }
                         }
                     }
+                    trainer.notifyListeners { listener -> listener.onEpoch(trainer) }
                 }
+                trainer.notifyListeners { listener -> listener.onTrainingEnd(trainer) }
             }
             println("End of Training")
             manager.newSubManager().use { sub ->

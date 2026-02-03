@@ -14,6 +14,7 @@ import ai.djl.nn.recurrent.RNN
 import ai.djl.nn.recurrent.RNN.Activation
 import ai.djl.training.DefaultTrainingConfig
 import ai.djl.training.ParameterStore
+import ai.djl.training.Trainer
 import ai.djl.training.dataset.RandomAccessDataset
 import ai.djl.training.evaluator.Accuracy
 import ai.djl.training.initializer.NormalInitializer
@@ -217,6 +218,8 @@ fun trainCh8(
     manager: NDManager,
 ) {
     val loss = SoftmaxCrossEntropyLoss()
+    var model: Model? = null
+    var trainer: Trainer? = null
 //    val animator = Animator()
     val updater: (Int, NDManager) -> Unit =
         if (net is RNNModelScratch) {
@@ -224,26 +227,23 @@ fun trainCh8(
                 sgd(net.params, lr, batchSize, subManager)
             }
         } else {
-            { batchSize: Int, subManager: NDManager ->
-                // Already initialized net
-                val castedNet = net as AbstractBlock
-                val lrt: Tracker = Tracker.fixed(lr)
-                val sgd: Optimizer = Optimizer.sgd().setLearningRateTracker(lrt).build()
-                val config: DefaultTrainingConfig =
-                    DefaultTrainingConfig(loss)
-                        .optOptimizer(sgd) // Optimizer (loss function)
-                        .optInitializer(NormalInitializer(0.01f), Parameter.Type.WEIGHT) // setting the initializer
-                        .optDevices(Engine.getInstance().getDevices(1)) // setting the number of GPUs needed
-                        .addEvaluator(Accuracy()) // Model Accuracy
-                        .also { cfg ->
-                            TrainingListener.Defaults.logging().forEach { cfg.addTrainingListeners(it) }
-                        } // Logging
-                Model.newInstance("model").use { model ->
-                    model.block = castedNet
-                    model.newTrainer(config).use { trainer ->
-                        trainer.step()
-                    }
-                }
+            // Already initialized net
+            val castedNet = net as AbstractBlock
+            val lrt: Tracker = Tracker.fixed(lr)
+            val sgd: Optimizer = Optimizer.sgd().setLearningRateTracker(lrt).build()
+            val config: DefaultTrainingConfig =
+                DefaultTrainingConfig(loss)
+                    .optOptimizer(sgd) // Optimizer (loss function)
+                    .optInitializer(NormalInitializer(0.01f), Parameter.Type.WEIGHT) // setting the initializer
+                    .optDevices(Engine.getInstance().getDevices(1)) // setting the number of GPUs needed
+                    .addEvaluator(Accuracy()) // Model Accuracy
+                    .also { cfg ->
+                        TrainingListener.Defaults.logging().forEach { cfg.addTrainingListeners(it) }
+                    } // Logging
+            model = Model.newInstance("model").also { it.block = castedNet }
+            trainer = model!!.newTrainer(config)
+            { _: Int, _: NDManager ->
+                trainer!!.step()
             }
         }
     val predict: (String) -> String =
@@ -253,15 +253,20 @@ fun trainCh8(
     // Train and predict
     var ppl = 0.0
     var speed = 0.0
-    for (epoch in 0 until numEpochs) {
-        val pair = trainEpochCh8(net, dataset, loss, updater, device, useRandomIter, manager)
-        ppl = pair.first
-        speed = pair.second
-        if ((epoch + 1) % 10 == 0) {
-//            animator.add(epoch + 1, ppl.toFloat(), "")
-//            animator.show()
-            println("${epoch + 1} : $ppl")
+    try {
+        for (epoch in 0 until numEpochs) {
+            val pair = trainEpochCh8(net, dataset, loss, updater, device, useRandomIter, manager)
+            ppl = pair.first
+            speed = pair.second
+            if ((epoch + 1) % 10 == 0) {
+//                animator.add(epoch + 1, ppl.toFloat(), "")
+//                animator.show()
+                println("${epoch + 1} : $ppl")
+            }
         }
+    } finally {
+        trainer?.close()
+        model?.close()
     }
     println(
         "perplexity: %.1f, %.1f tokens/sec on %s%n".format(ppl, speed, device.toString()),

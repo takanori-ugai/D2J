@@ -40,7 +40,9 @@ class MaskedSoftmaxCELoss : SoftmaxCrossEntropyLoss() {
                     ones.close()
                     masked
                 }
-        val out = lossPerToken.mul(weights).mean(intArrayOf(1))
+        val maskedLoss = lossPerToken.mul(weights)
+        val out = maskedLoss.mean(intArrayOf(1))
+        maskedLoss.close()
         lossPerToken.close()
         weights.close()
         if (label !== labels[0]) {
