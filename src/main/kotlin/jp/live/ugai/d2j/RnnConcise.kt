@@ -321,12 +321,7 @@ fun trainEpochCh8(
                     state = net.beginState(inputBatch.shape.shape[0].toInt(), device)
                 }
             } else {
-                val detachedState = NDList()
-                for (s in state) {
-                    s.stopGradient()
-                    detachedState.add(s.duplicate())
-                }
-                state = detachedState
+                state = NDList(state.map { it.stopGradient().duplicate() })
             }
             state?.attach(childManager)
             var labelFlat = labelBatch.transpose().reshape(Shape(-1))
