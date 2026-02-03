@@ -1,5 +1,6 @@
 package jp.live.ugai.d2j
 
+import ai.djl.Device
 import ai.djl.Model
 import ai.djl.basicdataset.cv.classification.FashionMnist
 import ai.djl.metric.Metrics
@@ -141,8 +142,8 @@ fun main() {
                                                 val lossVal = trainer.loss.evaluate(sb.labels, preds)
                                                 stepManager.tempAttachAll(preds, lossVal)
                                                 val device = sb.data.head().device
-                                                val labelCopy = sb.labels.duplicate()
-                                                val predCopy = preds.duplicate()
+                                                val labelCopy = NDList(sb.labels.map { it.duplicate() })
+                                                val predCopy = NDList(preds.map { it.duplicate() })
                                                 listenerManager.tempAttachAll(labelCopy, predCopy)
                                                 labelsByDevice[device] = labelCopy
                                                 predsByDevice[device] = predCopy
@@ -179,8 +180,8 @@ fun main() {
                                             val lossVal = trainer.loss.evaluate(sb.labels, preds)
                                             stepManager.tempAttachAll(preds, lossVal)
                                             val device = sb.data.head().device
-                                            val labelCopy = sb.labels.duplicate()
-                                            val predCopy = preds.duplicate()
+                                            val labelCopy = NDList(sb.labels.map { it.duplicate() })
+                                            val predCopy = NDList(preds.map { it.duplicate() })
                                             listenerManager.tempAttachAll(labelCopy, predCopy)
                                             labelsByDevice[device] = labelCopy
                                             predsByDevice[device] = predCopy

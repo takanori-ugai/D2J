@@ -242,9 +242,10 @@ fun trainCh8(
                     } // Logging
             model = Model.newInstance("model").also { it.block = castedNet }
             trainer = model!!.newTrainer(config)
-            { _: Int, _: NDManager ->
+            val stepper: (Int, NDManager) -> Unit = { _: Int, _: NDManager ->
                 trainer!!.step()
             }
+            stepper
         }
     val predict: (String) -> String =
         { prefix ->
