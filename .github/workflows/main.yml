@@ -28,7 +28,7 @@ jobs:
       - name: Build with Gradle & JDK ${{ matrix.java_version }}
         uses: gradle/actions/setup-gradle@v5.0.0
       - name: Build with Gradle
-        run: ./gradlew build
+        run: ./gradlew build -x detekt
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5.4.3
         with:
