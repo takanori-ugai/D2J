@@ -30,7 +30,7 @@ jobs:
       - name: Build with Gradle
         run: ./gradlew build -x detekt
       - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v5.4.3
+        uses: codecov/codecov-action@v7.1.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: takanori-ugai/D2J
