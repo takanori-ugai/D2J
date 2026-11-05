@@ -26,7 +26,7 @@ jobs:
           java-version: ${{ matrix.java_version }}
           distribution: 'temurin'
       - name: Build with Gradle & JDK ${{ matrix.java_version }}
-        uses: gradle/actions/setup-gradle@v5.0.0
+        uses: gradle/actions/setup-gradle@v6.4.1
       - name: Build with Gradle
         run: ./gradlew build -x detekt
       - name: Upload coverage reports to Codecov
