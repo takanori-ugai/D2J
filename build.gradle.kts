@@ -173,7 +173,10 @@ spotless {
         removeUnusedImports()
 
         // Choose one of these formatters.
-        googleJavaFormat("1.30.0") // has its own section below
+        // Spotless requires 1.30.0+ on JDK 25; JDK 17 supports up to 1.28.0.
+        googleJavaFormat(
+            if (JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_25)) "1.30.0" else "1.28.0",
+        )
         formatAnnotations() // fixes formatting of type annotations, see below
     }
 }
